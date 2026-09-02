@@ -1,0 +1,39 @@
+# dependencies
+node_modules
+
+# next.js build output
+.next
+
+# build output
+dist
+
+# environment files (keep the template)
+.env*
+!.env.example
+
+# databases
+*.db
+*.sqlite*
+
+# python
+__pycache__
+.pytest_cache
+.ruff_cache
+.venv
+venv
+workers/processor/src/oc_worker.egg-info
+
+# coverage
+coverage
+
+# os
+.DS_Store
+
+# local agent tooling (not part of the product repository)
+.opencode/
+
+# private build instructions (not public documentation)
+MASTER BUILD PROMPT*.md
+
+# typescript incremental build info
+*.tsbuildinfo

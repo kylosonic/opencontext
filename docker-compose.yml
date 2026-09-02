@@ -1,0 +1,40 @@
+# OPTIONAL services for production-parity local development.
+#
+# The MVP's dev defaults are SQLite (file-backed) storage and a database-backed
+# job queue, so neither service below is required for day-to-day development.
+# Use this file only when you want to exercise production-parity data paths.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: opencontext-postgres
+    environment:
+      POSTGRES_USER: opencontext
+      POSTGRES_PASSWORD: opencontext
+      POSTGRES_DB: opencontext
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opencontext"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: opencontext-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
