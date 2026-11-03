@@ -1,0 +1,1211 @@
+{
+  "metadata": {
+    "id": "demo",
+    "displayName": "banking-app-walkthrough.mp4",
+    "sourceName": "banking-app-walkthrough.mp4",
+    "durationSec": 720,
+    "detailLevel": "MEDIUM",
+    "demo": true,
+    "status": "COMPLETED",
+    "formatVersion": 1,
+    "createdAt": "2026-09-01T09:58:00.000Z",
+    "completedAt": "2026-09-01T10:14:00.000Z",
+    "expiresAt": "2026-09-15T10:14:00.000Z",
+    "retentionNote": "This is a static demo sample and is kept indefinitely. For real jobs, completed results are kept for 14 days and incomplete jobs for 7 days."
+  },
+  "stages": [
+    {
+      "name": "Media extracted",
+      "status": "done"
+    },
+    {
+      "name": "Transcription + vision",
+      "status": "done"
+    },
+    {
+      "name": "Context aggregated",
+      "status": "done"
+    },
+    {
+      "name": "Developer context generated",
+      "status": "done"
+    }
+  ],
+  "transcript": [
+    {
+      "start": 1.2,
+      "end": 9.8,
+      "text": "Hey, I'm Alex — this is a walkthrough of our mobile banking app, SwiftBank. We'll cover the core flows a developer would need to rebuild it."
+    },
+    {
+      "start": 10.2,
+      "end": 19.6,
+      "text": "This is the home dashboard. You can see the greeting, the checking account balance, and recent transactions, with a bottom navigation bar for the main sections."
+    },
+    {
+      "start": 20.4,
+      "end": 30.2,
+      "text": "I'm opening the Accounts tab, which lists all accounts with balances. Tapping the checking account opens its detail view."
+    },
+    {
+      "start": 31.0,
+      "end": 47.5,
+      "text": "The account detail screen shows a transaction list. Each row has a merchant name, a category, a date, and an amount."
+    },
+    {
+      "start": 48.3,
+      "end": 66.8,
+      "text": "Let me send some money. From the Payments tab I pick Send Money, choose a recipient, enter an amount, and continue."
+    },
+    {
+      "start": 67.5,
+      "end": 85.9,
+      "text": "On the review screen the app shows the amount, the recipient, and the fee — which is zero for standard transfers — before I confirm."
+    },
+    {
+      "start": 86.7,
+      "end": 103.4,
+      "text": "The success screen confirms the transfer with an animated check mark and a toast saying Money sent."
+    },
+    {
+      "start": 104.2,
+      "end": 121.6,
+      "text": "Next, the Cards tab. I'm freezing my debit card. The card flips to a frozen state with a badge, and unfreezing works the same way."
+    },
+    {
+      "start": 122.4,
+      "end": 141.0,
+      "text": "The transaction search filters by month and category. I'm selecting March, and the list updates to show only March transactions."
+    },
+    {
+      "start": 142.0,
+      "end": 160.8,
+      "text": "In settings, security lets you enable Face ID. The app asks to confirm your passcode before the toggle sticks."
+    },
+    {
+      "start": 161.6,
+      "end": 182.5,
+      "text": "For deposits, the app opens the camera and guides you through photographing the front and back of a check, then submits it for processing."
+    },
+    {
+      "start": 183.4,
+      "end": 203.0,
+      "text": "Bill pay lets you add a payee and schedule a payment. I'm adding City Power and Light and scheduling it for the first of the month."
+    },
+    {
+      "start": 204.0,
+      "end": 224.9,
+      "text": "The insights screen shows spending by category as a bar chart, with a monthly total at the top."
+    },
+    {
+      "start": 225.7,
+      "end": 245.3,
+      "text": "Dark mode is a one-tap toggle in settings. The whole interface switches theme instantly."
+    },
+    {
+      "start": 246.1,
+      "end": 263.4,
+      "text": "There's also a larger-text accessibility option, which scales the UI without breaking the layout."
+    },
+    {
+      "start": 264.2,
+      "end": 281.0,
+      "text": "Finally, signing out returns you to the sign-in screen with biometrics. That's the core of the app — thanks for watching."
+    },
+    {
+      "start": 286.5,
+      "end": 300.1,
+      "text": "I'm going to repeat the send flow with a second recipient so you can see it end to end."
+    },
+    {
+      "start": 306.0,
+      "end": 318.5,
+      "text": "Note the recent transactions update immediately after the transfer completes."
+    },
+    {
+      "start": 325.0,
+      "end": 340.2,
+      "text": "Let me switch between accounts — the app keeps the same tab structure for each one."
+    },
+    {
+      "start": 420.0,
+      "end": 432.8,
+      "text": "The card controls also include setting travel notices and adjusting limits."
+    },
+    {
+      "start": 505.0,
+      "end": 520.4,
+      "text": "For the last part, let me look at the insights breakdown again and compare the categories."
+    },
+    {
+      "start": 645.0,
+      "end": 660.5,
+      "text": "I'm switching back to light mode, and I'll leave it on the dashboard."
+    }
+  ],
+  "observations": [
+    {
+      "timestampSec": 2.2,
+      "certainty": "OBSERVED",
+      "sceneTitle": "App launch",
+      "visualDescription": "The app opens to a splash screen with the SwiftBank wordmark centered on a solid background, then transitions to the home dashboard.",
+      "uiElements": [
+        "Splash wordmark",
+        "Home dashboard"
+      ],
+      "visibleText": [],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 4.8,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Home dashboard",
+      "visualDescription": "Light interface with rounded cards: a greeting at the top, a checking balance card, a recent-transactions list, and a five-tab bottom navigation.",
+      "uiElements": [
+        "Greeting",
+        "Checking balance card",
+        "Recent transactions list",
+        "Bottom navigation"
+      ],
+      "visibleText": [
+        "Good morning, Alex",
+        "Checking ····4821",
+        "$4,250.18",
+        "Home · Accounts · Payments · Cards · Profile",
+        "Recent transactions"
+      ],
+      "interactions": [],
+      "layoutDescription": "Single-column list layout with rounded cards.",
+      "designObservations": {
+        "layout": "Rounded cards with approximately 16px gutters",
+        "typography": "Large bold numerals for the balance"
+      },
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 12.5,
+      "certainty": "INFERRED",
+      "sceneTitle": "Bottom navigation",
+      "visualDescription": "The five-tab bottom navigation appears on every screen of the main flow.",
+      "uiElements": [
+        "Bottom navigation"
+      ],
+      "visibleText": [
+        "Home",
+        "Accounts",
+        "Payments",
+        "Cards",
+        "Profile"
+      ],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 21.4,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Accounts list",
+      "visualDescription": "A list of two account cards, each showing an account name, a masked number, and a balance, with a chevron.",
+      "uiElements": [
+        "Account cards"
+      ],
+      "visibleText": [
+        "Accounts",
+        "Checking ····4821",
+        "$4,250.18",
+        "Savings ····9034",
+        "$12,840.55"
+      ],
+      "interactions": [
+        "The user taps the checking account card"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 32.8,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Account detail",
+      "visualDescription": "A header with the account name and a transaction list. Each row shows a merchant name, a category chip, a date, and a signed amount.",
+      "uiElements": [
+        "Account header",
+        "Transaction rows"
+      ],
+      "visibleText": [
+        "Account details",
+        "March 28 · Coffee House · $4.75",
+        "March 27 · Grocery Market · $86.20",
+        "March 26 · Payroll deposit · +$3,200.00"
+      ],
+      "interactions": [
+        "Tapping a transaction row opens its detail view (not shown in this recording)"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 51.6,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Send Money form",
+      "visualDescription": "A transfer form with a recipient field, an amount input with a dollar prefix, and a Continue button. The button becomes enabled after both fields are filled.",
+      "uiElements": [
+        "Recipient field",
+        "Amount input",
+        "Continue button"
+      ],
+      "visibleText": [
+        "Send Money",
+        "To",
+        "Amount",
+        "Maya Chen",
+        "$45.00",
+        "Continue"
+      ],
+      "interactions": [
+        "The user selects a saved recipient from the contact chips",
+        "The user enters an amount"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 69.8,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Review transfer",
+      "visualDescription": "A review screen listing the amount, recipient, and fee in summary rows, with a Confirm button.",
+      "uiElements": [
+        "Summary rows",
+        "Fee row",
+        "Confirm button"
+      ],
+      "visibleText": [
+        "Review transfer",
+        "$45.00",
+        "Maya Chen",
+        "Fee $0.00",
+        "Confirm"
+      ],
+      "interactions": [
+        "The user taps Confirm"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 88.7,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Transfer success",
+      "visualDescription": "An animated check mark and a toast reading \"Money sent!\" replace the review screen.",
+      "uiElements": [
+        "Check mark",
+        "Toast"
+      ],
+      "visibleText": [
+        "Money sent!",
+        "Transfer complete"
+      ],
+      "interactions": [],
+      "importantChanges": [
+        "Success state replaces the review screen"
+      ]
+    },
+    {
+      "timestampSec": 89.4,
+      "certainty": "UNCERTAIN",
+      "sceneTitle": "Success animation details",
+      "visualDescription": "Particles or confetti appear around the check mark; the exact animation could not be confirmed from the recording.",
+      "uiElements": [],
+      "visibleText": [],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 106.8,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Cards list",
+      "visualDescription": "A list of cards showing a masked debit card with a Freeze card control beneath it.",
+      "uiElements": [
+        "Card visual",
+        "Freeze card control"
+      ],
+      "visibleText": [
+        "Cards",
+        "Debit ····4821",
+        "Freeze card"
+      ],
+      "interactions": [
+        "The user taps Freeze card"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 117.5,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Frozen card state",
+      "visualDescription": "The card artwork switches to grayscale and a \"Frozen\" badge appears. An Unfreeze card control replaces the freeze control.",
+      "uiElements": [
+        "Frozen badge",
+        "Unfreeze card control"
+      ],
+      "visibleText": [
+        "Frozen",
+        "Unfreeze card"
+      ],
+      "interactions": [
+        "The user taps Unfreeze card"
+      ],
+      "importantChanges": [
+        "Card artwork switches to grayscale"
+      ]
+    },
+    {
+      "timestampSec": 125.4,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Transaction search",
+      "visualDescription": "A search field, month chips, and a category selector appear above a transaction list. Selecting the March chip filters the list.",
+      "uiElements": [
+        "Search field",
+        "Month chips",
+        "Category selector"
+      ],
+      "visibleText": [
+        "Search transactions",
+        "March",
+        "All categories"
+      ],
+      "interactions": [
+        "The user taps the March chip"
+      ],
+      "importantChanges": [
+        "List filters to March transactions"
+      ]
+    },
+    {
+      "timestampSec": 144.9,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Security settings",
+      "visualDescription": "A settings list with a Security section. A Face ID row contains a toggle switch.",
+      "uiElements": [
+        "Settings list",
+        "Face ID toggle"
+      ],
+      "visibleText": [
+        "Settings",
+        "Security",
+        "Face ID"
+      ],
+      "interactions": [
+        "The user toggles Face ID on"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 154.6,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Passcode prompt",
+      "visualDescription": "A sheet with a numeric keypad appears asking to confirm the passcode before the Face ID toggle applies.",
+      "uiElements": [
+        "Passcode sheet",
+        "Numeric keypad"
+      ],
+      "visibleText": [
+        "Enter passcode"
+      ],
+      "interactions": [
+        "The user enters a passcode"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 163.8,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Deposit check — camera",
+      "visualDescription": "A camera permission prompt appears, then a full-screen camera view with corner guides and the instruction to photograph the front of the check.",
+      "uiElements": [
+        "Camera permission prompt",
+        "Camera view with guides"
+      ],
+      "visibleText": [
+        "Deposit check",
+        "Photograph the front of your check"
+      ],
+      "interactions": [
+        "Camera permission is requested on first use"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 174.2,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Check photos and submit",
+      "visualDescription": "Thumbnails of the front and back photos appear with a Submit deposit button. After submitting, a Deposit pending card is shown.",
+      "uiElements": [
+        "Photo thumbnails",
+        "Submit deposit button",
+        "Deposit pending card"
+      ],
+      "visibleText": [
+        "Photograph the back of your check",
+        "Submit deposit",
+        "Deposit pending",
+        "$250.00"
+      ],
+      "interactions": [
+        "The user photographs both sides and submits"
+      ],
+      "importantChanges": [
+        "Pending deposit card replaces the camera view"
+      ]
+    },
+    {
+      "timestampSec": 181.8,
+      "certainty": "INFERRED",
+      "sceneTitle": "Deposit amount origin",
+      "visualDescription": "The deposit amount field shows $250.00 after the back-of-check photo is captured; the amount appears to be read from the check image.",
+      "uiElements": [],
+      "visibleText": [
+        "$250.00"
+      ],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 188.7,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Bill pay — add payee",
+      "visualDescription": "A payee form with name and masked account-number fields, inside the Bill pay section.",
+      "uiElements": [
+        "Payee form"
+      ],
+      "visibleText": [
+        "Bill pay",
+        "Add payee",
+        "City Power & Light"
+      ],
+      "interactions": [
+        "The user enters a payee name and account number"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 196.2,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Schedule payment",
+      "visualDescription": "A schedule row with a date picker set to May 1 and a Schedule button.",
+      "uiElements": [
+        "Date picker",
+        "Schedule button"
+      ],
+      "visibleText": [
+        "Schedule payment",
+        "May 1",
+        "Schedule"
+      ],
+      "interactions": [
+        "The user taps Schedule"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 206.9,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Insights",
+      "visualDescription": "An insights screen with a bar chart titled Spending by category and a monthly total at the top.",
+      "uiElements": [
+        "Monthly total",
+        "Bar chart"
+      ],
+      "visibleText": [
+        "Insights",
+        "Spending by category",
+        "$2,140.92 total"
+      ],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 208.4,
+      "certainty": "UNCERTAIN",
+      "sceneTitle": "Chart colors",
+      "visualDescription": "The three bars appear color-coded by category; the exact colors are unclear from the recording.",
+      "uiElements": [],
+      "visibleText": [],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 227.4,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Dark mode toggle",
+      "visualDescription": "The user toggles Dark mode in settings and the entire interface switches to a dark palette instantly.",
+      "uiElements": [
+        "Dark mode toggle"
+      ],
+      "visibleText": [
+        "Dark mode"
+      ],
+      "interactions": [
+        "The user toggles Dark mode on"
+      ],
+      "importantChanges": [
+        "Entire palette switches to dark"
+      ]
+    },
+    {
+      "timestampSec": 238.6,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Larger text",
+      "visualDescription": "The user enables the Larger text accessibility option; the UI scales up without breaking the layout.",
+      "uiElements": [
+        "Larger text toggle"
+      ],
+      "visibleText": [
+        "Settings",
+        "Larger text"
+      ],
+      "interactions": [
+        "The user toggles Larger text on"
+      ],
+      "importantChanges": [
+        "UI scales up; layout holds"
+      ]
+    },
+    {
+      "timestampSec": 265.2,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Sign out",
+      "visualDescription": "The user taps Sign out and the app returns to a sign-in screen with biometric options.",
+      "uiElements": [
+        "Sign out action",
+        "Sign-in screen"
+      ],
+      "visibleText": [
+        "Sign out",
+        "Sign in",
+        "Face ID"
+      ],
+      "interactions": [
+        "The user taps Sign out"
+      ],
+      "importantChanges": [
+        "App returns to sign-in screen"
+      ]
+    },
+    {
+      "timestampSec": 297.0,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Send flow repeated",
+      "visualDescription": "The same Send Money screens appear with a second recipient. The amount entered is $120.00.",
+      "uiElements": [
+        "Recipient field",
+        "Amount input"
+      ],
+      "visibleText": [
+        "Jordan Lee",
+        "$120.00"
+      ],
+      "interactions": [
+        "The user selects a different recipient"
+      ],
+      "importantChanges": [
+        "Recipient Jordan Lee, amount $120.00"
+      ]
+    },
+    {
+      "timestampSec": 303.5,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Transaction list updated",
+      "visualDescription": "After the second transfer completes, the recent-transactions list shows a new row at the top.",
+      "uiElements": [
+        "Transaction rows"
+      ],
+      "visibleText": [
+        "Money sent!",
+        "Transfer complete",
+        "Today · Jordan Lee · -$120.00"
+      ],
+      "interactions": [],
+      "importantChanges": [
+        "New transaction row appears immediately after completion"
+      ]
+    },
+    {
+      "timestampSec": 323.0,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Account switching",
+      "visualDescription": "The user switches between the checking and savings accounts; each keeps the same tab structure and card layout.",
+      "uiElements": [
+        "Account cards",
+        "Tab structure"
+      ],
+      "visibleText": [
+        "Checking ····4821",
+        "Savings ····9034"
+      ],
+      "interactions": [
+        "The user switches accounts"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 423.0,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Card controls",
+      "visualDescription": "The card controls screen lists options for travel notices and limits.",
+      "uiElements": [
+        "Card controls list"
+      ],
+      "visibleText": [
+        "Card controls",
+        "Travel notice",
+        "Limits"
+      ],
+      "interactions": [
+        "The user opens Card controls"
+      ],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 507.0,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Insights revisited",
+      "visualDescription": "The insights screen is shown again; the chart displays the same three categories with amounts.",
+      "uiElements": [
+        "Monthly total",
+        "Bar chart"
+      ],
+      "visibleText": [
+        "Spending by category",
+        "Dining $412.60",
+        "Transport $186.10",
+        "Groceries $1,542.22"
+      ],
+      "interactions": [],
+      "importantChanges": []
+    },
+    {
+      "timestampSec": 648.0,
+      "certainty": "OBSERVED",
+      "sceneTitle": "Light mode restored",
+      "visualDescription": "The user switches back to light mode; the recording ends on the dashboard.",
+      "uiElements": [
+        "Light mode toggle"
+      ],
+      "visibleText": [
+        "Light mode"
+      ],
+      "interactions": [
+        "The user toggles Light mode on"
+      ],
+      "importantChanges": [
+        "Interface returns to the light palette"
+      ]
+    }
+  ],
+  "ocr": [
+    {
+      "timestampSec": 3.2,
+      "text": "Good morning, Alex",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 3.5,
+      "text": "Checking ····4821",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 3.8,
+      "text": "$4,250.18",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 4.2,
+      "text": "Home · Accounts · Payments · Cards · Profile",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 5.4,
+      "text": "Recent transactions",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 22.5,
+      "text": "Accounts",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 23.0,
+      "text": "Checking ····4821",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 23.4,
+      "text": "$4,250.18",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 24.0,
+      "text": "Savings ····9034",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 24.5,
+      "text": "$12,840.55",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 33.8,
+      "text": "Account details",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 34.5,
+      "text": "March 28 · Coffee House · $4.75",
+      "confidence": 0.95
+    },
+    {
+      "timestampSec": 35.2,
+      "text": "March 27 · Grocery Market · $86.20",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 36.0,
+      "text": "March 26 · Payroll deposit · +$3,200.00",
+      "confidence": 0.94
+    },
+    {
+      "timestampSec": 52.0,
+      "text": "Send Money",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 53.5,
+      "text": "To",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 53.8,
+      "text": "Amount",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 58.5,
+      "text": "Maya Chen",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 60.2,
+      "text": "$45.00",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 61.0,
+      "text": "Continue",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 70.5,
+      "text": "Review transfer",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 71.2,
+      "text": "$45.00",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 71.5,
+      "text": "Maya Chen",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 72.0,
+      "text": "Fee $0.00",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 72.5,
+      "text": "Confirm",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 89.0,
+      "text": "Money sent!",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 90.2,
+      "text": "Transfer complete",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 107.5,
+      "text": "Cards",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 108.8,
+      "text": "Debit ····4821",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 110.5,
+      "text": "Freeze card",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 118.0,
+      "text": "Frozen",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 119.2,
+      "text": "Unfreeze card",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 126.0,
+      "text": "Search transactions",
+      "confidence": 0.95
+    },
+    {
+      "timestampSec": 127.5,
+      "text": "March",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 128.8,
+      "text": "All categories",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 145.5,
+      "text": "Settings",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 147.0,
+      "text": "Security",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 148.8,
+      "text": "Face ID",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 154.5,
+      "text": "Enter passcode",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 165.0,
+      "text": "Deposit check",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 167.5,
+      "text": "Photograph the front of your check",
+      "confidence": 0.93
+    },
+    {
+      "timestampSec": 174.0,
+      "text": "Photograph the back of your check",
+      "confidence": 0.93
+    },
+    {
+      "timestampSec": 178.5,
+      "text": "Submit deposit",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 184.0,
+      "text": "Deposit pending",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 185.5,
+      "text": "$250.00",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 189.0,
+      "text": "Bill pay",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 190.8,
+      "text": "Add payee",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 193.5,
+      "text": "City Power & Light",
+      "confidence": 0.95
+    },
+    {
+      "timestampSec": 196.0,
+      "text": "Schedule payment",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 197.8,
+      "text": "May 1",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 198.8,
+      "text": "Schedule",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 207.0,
+      "text": "Insights",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 208.5,
+      "text": "Spending by category",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 209.5,
+      "text": "$2,140.92 total",
+      "confidence": 0.94
+    },
+    {
+      "timestampSec": 228.0,
+      "text": "Dark mode",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 239.8,
+      "text": "Larger text",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 266.5,
+      "text": "Sign out",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 270.0,
+      "text": "Sign in",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 270.3,
+      "text": "Face ID",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 296.5,
+      "text": "Jordan Lee",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 297.8,
+      "text": "$120.00",
+      "confidence": 0.99
+    },
+    {
+      "timestampSec": 300.5,
+      "text": "Money sent!",
+      "confidence": 0.96
+    },
+    {
+      "timestampSec": 302.0,
+      "text": "Transfer complete",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 305.8,
+      "text": "Today · Jordan Lee · -$120.00",
+      "confidence": 0.92
+    },
+    {
+      "timestampSec": 424.0,
+      "text": "Card controls",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 426.5,
+      "text": "Travel notice",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 428.0,
+      "text": "Limits",
+      "confidence": 0.98
+    },
+    {
+      "timestampSec": 508.5,
+      "text": "Spending by category",
+      "confidence": 0.97
+    },
+    {
+      "timestampSec": 510.0,
+      "text": "Dining $412.60",
+      "confidence": 0.95
+    },
+    {
+      "timestampSec": 511.0,
+      "text": "Transport $186.10",
+      "confidence": 0.95
+    },
+    {
+      "timestampSec": 512.0,
+      "text": "Groceries $1,542.22",
+      "confidence": 0.95
+    },
+    {
+      "timestampSec": 648.5,
+      "text": "Light mode",
+      "confidence": 0.98
+    }
+  ],
+  "timeline": [
+    {
+      "start": 0,
+      "end": 10,
+      "title": "Launch and home dashboard",
+      "summary": "Splash screen transitions to the home dashboard: greeting, checking balance card, recent transactions, and five-tab bottom navigation."
+    },
+    {
+      "start": 10,
+      "end": 20,
+      "title": "Dashboard tour",
+      "summary": "The narrator walks through the dashboard. The bottom navigation appears to persist across the main flow (inferred)."
+    },
+    {
+      "start": 20,
+      "end": 48,
+      "title": "Accounts list and account detail",
+      "summary": "Two account cards are shown; tapping checking opens a transaction list with merchant, category, date, and signed amounts."
+    },
+    {
+      "start": 48,
+      "end": 67,
+      "title": "Send Money — form",
+      "summary": "Recipient selected from contact chips, amount entered, Continue enables once both fields are filled."
+    },
+    {
+      "start": 67,
+      "end": 88,
+      "title": "Send Money — review and confirm",
+      "summary": "Review screen lists amount, recipient, and a $0.00 fee before confirmation."
+    },
+    {
+      "start": 88,
+      "end": 104,
+      "title": "Transfer success",
+      "summary": "Animated check mark and \"Money sent!\" toast replace the review screen. Confetti details uncertain."
+    },
+    {
+      "start": 104,
+      "end": 122,
+      "title": "Card freeze and unfreeze",
+      "summary": "The debit card switches to a grayscale \"Frozen\" state and back."
+    },
+    {
+      "start": 122,
+      "end": 142,
+      "title": "Transaction search and filters",
+      "summary": "Month chips and a category selector filter the transaction list; March is selected."
+    },
+    {
+      "start": 142,
+      "end": 162,
+      "title": "Security settings — Face ID",
+      "summary": "Face ID toggle requires passcode confirmation on a numeric-keypad sheet."
+    },
+    {
+      "start": 162,
+      "end": 186,
+      "title": "Deposit a check",
+      "summary": "Camera permission, guided front/back photos, submit, and a \"Deposit pending\" card with $250.00."
+    },
+    {
+      "start": 186,
+      "end": 204,
+      "title": "Bill pay — add payee and schedule",
+      "summary": "Payee \"City Power & Light\" added; payment scheduled for May 1."
+    },
+    {
+      "start": 204,
+      "end": 226,
+      "title": "Spending insights",
+      "summary": "Bar chart of spending by category with a $2,140.92 monthly total; bar colors uncertain."
+    },
+    {
+      "start": 226,
+      "end": 264,
+      "title": "Dark mode and larger text",
+      "summary": "Theme switches to dark instantly; larger-text option scales the UI without breaking layout."
+    },
+    {
+      "start": 264,
+      "end": 284,
+      "title": "Sign out",
+      "summary": "The app returns to a sign-in screen with biometric options."
+    },
+    {
+      "start": 284,
+      "end": 360,
+      "title": "Send flow repeated; account switching",
+      "summary": "Second transfer to Jordan Lee ($120.00); the transaction list updates immediately; checking and savings share the same tab structure."
+    },
+    {
+      "start": 420,
+      "end": 472,
+      "title": "Card controls",
+      "summary": "Travel notice and limit options are listed under card controls."
+    },
+    {
+      "start": 505,
+      "end": 540,
+      "title": "Insights comparison",
+      "summary": "The insights chart is revisited with per-category amounts (Dining, Transport, Groceries)."
+    },
+    {
+      "start": 645,
+      "end": 720,
+      "title": "Back to light mode — recording ends",
+      "summary": "The interface returns to the light palette; no further interaction occurs before the recording ends."
+    }
+  ],
+  "markdown": "# OpenContext — Demo Analysis\n\n> **Demo Analysis** — pre-authored sample output. This document was not generated by processing a real video. It demonstrates the exact format OpenContext produces for a completed job.\n\n## Source\n\n- **File:** banking-app-walkthrough.mp4\n- **Duration:** 12:00 (720 seconds)\n- **Detail level:** MEDIUM\n- **Generated:** 2026-09-01\n- **Format version:** 1\n\n## Overview\n\nA 12-minute screen recording of SwiftBank, a fictional mobile banking app, narrated by its designer. The recording covers the home dashboard, accounts, a send-money flow end to end, card freeze/unfreeze, transaction search, security settings, check deposit, bill pay, spending insights, dark mode, accessibility settings, and sign-out. Several flows are repeated to show behavior consistency.\n\nCertainty is marked throughout: **observed** (directly visible or audible), **inferred** (consistent with the recording but not directly shown), and **uncertain** (could not be confirmed from the recording).\n\n## Timeline\n\n[00:00–00:10]\nA mobile application dashboard is visible after a splash screen.\nVISUAL: Light interface with rounded cards; a greeting, a checking balance card, and a recent-transactions list; five-tab bottom navigation.\nUI: Greeting · Checking balance card · Recent transactions list · Bottom navigation (Home, Accounts, Payments, Cards, Profile)\nTRANSCRIPT: \"Hey, I'm Alex — this is a walkthrough of our mobile banking app, SwiftBank...\"\n\n[00:10–00:20]\nThe narrator walks through the dashboard.\nTRANSCRIPT: \"This is the home dashboard. You can see the greeting, the checking account balance, and recent transactions...\"\nINFERRED: The bottom navigation appears on every screen of the main flow.\n\n[00:20–00:48]\nUSER ACTION: The user opens the Accounts tab and taps the checking account.\nVISUAL: A list of two account cards (checking and savings), then a transaction list for the checking account.\nUI: Account cards · Transaction rows (merchant, category, date, amount)\nOCR: \"Accounts\" · \"Checking ····4821\" · \"$4,250.18\" · \"Savings ····9034\" · \"$12,840.55\"\nINFERRED: Tapping a transaction row opens its detail view (not shown in this recording).\n\n[00:48–01:07]\nUSER ACTION: The user opens Send Money and fills the form.\nVISUAL: A transfer form with a recipient field, an amount input, and a Continue button.\nUI: Recipient field · Amount input · Continue button\nOCR: \"Send Money\" · \"To\" · \"Amount\" · \"Maya Chen\" · \"$45.00\" · \"Continue\"\n\n[01:07–01:28]\nUSER ACTION: The user taps Continue and reviews the transfer.\nVISUAL: A review screen listing the amount, recipient, and fee, with a Confirm button.\nUI: Summary rows · Fee row · Confirm button\nOCR: \"Review transfer\" · \"$45.00\" · \"Maya Chen\" · \"Fee $0.00\" · \"Confirm\"\nINFERRED: Standard transfers are free; the fee row reflects that.\n\n[01:28–01:44]\nThe transfer completes.\nVISUAL: An animated check mark and a \"Money sent!\" toast replace the review screen.\nOCR: \"Money sent!\" · \"Transfer complete\"\nUNCERTAIN: Particles or confetti around the check mark; the exact animation could not be confirmed.\n\n[01:44–02:02]\nUSER ACTION: The user opens the Cards tab and freezes the debit card.\nVISUAL: A card list with a masked debit card; freezing switches the card artwork to grayscale with a \"Frozen\" badge.\nOCR: \"Cards\" · \"Debit ····4821\" · \"Freeze card\" · \"Frozen\" · \"Unfreeze card\"\n\n[02:02–02:22]\nUSER ACTION: The user searches transactions and filters by month.\nVISUAL: A search field, month chips, and a category selector above a filtered transaction list.\nOCR: \"Search transactions\" · \"March\" · \"All categories\"\n\n[02:22–02:42]\nUSER ACTION: The user opens Settings → Security and toggles Face ID.\nVISUAL: A settings list, then a passcode sheet with a numeric keypad.\nOCR: \"Settings\" · \"Security\" · \"Face ID\" · \"Enter passcode\"\n\n[02:42–03:06]\nUSER ACTION: The user starts a check deposit.\nVISUAL: A camera permission prompt, then a full-screen camera view with corner guides and step instructions; after both photos, thumbnails and a submit button; finally a \"Deposit pending\" card.\nOCR: \"Deposit check\" · \"Photograph the front of your check\" · \"Photograph the back of your check\" · \"Submit deposit\" · \"Deposit pending\" · \"$250.00\"\nINFERRED: The deposit amount is read from the check image after the back photo is captured.\n\n[03:06–03:24]\nUSER ACTION: The user adds a bill payee and schedules a payment.\nVISUAL: A payee form (name, masked account number) and a schedule row with a date picker.\nOCR: \"Bill pay\" · \"Add payee\" · \"City Power & Light\" · \"Schedule payment\" · \"May 1\" · \"Schedule\"\n\n[03:24–03:46]\nVISUAL: An insights screen with a \"Spending by category\" bar chart and a monthly total.\nUI: Three category bars · Monthly total\nOCR: \"Insights\" · \"Spending by category\" · \"$2,140.92 total\"\nUNCERTAIN: The bars appear color-coded by category; exact colors are unclear from the recording.\n\n[03:46–04:24]\nUSER ACTION: The user enables dark mode, then larger text.\nVISUAL: The entire interface switches to a dark palette instantly; the larger-text setting scales the UI without breaking the layout.\nOCR: \"Dark mode\" · \"Settings\" · \"Larger text\"\n\n[04:24–04:44]\nUSER ACTION: The user signs out.\nVISUAL: The app returns to a sign-in screen with biometric options.\nOCR: \"Sign out\" · \"Sign in\" · \"Face ID\"\n\n[04:44–06:00]\nUSER ACTION: The send flow is repeated with a second recipient (Jordan Lee, $120.00); the user switches between accounts.\nVISUAL: The same screens appear; the transaction list updates immediately after the transfer completes; each account keeps the same tab structure.\nOCR: \"Jordan Lee\" · \"$120.00\" · \"Money sent!\" · \"Transfer complete\" · \"Today · Jordan Lee · -$120.00\"\nINFERRED: Transaction lists refresh after a transfer completes.\n\n[07:00–07:52]\nUSER ACTION: The user opens card controls.\nVISUAL: Options for travel notices and limits.\nOCR: \"Card controls\" · \"Travel notice\" · \"Limits\"\n\n[08:25–09:00]\nVISUAL: The insights screen is revisited; the chart shows the same three categories with amounts.\nOCR: \"Spending by category\" · \"Dining $412.60\" · \"Transport $186.10\" · \"Groceries $1,542.22\"\n\n[10:45–12:00]\nUSER ACTION: The user switches back to light mode; the recording ends on the dashboard.\nVISUAL: The interface returns to the light palette; no further interaction occurs.\nOCR: \"Light mode\"\n\n## Developer context\n\n### Application\nSwiftBank — a mobile banking app. Main areas: Home dashboard, Accounts, Payments (Send Money, Bill pay), Cards, Profile/Settings, Insights, and Deposit check. Sign-in uses passcode and Face ID (biometrics).\n\n### UI hierarchy\n- App shell: top header (screen title, back chevron on sub-screens) + bottom navigation (Home, Accounts, Payments, Cards, Profile)\n- Home: greeting → checking balance card → recent transactions list\n- Accounts: account cards → account detail (transaction list)\n- Payments: Send Money (recipient → amount → review → success) · Bill pay (payees, schedule)\n- Cards: card list → card controls (freeze, travel notice, limits)\n- Settings: security (Face ID, passcode), appearance (dark mode, larger text)\n- Insights: monthly total → category bar chart\n\n### Navigation\nBottom tabs for the five main areas (observed). Sub-screens are pushed with a back chevron (observed). Transaction detail from a row tap is inferred (not shown in this recording).\n\n### User interactions\n- Select recipient from contact chips (observed)\n- Enter amount; Continue enables when both fields are filled (observed)\n- Confirm transfer → animated success + toast (observed)\n- Freeze/unfreeze card via control; card artwork switches to grayscale (observed)\n- Month chips filter transactions (observed)\n- Face ID toggle requires passcode confirmation (observed)\n- Check deposit via camera: front photo → back photo → submit → pending (observed)\n- Bill pay: add payee, pick date, schedule (observed)\n- Dark mode toggle applies instantly (observed)\n- Larger text scales the UI (observed)\n- Sign out returns to sign-in with biometrics (observed)\n\n### Visible text inventory\n- Home: \"Good morning, Alex\" · \"Checking ····4821\" · \"$4,250.18\" · \"Recent transactions\"\n- Bottom nav: \"Home\" · \"Accounts\" · \"Payments\" · \"Cards\" · \"Profile\"\n- Accounts: \"Checking ····4821\" · \"$4,250.18\" · \"Savings ····9034\" · \"$12,840.55\"\n- Account detail: \"March 28 · Coffee House · $4.75\" · \"March 27 · Grocery Market · $86.20\" · \"March 26 · Payroll deposit · +$3,200.00\"\n- Send Money: \"To\" · \"Amount\" · \"Maya Chen\" · \"$45.00\" · \"Continue\"\n- Review: \"Fee $0.00\" · \"Confirm\"\n- Success: \"Money sent!\" · \"Transfer complete\"\n- Cards: \"Debit ····4821\" · \"Freeze card\" · \"Frozen\" · \"Unfreeze card\"\n- Search: \"Search transactions\" · \"March\" · \"All categories\"\n- Security: \"Face ID\" · \"Enter passcode\"\n- Deposit: \"Deposit check\" · \"Photograph the front/back of your check\" · \"Submit deposit\" · \"Deposit pending\" · \"$250.00\"\n- Bill pay: \"Add payee\" · \"City Power & Light\" · \"Schedule payment\" · \"May 1\" · \"Schedule\"\n- Insights: \"Spending by category\" · \"$2,140.92 total\" · \"Dining $412.60\" · \"Transport $186.10\" · \"Groceries $1,542.22\"\n- Settings: \"Dark mode\" · \"Larger text\" · \"Sign out\" · \"Sign in\"\n\n### Component relationships\n- Bottom navigation persists across all main tabs (observed)\n- The balance card pattern is shared by checking and savings (observed)\n- Transaction rows: merchant, category chip, date, signed amount (observed)\n- Success states replace the form screens rather than overlaying them (observed)\n- The deposit amount appears derived from the check image (inferred)\n\n### State transitions\n- Send flow: form → review → processing → success → toast\n- Card: active ⇄ frozen (grayscale + badge)\n- Deposit: capture front → capture back → submit → pending\n- Theme: light ⇄ dark (instant)\n- Sign-in ⇄ app (after sign-out)\n\n### Design patterns\n- Rounded cards, ~16px gutters, single-column lists (observed)\n- Large bold numerals for balances (observed)\n- Category color-coding on the insights chart (uncertain)\n- Toast notifications for confirmations (observed)\n\n### Implementation-relevant observations\n- The dashboard greeting uses the account holder's first name (\"Good morning, Alex\")\n- Amounts use \"$\" formatting with two decimals; deposits show a \"+\" prefix\n- The fee row displays \"$0.00\" for standard transfers (inferred as the default)\n- Bottom navigation uses five items with icons and labels\n- Passcode entry uses a numeric keypad sheet\n\n### Uncertain items\n- Chart colors per category\n- Success-screen particle animation details\n- Transaction-detail navigation behavior\n\n## Certainty legend\n\n- **Observed** — directly visible or audible in the recording.\n- **Inferred** — consistent with the recording but not directly shown; all interactions are inferred by rule.\n- **Uncertain** — could not be confirmed from the recording.\n\n\n## Evidence references\n\n- The narrator introduces the SwiftBank walkthrough. [E0001 · 00:01 · Observed]\n- The dashboard shows a greeting, checking balance, recent transactions, and bottom navigation. [E0002 · 00:04 · Observed]\n- The user taps the checking account card. [E0003 · 00:21 · Inferred]\n",
+  "evidenceVersion": 1,
+  "evidence": [
+    {
+      "id": 1,
+      "kind": "TRANSCRIPT",
+      "timestampSec": 1.2,
+      "endSec": 9.8,
+      "certainty": "OBSERVED",
+      "text": "Hey, I'm Alex — this is a walkthrough of our mobile banking app, SwiftBank. We'll cover the core flows a developer would need to rebuild it.",
+      "source": {
+        "collection": "transcript",
+        "index": 0
+      }
+    },
+    {
+      "id": 2,
+      "kind": "VISUAL",
+      "timestampSec": 4.8,
+      "certainty": "OBSERVED",
+      "text": "Light interface with rounded cards: a greeting at the top, a checking balance card, a recent-transactions list, and a five-tab bottom navigation.",
+      "source": {
+        "collection": "visualFindings",
+        "index": 3
+      }
+    },
+    {
+      "id": 3,
+      "kind": "VISUAL",
+      "timestampSec": 21.4,
+      "certainty": "INFERRED",
+      "text": "The user taps the checking account card",
+      "source": {
+        "collection": "interactions",
+        "index": 0
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Context output — copy & download
 
-Status: SPECIFIED — NOT IMPLEMENTED
+Status: IMPLEMENTED IN WORKING TREE — NOT YET RELEASE VERIFIED
 
 The context document is the product's deliverable: one document, three access paths (copy, Markdown download, JSON download).
 
@@ -10,7 +10,9 @@ The context document is the product's deliverable: one document, three access pa
   1. Header — source name, duration, generated date, detail level
   2. Chronological aggregated context — timeline blocks merging transcript, visual observations, OCR, and interactions
   3. Developer context section — application structure, UI hierarchy, navigation, user interactions, visible text, component relationships, state transitions, design patterns, and implementation-relevant observations
+- **Evidence references:** Every atomic transcript, visual, OCR, interaction, state-transition, and implementation claim carries a stable evidence ID, source timestamp, and certainty label in Markdown and a matching structured JSON evidence record. Aggregated timeline entries retain clickable source-time ranges. Interaction claims remain marked `INFERRED` even when the surrounding frame is observed.
 - **Honesty rules:** observed vs inferred vs uncertain are always distinguished; functionality is never invented; adjacent duplicate observations are merged; timestamps are preserved
+- **Refinement safety:** optional text-model refinement must preserve evidence-linked claim lines and timeline rows exactly. If it changes or drops one, the deterministic template is used.
 - **Acceptance:** compare the document against the source video — everything stated as observed is actually visible, and uncertain statements are marked
 
 ## B2 — Copy Context
@@ -27,6 +29,7 @@ The context document is the product's deliverable: one document, three access pa
 - **Trigger:** clicks "Download Markdown"
 - **Expected outcome:** downloads a file named `opencontext-<jobid>.md` containing the full document
 - **Acceptance:** the downloaded file opens in any Markdown viewer and matches the copied text
+- **Evidence acceptance:** each evidence marker maps to one JSON evidence record containing its claim, timestamp, certainty, kind, and source collection index; evidence markers in the results viewer seek to that timestamp in the source video.
 
 ## B4 — Download JSON
 

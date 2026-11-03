@@ -37,3 +37,9 @@ MASTER BUILD PROMPT*.md
 
 # typescript incremental build info
 *.tsbuildinfo
+
+# vitest local storage scratch
+.test-storage
+
+# local uploaded media and processing artifacts
+/apps/web/storage/

@@ -22,13 +22,17 @@ flowchart LR
 
 ## Status
 
-**MVP in active development.** The pipeline above is the target architecture;
-components land incrementally in later slices. What exists today is the
-repository scaffold, shared schemas, and CI.
+**MVP implemented in the current working tree; release verification and deployment remain.**
+The repository includes the authenticated web app, video upload and job APIs,
+results viewer, and Python media-processing worker. Evidence references in the
+developer context link claims to a source timestamp and certainty label; they
+are clickable in the results viewer and included in JSON exports. The current
+branch still needs its full verification and production rollout.
 
 ## Quick start
 
-Prerequisites: Node.js 20+ (24 recommended), npm 10+, Python 3.13+.
+Prerequisites: Node.js 20+ (24 recommended), npm 10+, Python 3.13+, and
+FFmpeg available on `PATH` for the worker.
 
 ```bash
 # 1. Install all workspace dependencies
@@ -40,8 +44,8 @@ npm run dev
 # 3. Worker (separate terminal)
 cd workers/processor
 python -m venv .venv
-.venv/Scripts/python -m pip install -e ".[dev]"     # Windows
-# macOS/Linux: source .venv/bin/python -m pip install -e ".[dev]"
+.venv/Scripts/python -m pip install -e ".[dev,local]"     # Windows
+# macOS/Linux: .venv/bin/python -m pip install -e ".[dev,local]"
 .venv/Scripts/python -m pytest
 ```
 
@@ -50,7 +54,7 @@ python -m venv .venv
 ```bash
 npm run lint
 npm run typecheck
-npm test          # no JS tests yet; the Python worker has pytest
+npm test          # web unit/integration tests
 npm run build
 
 # worker
@@ -61,9 +65,10 @@ cd workers/processor
 
 ## Environment variables
 
-Copy `.env.example` to `.env` (and `.env.local` for Next.js) and fill in values
-as needed. Everything below is optional for local development; the defaults
-run with SQLite and the local filesystem.
+Copy `.env.example` to the repository root as `.env` and to `apps/web/.env.local`
+for Next.js. The landing page and demo need no credentials. Real uploads need
+GitHub OAuth and the matching `WORKER_API_TOKEN`; model credentials depend on
+the providers you choose. SQLite and local storage are the development defaults.
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
@@ -97,13 +102,30 @@ run with SQLite and the local filesystem.
 | `apps/web` | Next.js (App Router, TypeScript, Tailwind CSS) | Web application |
 | `packages/schemas` | TypeScript + Zod | Shared job/status schemas and pipeline constants |
 | `packages/config` | TypeScript | Environment access helpers |
-| `workers/processor` | Python 3.13 | Media processing worker (pipeline arrives in a later slice) |
+| `workers/processor` | Python 3.13 | FFmpeg extraction, transcription, frame analysis, aggregation, and context generation |
 
 - **Storage abstraction**: local filesystem for dev; S3-compatible object
   storage for production parity.
-- **Data layer**: SQLite for local dev; Postgres via Prisma is planned for
-  production parity (see `docker-compose.yml` for optional services).
+- **Data layer**: SQLite for local dev; PostgreSQL via Prisma for production
+  parity (see `docker-compose.yml` for optional services).
 - **Queue**: database-backed in dev; Redis is optional and unused today.
+
+## Evidence-first output
+
+Extracted claims are paired with an evidence ID, source time, and certainty
+label (`Observed`, `Inferred`, or `Uncertain`). In the results viewer, select
+an evidence marker to seek the source video when playback is available;
+Markdown exports retain readable timestamps, and JSON exports include the
+evidence ledger. Timeline ranges are also clickable. Interactions are always
+labeled as inferred.
+
+## Project status
+
+Implementation is present in the working tree, but the branch has not yet
+passed a fresh full verification and production deployment. See
+[`docs/swarm/STATE.md`](docs/swarm/STATE.md) for the current release checklist
+and [`docs/research/agent-ready-video-context.md`](docs/research/agent-ready-video-context.md)
+for the product research behind evidence-linked output.
 
 ## License
 

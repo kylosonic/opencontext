@@ -1,69 +1,40 @@
-# Swarm State — OpenContext
+# OpenContext Project State
 
-Last updated: 2026-09-02
-Owner: @architect
+Last updated: 2026-11-03
 
-## Phase
-`IMPLEMENTING` — Slice 0 built (Gate B green locally), QA gate in progress.
-Completed: INTAKE ✓ DISCOVERY ✓ ARCHITECTURE_LOCKED ✓ PLANNED ✓ (blueprint approved 2026-09-02)
+## Status
 
-## Source of truth
-- Intake: `MASTER BUILD PROMPT — OPENCONTEXT.md` (user-confirmed)
-- Behavior contracts: `docs/behaviors/` (10 files, user-confirmed 2026-09-02, SPECIFIED — NOT IMPLEMENTED)
-- Decisions: `docs/adr/`
+Core product flows and the processing worker are implemented in the current working tree. The feature branch is still uncommitted and has not completed a fresh end-to-end verification or production rollout. Treat this as an implementation preview, not a release.
 
-## Environment (verified)
-- git 2.55 · node 24.16 · npm 11.13 · Python 3.13 (`python`) / 3.14 (`py`) · FFmpeg 7.1 local · Docker CLI present, **daemon NOT running**
-- GitHub: authenticated as `kylosonic` (repo + workflow scopes)
-- Vercel: authenticated as `kylosonic`
-- Git identity: Nahom Girma Woldemichael <nahomg761@gmail.com>
-- Repo `kylosonic/opencontext`: does not exist yet → to be created (public)
+## Implemented in the working tree
 
-## Branch decision
-Greenfield exception: the initial implementation batch lands on `main` (repo does not exist; per master prompt §30). Exactly one implementation branch is active: `main`. Subsequent batches use feature branches.
+- Public landing page, docs, deterministic demo, and reusable results viewer.
+- GitHub authentication, protected app pages, upload form, job list/detail, retry/delete controls, and polling status.
+- Prisma data model and initial migration, database-backed queue, local/S3-compatible storage, job APIs, and worker API.
+- Python worker with FFmpeg probing/extraction, transcription and vision providers, OCR collection, aggregation, retries, and stage resume.
+- Markdown and JSON context exports.
+- Evidence-linked context: atomic transcript, visual, OCR, interaction, state-transition, and implementation findings receive stable IDs with timestamps and certainty. Result-viewer markers seek the source video when playback is available; timeline ranges are clickable too.
+- Optional text-model refinement preserves evidence-bearing claims and timeline rows; altered anchors fall back to the deterministic template.
+- Demo sample includes a small evidence ledger, so the citation UI can be explored without an account.
+- Web and worker test suites exist in the tree.
 
-## Execution contract (summary)
-- Objective: production-ready OpenContext MVP per master prompt, satisfying `docs/behaviors/README.md` acceptance checklist (20 items).
-- Non-scope (explicit): billing, subscriptions, roles/permissions, sharing, URL ingestion, MCP, CLI, PDF/image/audio-only analysis, resumable uploads, re-run at different detail level. See `docs/behaviors/pending-behaviors.md`.
-- Risk level: MEDIUM-HIGH (file uploads, FFmpeg, secrets, auth). Security gate required on slices 2, 3, 4, 6.
-- Rollout/rollback: Vercel deploy with instant rollback; greenfield DB (SQLite dev / PostgreSQL prod); worker is a standalone process (restartable).
+## Current repository state
 
-## TECH tickets
-| ID | Title | Slice | Status |
-|---|---|---|---|
-| TECH-001 | Monorepo bootstrap (npm workspaces, tooling, CI, license, env) | 0 | IMPLEMENTED (Gate B green) |
-| TECH-002 | Shared packages: schemas + config | 0 | IMPLEMENTED (Gate B green) |
-| TECH-014 | CI workflow (lint/typecheck/test/build) | 0 | IMPLEMENTED (Gate B green) |
-| TECH-010 | Demo module (deterministic pre-authored result + simulated pipeline) | 1 | QUEUED |
-| TECH-011 | Landing page + docs page | 1 | QUEUED |
-| TECH-012 | Results UI shell (5 tabs, copy/download, demo badge) | 1 | QUEUED |
-| TECH-006 | GitHub auth + session + protected routes | 2 | QUEUED |
-| TECH-003 | Database schema + migrations (Prisma, portable SQLite/PostgreSQL) | 3 | QUEUED |
-| TECH-004 | Queue module (DB claim/lease; BullMQ adapter path documented) | 3 | QUEUED |
-| TECH-005 | Storage abstraction (local disk / S3-compatible) | 3 | QUEUED |
-| TECH-007 | Jobs API (create/list/get/delete/retry/status) + ownership | 3 | QUEUED |
-| TECH-008 | Upload API (multipart, validated) | 3 | QUEUED |
-| TECH-009 | Python worker pipeline (extract→transcribe→vision→OCR→aggregate→context; progress, resume, auto-retry) | 4 | QUEUED |
-| TECH-013 | Tests: unit + synthetic fixture + worker pipeline + frontend smoke | 5 | QUEUED |
-| TECH-015 | Deployment: GitHub repo, Vercel, worker path, README, prod verification | 6 | QUEUED |
+- Branch: `feat/slice-1-public-experience`.
+- `HEAD`: `dc3b58f` (`chore: bootstrap OpenContext monorepo scaffold`).
+- Current implementation is uncommitted. The working tree also reports `AGENTS.md` as deleted; this note does not infer whether that deletion is intentional.
+- Prior status notes and product copy were stale; README, worker README, landing roadmap copy, behavior contract, and this state file now reflect the current working-tree scope.
 
-## Gate status
-- Gate A (blueprint): `docs/planning/technical-blueprint.md` APPROVED (slices 3–4). Decisions recorded: combined `POST /api/jobs` upload+create; Vercel body cap deferred to deployment.
-- Gate B: Slice 0 green locally (lint, typecheck, build, pytest, ruff, YAML valid).
-- Gate C (QA): Slice 0 **QA APPROVED** (2026-09-02, top-level @qa; independent command evidence, secret scan clean).
-- Gate D (security): Slice 0 **SECURITY NOT REQUIRED** — rationale: no auth, no user input, no uploads, no secrets; static scaffold + CI only.
-- Gate E (integration): Slice 0 passed architect review — structure matches contract; `.opencode/` and the private master build prompt excluded from the public repo via `.gitignore`.
-- Gate F (commit): initial commit + push to `kylosonic/opencontext` (this commit).
-- Note: subagents cannot nest subagents (depth limit) — all QA/security gates run top-level.
+## Verification and release gates
 
-## Risks (with mitigation)
-1. No AI credentials in prod → demo covers public experience; real jobs fail with stage-specific, actionable errors. (Accepted per master prompt §27.)
-2. GitHub OAuth app cannot be created via CLI → auth fully implemented; at deployment, report exact manual steps as a blocker for prod sign-in (demo/landing unaffected).
-3. Docker daemon off → local dev uses SQLite + local-disk storage + plain-process worker (ADR-0003, ADR-0005).
-4. faster-whisper Windows wheels → optional extra; OpenAI-compatible transcription is the zero-dependency fallback.
-5. Python 3.13 vs 3.14 interpreters → worker targets `python` (3.13).
+- No tests, lint, typecheck, build, or end-to-end run were executed during this continuation.
+- Earlier notes reported lint/typecheck passing before the current evidence-link feature; those results do not verify this tree.
+- Run web lint/typecheck/tests/build and worker ruff/pytest, then exercise one short synthetic upload through the web app and worker. Reconcile the TypeScript/Python job and evidence payloads.
+- Complete upload/auth/worker-token/FFmpeg security review and the behavior checklist in `docs/behaviors/README.md`.
+- Decide the production upload path: the current server-side upload flow supports 500 MB, while Vercel request limits may require direct-to-object-storage uploads.
+- Configure GitHub OAuth, database, object storage, worker host, and model-provider credentials; deploy web and worker; verify the public demo and one real job.
+- Refresh the README with deployed URLs and the final hosting decision after rollout.
 
-## Artifacts
-- Behaviors: `docs/behaviors/` (confirmed)
-- ADRs: `docs/adr/0001`–`0005`
-- Blueprint (pending): `docs/planning/technical-blueprint.md`
+## Product direction
+
+Evidence-linked context is the current differentiator. The research notes are in `docs/research/agent-ready-video-context.md`. MCP/agent connections, repository-aware implementation briefs, and CI replay are later candidates and are not implemented.

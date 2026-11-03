@@ -1,1 +1,199 @@
 @import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * OpenContext design tokens
+ * Serious-developer-tool aesthetic: typography-first, restrained motion,
+ * dark-first with a light variant driven by prefers-color-scheme (no toggle).
+ * Colors are semantic only — components never hard-code hex values.
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* canvas = page background, panel = cards/surfaces, ink = text */
+  --canvas: #fafafa;
+  --panel: #ffffff;
+  --panel-muted: #f4f4f5;
+  --panel-raised: #ffffff;
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --ink: #18181b;
+  --ink-muted: #52525b;
+  --ink-faint: #71717a;
+
+  --accent: #364fc7;
+  --accent-hover: #2f46b5;
+  --on-accent: #ffffff;
+
+  --ok: #15803d;
+  --ok-bg: #dcfce7;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --err: #b91c1c;
+  --err-bg: #fee2e2;
+
+  --focus: #364fc7;
+  --code-bg: #f4f4f5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #0b0b0d;
+    --panel: #131316;
+    --panel-muted: #1b1b1f;
+    --panel-raised: #18181c;
+    --line: #2a2a31;
+    --line-strong: #3f3f46;
+    --ink: #f4f4f5;
+    --ink-muted: #a1a1aa;
+    --ink-faint: #71717a;
+
+    --accent: #7c95ff;
+    --accent-hover: #96a9ff;
+    --on-accent: #10101a;
+
+    --ok: #4ade80;
+    --ok-bg: rgb(34 197 94 / 0.14);
+    --warn: #fbbf24;
+    --warn-bg: rgb(251 191 36 / 0.14);
+    --err: #f87171;
+    --err-bg: rgb(248 113 113 / 0.14);
+
+    --focus: #96a9ff;
+    --code-bg: #141418;
+  }
+}
+
+/* Map the tokens into Tailwind's color namespace so utilities like
+ * `bg-canvas`, `text-ink-muted`, `border-line` resolve to the variables. */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-panel-muted: var(--panel-muted);
+  --color-panel-raised: var(--panel-raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-err: var(--err);
+  --color-err-bg: var(--err-bg);
+  --color-code-bg: var(--code-bg);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--accent) 24%, transparent);
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /* Quiet scrollbars in scrollable code surfaces */
+  pre {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+@layer components {
+  /* Small monospace label used for kickers, timestamps, meta rows */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* Subtle technical grid used behind the honest video placeholder */
+  .bg-grid {
+    background-image: linear-gradient(to right, var(--line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* Slow, restrained pulse for the "running" stage marker */
+  .stage-running {
+    animation: stage-pulse 1.6s ease-in-out infinite;
+  }
+
+  /* Downward flow hint on the pipeline connector */
+  .pipeline-flow {
+    animation: pipeline-flow 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes stage-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes pipeline-flow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+/* Respect reduced motion everywhere: effectively disable animation and
+ * smooth scrolling for users who ask for it. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -18,6 +18,9 @@ dev = [
   "pytest",
   "ruff",
 ]
+local = [
+  "faster-whisper",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

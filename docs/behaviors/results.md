@@ -1,6 +1,6 @@
 # Results viewer
 
-Status: SPECIFIED — NOT IMPLEMENTED
+Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
 
 ## B1 — Five tabs
 
@@ -36,3 +36,10 @@ No stage may render a blank tab:
 ## B5 — Demo badge
 
 - Jobs opened from demo mode display a persistent "Demo Analysis" badge on the job page and in every tab header. See `demo.md`.
+
+## B6 — Evidence-linked context
+
+- Atomic transcript, visual, OCR, interaction, state-transition, and implementation claims carry a stable evidence ID, source timestamp, and certainty label in Markdown and the structured JSON ledger.
+- Evidence references and timeline ranges are selectable from the context view. When source playback is available, selection seeks the video and brings it into view; when it is unavailable, the selected source time remains visible.
+- Interaction claims are marked `INFERRED` even when the surrounding frame is `OBSERVED`.
+- **Acceptance:** select an `INFERRED` marker in a completed job → the source player seeks to its timestamp; the JSON evidence ledger contains the same ID, claim, timestamp, certainty, and collection index.

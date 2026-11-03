@@ -1,6 +1,6 @@
 # Upload
 
-Status: SPECIFIED — NOT IMPLEMENTED
+Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
 
 ## B1 — Accepted files
 

@@ -1,6 +1,6 @@
 # Demo mode
 
-Status: SPECIFIED — NOT IMPLEMENTED
+Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
 
 Demo mode exists so the public deployment always demonstrates the product — with or without AI credentials configured.
 

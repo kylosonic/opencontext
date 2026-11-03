@@ -1,0 +1,83 @@
+"""Ollama text provider (local `/api/chat`)."""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+import httpx
+
+from oc_worker.errors import TransientFailure
+from oc_worker.providers.text.base import anchored_lines
+
+_SYSTEM_PROMPT = (
+    "You turn a structured analysis of a recorded software session into a "
+    "developer-context Markdown document. The structured analysis JSON uses "
+    "these collection shapes: uiHierarchy entries are strings naming UI "
+    "elements, visibleText entries are strings (or OCR objects with text, "
+    "confidence and timestampSec), interactions entries are one-sentence "
+    "strings describing user actions, stateTransitions entries are "
+    "{timestampSec, change} pairs, and implementationObservations entries "
+    "are {timestampSec, note} pairs. Keep every fact, timestamp and "
+    "certainty marker from the input. Evidence records use numeric IDs and "
+    "source collection indexes. Use the provided evidence-linked Markdown "
+    "lines. Preserve "
+    "every evidence-bearing line and timeline row exactly, including claim "
+    "text, timestamp, and marker. Never remove, alter, move, or invent "
+    "evidence markers. Do not invent content. "
+    "Output Markdown only."
+)
+
+
+class OllamaTextProvider:
+    name = "ollama"
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        model: str,
+        timeout: float = 300.0,
+        client: httpx.Client | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self._client = client or httpx.Client(timeout=timeout)
+
+    def refine(self, payload: dict[str, Any], baseline_markdown: str) -> str:
+        payload_json = json.dumps(payload, ensure_ascii=False)
+        protected_lines = "\n".join(anchored_lines(baseline_markdown))
+        body = {
+            "model": self.model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Structured analysis (JSON):\n{payload_json}\n\n"
+                        f"Evidence-linked Markdown lines (preserve exactly):\n"
+                        f"{protected_lines}\n\n"
+                        "Polish only unmarked explanatory wording. Keep all "
+                        "evidence-bearing lines and timeline rows byte for byte. "
+                        "Produce the developer-context Markdown document now."
+                    ),
+                },
+            ],
+        }
+        try:
+            response = self._client.post(f"{self.base_url}/api/chat", json=body)
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            raise TransientFailure(f"ollama text request failed: {exc}") from exc
+        if response.status_code == 429 or response.status_code >= 500:
+            raise TransientFailure(f"ollama text provider returned {response.status_code}")
+        if response.status_code >= 400:
+            raise TransientFailure(f"ollama text provider returned {response.status_code}")
+        try:
+            content = response.json()["message"]["content"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise TransientFailure("ollama text provider returned an unexpected body") from exc
+        text = str(content).strip()
+        if not text:
+            raise TransientFailure("ollama text provider returned empty content")
+        return text
