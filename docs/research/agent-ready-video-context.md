@@ -18,5 +18,6 @@ This is an additive improvement to the existing product contract. MCP connection
 
 - Worker output includes a sorted JSON evidence ledger and evidence markers in context Markdown.
 - Optional text-model refinement falls back to the deterministic template if it changes an evidence-linked claim or timeline row.
+- Job owners can confirm or flag evidence claims and export reviewer notes or suggested corrections without replacing the original extracted text.
 - Context viewer evidence markers and timeline ranges seek the source player; when media streaming is unavailable, the selected timestamp is still shown.
 - Open-source site copy and the project status notes describe the current implementation and verification work accurately.

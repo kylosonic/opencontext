@@ -84,3 +84,35 @@ export async function deleteJobRequest(id: string): Promise<void> {
   });
   await ensureOk(response);
 }
+
+export interface EvidenceReviewUpdate {
+  status: "CONFIRMED" | "FLAGGED" | "UNREVIEWED";
+  note?: string;
+  correctedText?: string;
+}
+
+export interface EvidenceReviewResponse {
+  markdown: string;
+  json: unknown;
+}
+
+/** PATCH /api/jobs/[id]/evidence/[evidenceId] — save human review metadata. */
+export async function patchEvidenceReviewRequest(
+  jobId: string,
+  evidenceId: number,
+  review: EvidenceReviewUpdate,
+): Promise<EvidenceReviewResponse> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/evidence/${evidenceId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(review),
+    },
+  );
+  await ensureOk(response);
+  return (await response.json()) as EvidenceReviewResponse;
+}

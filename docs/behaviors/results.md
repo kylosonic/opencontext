@@ -41,5 +41,6 @@ No stage may render a blank tab:
 
 - Atomic transcript, visual, OCR, interaction, state-transition, and implementation claims carry a stable evidence ID, source timestamp, and certainty label in Markdown and the structured JSON ledger.
 - Evidence references and timeline ranges are selectable from the context view. When source playback is available, selection seeks the video and brings it into view; when it is unavailable, the selected source time remains visible.
+- Completed results include an Evidence review tab. Job owners can confirm or flag a claim, add a note or suggested correction, and clear a review. The original claim is retained, and the review is persisted in Markdown and JSON exports. Demo evidence is read-only.
 - Interaction claims are marked `INFERRED` even when the surrounding frame is `OBSERVED`.
 - **Acceptance:** select an `INFERRED` marker in a completed job → the source player seeks to its timestamp; the JSON evidence ledger contains the same ID, claim, timestamp, certainty, and collection index.

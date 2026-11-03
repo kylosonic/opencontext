@@ -13,6 +13,7 @@ The context document is the product's deliverable: one document, three access pa
 - **Evidence references:** Every atomic transcript, visual, OCR, interaction, state-transition, and implementation claim carries a stable evidence ID, source timestamp, and certainty label in Markdown and a matching structured JSON evidence record. Aggregated timeline entries retain clickable source-time ranges. Interaction claims remain marked `INFERRED` even when the surrounding frame is observed.
 - **Honesty rules:** observed vs inferred vs uncertain are always distinguished; functionality is never invented; adjacent duplicate observations are merged; timestamps are preserved
 - **Refinement safety:** optional text-model refinement must preserve evidence-linked claim lines and timeline rows exactly. If it changes or drops one, the deterministic template is used.
+- **Human review:** an owner can confirm or flag each claim, add a note, and suggest a correction. The original claim remains intact; review annotations are stored with the evidence record and included in both exports. Demo reviews are read-only.
 - **Acceptance:** compare the document against the source video — everything stated as observed is actually visible, and uncertain statements are marked
 
 ## B2 — Copy Context
@@ -30,6 +31,7 @@ The context document is the product's deliverable: one document, three access pa
 - **Expected outcome:** downloads a file named `opencontext-<jobid>.md` containing the full document
 - **Acceptance:** the downloaded file opens in any Markdown viewer and matches the copied text
 - **Evidence acceptance:** each evidence marker maps to one JSON evidence record containing its claim, timestamp, certainty, kind, and source collection index; evidence markers in the results viewer seek to that timestamp in the source video.
+- **Review acceptance:** save a review, reload the job, and confirm its status and annotation remain in the JSON ledger and Markdown review appendix; clearing a review removes only the annotation.
 
 ## B4 — Download JSON
 

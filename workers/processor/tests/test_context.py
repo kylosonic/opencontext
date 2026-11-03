@@ -10,6 +10,7 @@ import re
 
 from oc_worker.context import build_context, dump_json, format_timestamp, template_markdown
 from oc_worker.models import OCRObservation, Segment, VisualObservation
+from oc_worker.providers.text.base import anchored_lines
 
 _ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$")
 
@@ -25,6 +26,14 @@ class _FakeTextProvider:
         if self._error is not None:
             raise self._error
         return self._markdown if self._markdown is not None else baseline_markdown
+
+
+class _AnchorPreservingTextProvider:
+    name = "fake-text-preserving-anchors"
+
+    def refine(self, payload: dict, baseline_markdown: str) -> str:
+        del payload
+        return "REFINED OUTPUT\n\n" + "\n".join(anchored_lines(baseline_markdown))
 
 
 def _segment(text: str, start: float = 0.0, end: float = 1.0) -> Segment:
@@ -302,10 +311,17 @@ def test_no_text_provider_returns_template_baseline() -> None:
     assert markdown.startswith("# Developer Context: demo.mp4")
 
 
-def test_text_provider_refinement_is_used() -> None:
+def test_text_provider_refinement_is_used_when_evidence_lines_are_preserved() -> None:
+    markdown, payload = _build(text_provider=_AnchorPreservingTextProvider())
+    baseline = template_markdown(payload)
+    assert markdown.startswith("REFINED OUTPUT")
+    assert anchored_lines(markdown) == anchored_lines(baseline)
+
+
+def test_text_provider_cannot_rewrite_evidence_linked_claims() -> None:
     provider = _FakeTextProvider(markdown="REFINED OUTPUT")
-    markdown, _ = _build(text_provider=provider)
-    assert markdown == "REFINED OUTPUT"
+    markdown, payload = _build(text_provider=provider)
+    assert markdown == template_markdown(payload)
 
 
 def test_text_provider_failure_falls_back_to_template() -> None:

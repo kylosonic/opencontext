@@ -4,7 +4,7 @@ Last updated: 2026-11-03
 
 ## Status
 
-Core product flows and the processing worker are implemented in the current working tree. The feature branch is still uncommitted and has not completed a fresh end-to-end verification or production rollout. Treat this as an implementation preview, not a release.
+Core product flows and the processing worker are committed. Evidence review is now implemented in the working tree, but the project has not completed a fresh end-to-end verification or production rollout. Treat this as an implementation preview, not a release.
 
 ## Implemented in the working tree
 
@@ -16,13 +16,14 @@ Core product flows and the processing worker are implemented in the current work
 - Evidence-linked context: atomic transcript, visual, OCR, interaction, state-transition, and implementation findings receive stable IDs with timestamps and certainty. Result-viewer markers seek the source video when playback is available; timeline ranges are clickable too.
 - Optional text-model refinement preserves evidence-bearing claims and timeline rows; altered anchors fall back to the deterministic template.
 - Demo sample includes a small evidence ledger, so the citation UI can be explored without an account.
+- Job owners can confirm or flag evidence records, add reviewer notes or suggested corrections, and retain those annotations in the stored JSON and Markdown exports.
 - Web and worker test suites exist in the tree.
 
 ## Current repository state
 
 - Branch: `feat/slice-1-public-experience`.
-- `HEAD`: `dc3b58f` (`chore: bootstrap OpenContext monorepo scaffold`).
-- Current implementation is uncommitted. The working tree also reports `AGENTS.md` as deleted; this note does not infer whether that deletion is intentional.
+- `HEAD`: `96cb84d` (`feat: build OpenContext MVP with evidence-linked context`).
+- The MVP is committed; evidence-review changes are currently uncommitted. Commit `96cb84d` includes the deletion of `AGENTS.md`.
 - Prior status notes and product copy were stale; README, worker README, landing roadmap copy, behavior contract, and this state file now reflect the current working-tree scope.
 
 ## Verification and release gates

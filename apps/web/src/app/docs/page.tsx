@@ -130,15 +130,18 @@ export default function DocsPage() {
                 One document, three access paths: <strong>Copy Context</strong>{" "}
                 to the clipboard, <strong>Download Markdown</strong> (
                 <code className="text-[0.8rem]">opencontext-&lt;job-id&gt;.md</code>
-                ), and <strong>Download JSON</strong> for integrations.
+                ), and <strong>Download JSON</strong> for integrations. Owners
+                can also review evidence claims and include notes or suggested
+                corrections in both exports.
               </p>
             </Card>
             <Card>
               <h3 className="text-sm font-semibold text-ink">Honesty rules</h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                 Observed, inferred, and uncertain are always distinguished.
-                Functionality is never invented, and demo output is always
-                labeled <Badge tone="accent" mono>Demo Analysis</Badge>.
+                Functionality is never invented. Human reviews remain separate
+                from the original extracted claim, and demo output is always labeled{" "}
+                <Badge tone="accent" mono>Demo Analysis</Badge>.
               </p>
             </Card>
           </div>
@@ -250,7 +253,9 @@ export default function DocsPage() {
                 Returns the complete pre-authored demo result verbatim:
                 metadata, transcript segments, visual observations with
                 certainty, OCR entries, timeline, and the full developer-context
-                Markdown (with the <em>Demo Analysis</em> header marker).
+                Markdown and evidence ledger (with the <em>Demo Analysis</em>
+                header marker). Human review is available on owned job results;
+                the demo remains read-only.
                 Deterministic and cacheable; no database, environment, or
                 credentials involved.
               </p>

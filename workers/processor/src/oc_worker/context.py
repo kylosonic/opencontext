@@ -160,7 +160,7 @@ def _build_json_payload(
             certainty="OBSERVED",
         )
 
-    for observation_index, obs in enumerate(observations):
+    for obs in observations:
         for field_name, claim in (
             ("sceneTitle", obs.sceneTitle),
             ("visualDescription", obs.visualDescription),

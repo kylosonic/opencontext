@@ -37,6 +37,16 @@ export const EvidenceSourceSchema = z.object({
 
 export type EvidenceSource = z.infer<typeof EvidenceSourceSchema>;
 
+/** A human annotation kept separate from the model's original claim. */
+export const EvidenceReviewSchema = z.object({
+  status: z.enum(["CONFIRMED", "FLAGGED"]),
+  note: z.string().max(1000).optional(),
+  correctedText: z.string().max(5000).optional(),
+  reviewedAt: z.string().datetime(),
+});
+
+export type EvidenceReview = z.infer<typeof EvidenceReviewSchema>;
+
 /** One atomic claim with timestamp and certainty for agent verification. */
 export const EvidenceRecordSchema = z.object({
   id: z.number().int().positive(),
@@ -47,6 +57,7 @@ export const EvidenceRecordSchema = z.object({
   text: z.string(),
   source: EvidenceSourceSchema,
   confidence: z.number().min(0).max(1).optional(),
+  review: EvidenceReviewSchema.optional(),
 });
 
 export type EvidenceRecord = z.infer<typeof EvidenceRecordSchema>;

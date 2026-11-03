@@ -61,11 +61,11 @@ const WHY_CARDS = [
   },
   {
     title: "Every claim has a source",
-    body: "Transcript, UI, OCR, and design findings carry evidence IDs, source timestamps, and certainty labels. Jump to a referenced moment when source video playback is available, then hand the context to your coding agent.",
+    body: "Transcript, UI, OCR, and design findings carry evidence IDs, source timestamps, and certainty labels. Jump to a referenced moment, confirm or flag a claim, and keep reviewer notes with the handoff.",
   },
   {
     title: "One handoff, two useful formats",
-    body: "Copy or download a readable Markdown brief, or use structured JSON with the same evidence ledger in your own tools. Interactions stay clearly marked as inferred.",
+    body: "Copy or download a readable Markdown brief, or use structured JSON with the same evidence ledger and review notes. Interactions stay clearly marked as inferred.",
   },
   {
     title: "Built in the open",

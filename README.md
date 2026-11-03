@@ -117,7 +117,9 @@ label (`Observed`, `Inferred`, or `Uncertain`). In the results viewer, select
 an evidence marker to seek the source video when playback is available;
 Markdown exports retain readable timestamps, and JSON exports include the
 evidence ledger. Timeline ranges are also clickable. Interactions are always
-labeled as inferred.
+labeled as inferred. Owners can confirm or flag claims and attach notes or
+suggested corrections; review metadata is included in both exports while the
+original extracted claim remains available.
 
 ## Project status
 

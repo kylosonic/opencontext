@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EvidenceRecordSchema } from "@opencontext/schemas";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs";
@@ -8,6 +9,7 @@ import { CopyButton } from "./copy-button";
 import { DownloadButtons } from "./download-buttons";
 import { JobHeader } from "./job-header";
 import { ContextPanel } from "./panels/context-panel";
+import { EvidenceReviewPanel } from "./panels/evidence-review-panel";
 import { OcrPanel } from "./panels/ocr-panel";
 import { TimelinePanel } from "./panels/timeline-panel";
 import { TranscriptPanel } from "./panels/transcript-panel";
@@ -34,6 +36,8 @@ export function ResultViewer({
 }: ResultViewerProps) {
   // results.md B1: Agent Context is the default-selected tab.
   const [tab, setTab] = useState("context");
+  const [currentResult, setCurrentResult] = useState(result);
+  const evidence = evidenceRecordsFromJson(currentResult.json);
 
   const visualFailed =
     job.status === "FAILED" ||
@@ -69,8 +73,12 @@ export function ResultViewer({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="label-mono mr-1">Agent Context</span>
-        <CopyButton value={result.markdown} />
-        <DownloadButtons jobId={job.id} markdown={result.markdown} json={result.json} />
+        <CopyButton value={currentResult.markdown} />
+        <DownloadButtons
+          jobId={job.id}
+          markdown={currentResult.markdown}
+          json={currentResult.json}
+        />
         {demo && (
           <Badge tone="accent" mono className="ml-auto">
             Demo Analysis
@@ -96,6 +104,7 @@ export function ResultViewer({
             <Tab id="timeline">Timeline</Tab>
             <Tab id="ocr">OCR</Tab>
             <Tab id="context">Agent Context</Tab>
+            <Tab id="evidence">Evidence review</Tab>
           </TabList>
 
           <div className="px-5 pb-5">
@@ -120,9 +129,24 @@ export function ResultViewer({
             </TabPanel>
             <TabPanel id="context">
               <ContextPanel
-                markdown={result.markdown}
+                markdown={currentResult.markdown}
                 demo={demo}
                 onSeek={onSeek ? seekToSource : undefined}
+              />
+            </TabPanel>
+            <TabPanel id="evidence">
+              <EvidenceReviewPanel
+                jobId={job.id}
+                evidence={evidence}
+                demo={demo}
+                onSeek={onSeek ? seekToSource : undefined}
+                onSaved={(updated) =>
+                  setCurrentResult((current) => ({
+                    ...current,
+                    markdown: updated.markdown,
+                    json: updated.json,
+                  }))
+                }
               />
             </TabPanel>
           </div>
@@ -130,4 +154,13 @@ export function ResultViewer({
       </Card>
     </div>
   );
+}
+
+function evidenceRecordsFromJson(json: unknown) {
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    return [];
+  }
+  const evidence = (json as Record<string, unknown>).evidence;
+  const parsed = EvidenceRecordSchema.array().safeParse(evidence);
+  return parsed.success ? parsed.data : [];
 }
