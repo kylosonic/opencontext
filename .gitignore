@@ -43,3 +43,5 @@ MASTER BUILD PROMPT*.md
 
 # local uploaded media and processing artifacts
 /apps/web/storage/
+
+.vercel

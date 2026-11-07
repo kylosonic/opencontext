@@ -28,13 +28,14 @@ Core product flows and the processing worker are committed. Evidence review is n
 
 ## Verification and release gates
 
-- No tests, lint, typecheck, build, or end-to-end run were executed during this continuation.
-- Earlier notes reported lint/typecheck passing before the current evidence-link feature; those results do not verify this tree.
-- Run web lint/typecheck/tests/build and worker ruff/pytest, then exercise one short synthetic upload through the web app and worker. Reconcile the TypeScript/Python job and evidence payloads.
+- Web lint/typecheck and 83 tests passed; worker ruff and 108 tests passed. The production build and Vercel production build both succeeded.
+- Vercel production: https://opencontext-swart.vercel.app (project root `apps/web`; deployed from the local CLI, with no Git auto-deploy connection).
+- Smoke checks returned HTTP 200 for `/`, `/demo`, `/docs`, and `/auth/signin`.
+- Exercise one short synthetic upload through the web app and worker. Reconcile the TypeScript/Python job and evidence payloads.
 - Complete upload/auth/worker-token/FFmpeg security review and the behavior checklist in `docs/behaviors/README.md`.
-- Decide the production upload path: the current server-side upload flow supports 500 MB, while Vercel request limits may require direct-to-object-storage uploads.
-- Configure GitHub OAuth, database, object storage, worker host, and model-provider credentials; deploy web and worker; verify the public demo and one real job.
-- Refresh the README with deployed URLs and the final hosting decision after rollout.
+- Configure GitHub OAuth, a persistent database, object storage, worker host/token, and model-provider credentials; deploy the worker and verify one real job. OAuth and the Auth.js production secret are configured separately; OAuth provider credentials are still absent.
+- Replace the 500 MB server-side upload path with direct-to-object-storage uploads for production deployment.
+- The web deployment came from the local CLI. Connect the Git repository and configure automatic deployments after the deployment branch is pushed.
 
 ## Product direction
 

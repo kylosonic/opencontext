@@ -22,12 +22,16 @@ flowchart LR
 
 ## Status
 
-**MVP implemented in the current working tree; release verification and deployment remain.**
+**The public web app is live on Vercel:** [opencontext-swart.vercel.app](https://opencontext-swart.vercel.app).
 The repository includes the authenticated web app, video upload and job APIs,
 results viewer, and Python media-processing worker. Evidence references in the
 developer context link claims to a source timestamp and certainty label; they
 are clickable in the results viewer and included in JSON exports. The current
-branch still needs its full verification and production rollout.
+production deployment serves the landing page, demo, docs, and sign-in screen.
+GitHub OAuth, a persistent production database, object storage, and the
+processor worker still need production configuration before real uploads can
+be processed. See [`docs/swarm/STATE.md`](docs/swarm/STATE.md) for the remaining
+release work.
 
 ## Quick start
 
@@ -123,8 +127,8 @@ original extracted claim remains available.
 
 ## Project status
 
-Implementation is present in the working tree, but the branch has not yet
-passed a fresh full verification and production deployment. See
+Implementation is present in the working tree and the public web app is
+deployed. See
 [`docs/swarm/STATE.md`](docs/swarm/STATE.md) for the current release checklist
 and [`docs/research/agent-ready-video-context.md`](docs/research/agent-ready-video-context.md)
 for the product research behind evidence-linked output.
