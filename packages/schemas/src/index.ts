@@ -7,11 +7,11 @@
  *   import { JobStatusSchema, STAGE_WEIGHTS } from "@opencontext/schemas";
  */
 
-export * from "./errors";
-export * from "./job";
-export * from "./media";
-export * from "./observation";
-export * from "./result";
-export * from "./transcript";
-export * from "./api";
-export * from "./worker";
+export * from "./errors.js";
+export * from "./job.js";
+export * from "./media.js";
+export * from "./observation.js";
+export * from "./result.js";
+export * from "./transcript.js";
+export * from "./api.js";
+export * from "./worker.js";

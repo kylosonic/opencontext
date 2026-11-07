@@ -1,22 +1,44 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "oc-worker"
+name = "opencontext-video"
 version = "0.1.0"
-description = "OpenContext media processing worker"
+description = "Turn video into evidence-linked developer context for text-only AI"
 readme = "README.md"
 requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "OpenContext contributors" }]
+keywords = ["video", "transcription", "ocr", "developer-context", "ai"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Video",
+]
 dependencies = [
   "httpx",
   "pydantic",
 ]
 
+[project.urls]
+Homepage = "https://github.com/kylosonic/opencontext"
+Repository = "https://github.com/kylosonic/opencontext"
+Issues = "https://github.com/kylosonic/opencontext/issues"
+
+[project.scripts]
+opencontext = "oc_worker.cli:main"
+
 [project.optional-dependencies]
 dev = [
+  "build",
   "pytest",
   "ruff",
+  "twine",
 ]
 local = [
   "faster-whisper",
@@ -24,6 +46,7 @@ local = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
 
 [tool.ruff]
 line-length = 100

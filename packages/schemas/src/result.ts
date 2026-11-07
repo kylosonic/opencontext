@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { TranscriptSegmentSchema } from "./transcript";
+import { TranscriptSegmentSchema } from "./transcript.js";
 import {
   CertaintySchema,
   OCRObservationSchema,
   VisualObservationSchema,
-} from "./observation";
+} from "./observation.js";
 
 /**
  * One entry of the AGGREGATING timeline payload. Fields beyond the

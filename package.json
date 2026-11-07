@@ -8,11 +8,11 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace web",
+    "dev": "npm run build --workspace @opencontext/schemas && npm run dev --workspace web",
     "fixture": "node scripts/generate-fixture.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspace @opencontext/schemas && npm run build --workspace web"
   }
 }

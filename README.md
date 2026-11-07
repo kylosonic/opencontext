@@ -103,6 +103,20 @@ API, claims the queued job, runs the worker over HTTP, persists transcript,
 observations, OCR, evidence, Markdown, and JSON, and checks the stored media
 artifacts.
 
+## Installable packages
+
+The worker now also contains a standalone CLI:
+
+```bash
+python -m pip install "workers/processor[local]"
+opencontext analyze video.mp4 --out context.md --json context.json
+```
+
+`@opencontext/schemas` builds to publishable ESM and TypeScript declarations.
+Both packages are release-ready in this repository but have not been published
+yet. See [`docs/installable-packages.md`](docs/installable-packages.md) and
+[`docs/releasing.md`](docs/releasing.md) for build and protected-release steps.
+
 ## Environment variables
 
 Copy `.env.example` to the repository root as `.env` and to `apps/web/.env.local`
