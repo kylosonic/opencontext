@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
   "httpx",
   "pydantic",
+  "python-dotenv",
 ]
 
 [project.urls]

@@ -20,6 +20,40 @@ flowchart LR
 
 `Video → Audio + Frames → Speech + Vision + OCR → Timestamp Alignment → Context Aggregation → Developer Context → Text-only AI`
 
+![OpenContext demo result view showing tabs, evidence IDs, timestamps, and review controls](docs/assets/demo-results.png)
+
+## How it works in 60 seconds
+
+1. Create an upload intent and send the video directly to object storage.
+2. The worker claims the queued job, probes the file, and extracts audio and frames.
+3. Transcription, visual analysis, and visible text are aligned on one timeline.
+4. Each claim receives an evidence ID, timestamp, and certainty label.
+5. Markdown and JSON are stored for copy, download, and human review.
+
+The following excerpt is real output from the generated fixture video using the
+offline CLI. `fixture` providers are deterministic plumbing tests, not model
+quality evidence:
+
+```markdown
+## Timeline
+
+- `[00:00-00:03]` **Fixture scene** — Deterministic fixture observation at 0.0s (no vision model used). (inferred)
+
+## Transcript
+
+- `[00:00-00:01]` This synthetic fixture demonstrates OpenContext evidence links without claiming speech-model output. [E0001 · 00:00 · Observed]
+
+## Visible Text
+
+- OpenContext fixture [E0004 · 00:00 · Uncertain]
+- OpenContext fixture [E0005 · 00:00 · Observed]
+```
+
+See the complete
+[fixture Markdown](docs/examples/opencontext-fixture.md) and
+[fixture JSON](docs/examples/opencontext-fixture.json). Regenerate them with
+`npm run fixture` and `opencontext analyze ... --offline`.
+
 ## Status
 
 **The public web app is live on Vercel:** [opencontext-swart.vercel.app](https://opencontext-swart.vercel.app).
