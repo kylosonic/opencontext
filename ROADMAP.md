@@ -8,6 +8,8 @@ This roadmap lists work that is not complete. It is not a release promise.
 - Add S3/MinIO integration coverage for presigned upload and worker download.
 - Run the Compose stack end to end in CI or a clean-machine check.
 - Finish provider-specific PostgreSQL migration strategy.
+- Upgrade the Prisma 6 toolchain to clear the remaining build-time npm
+  advisories.
 - Publish the first Python and npm packages through protected environments.
 
 ## Next
