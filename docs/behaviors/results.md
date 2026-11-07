@@ -1,6 +1,6 @@
 # Results viewer
 
-Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
+Status: IMPLEMENTED — SEE docs/status.md FOR VERIFICATION SCOPE
 
 ## B1 — Five tabs
 

@@ -1,6 +1,6 @@
 # Identity & Access
 
-Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
+Status: IMPLEMENTED — SEE docs/status.md FOR VERIFICATION SCOPE
 
 OpenContext is a developer tool. Creating and viewing jobs requires a GitHub account. The public face of the product — landing page, docs, demo — is anonymous.
 

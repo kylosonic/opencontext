@@ -14,7 +14,7 @@ OpenContext should lead with an evidence-linked developer handoff rather than a 
 
 This is an additive improvement to the existing product contract. MCP connections, repository-aware briefs, and CI replay remain candidates for later slices; they need their own auth, security, and deployment design.
 
-## Implemented in the current working tree
+## Implemented
 
 - Worker output includes a sorted JSON evidence ledger and evidence markers in context Markdown.
 - Optional text-model refinement falls back to the deterministic template if it changes an evidence-linked claim or timeline row.

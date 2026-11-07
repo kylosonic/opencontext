@@ -37,8 +37,9 @@ Examples of unacceptable behavior include:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers at conduct@opencontext.dev. All complaints
-will be reviewed and investigated promptly and fairly.
+reported by contacting the repository owner through their GitHub profile and
+requesting a private reporting channel. All complaints will be reviewed and
+investigated promptly and fairly.
 
 Maintainers are obligated to respect the privacy and security of the reporter
 of any incident.

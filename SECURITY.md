@@ -4,7 +4,7 @@
 
 | Version | Supported |
 | --- | --- |
-| `main` (unreleased MVP) | ✅ Active development |
+| `main` (unreleased MVP) | Active development |
 
 No stable releases exist yet. The MVP is under active development; security
 fixes land on `main` and are included in the first release.
@@ -15,8 +15,7 @@ Please **do not** open a public issue for security vulnerabilities.
 
 Report vulnerabilities privately:
 
-1. Preferred: a private GitHub Security Advisory on this repository.
-2. Alternative: email the maintainers at security@opencontext.dev.
+Use a private GitHub Security Advisory on this repository.
 
 Include:
 
@@ -33,8 +32,8 @@ Include:
 ## Out of scope (for now)
 
 - No bug bounty program is offered at this time
-- No production deployment exists yet, so live-infrastructure testing does not
-  apply
+- The public site is a preview without a complete processing backend. Do not
+  test live infrastructure without written authorization.
 
 ## Security best practices for contributors
 

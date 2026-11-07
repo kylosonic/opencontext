@@ -3,7 +3,8 @@
 Status: APPROVED by @architect (2026-09-02). Approved decisions: (a) combined upload+create endpoint `POST /api/jobs` (multipart); (b) Vercel serverless body cap (~4.5 MB) handled as a deployment-time decision — the API contract is host-agnostic.
 
 TECH tickets: TECH-003, TECH-004, TECH-005, TECH-007, TECH-008, TECH-009.
-Inputs: master prompt §9–27, §34–35; `docs/behaviors/` (jobs, upload, analysis-modes, context-output, demo, results, identity); ADR-0001…0005; `docs/swarm/STATE.md`.
+Inputs: `docs/behaviors/` (jobs, upload, analysis-modes, context-output, demo,
+results, identity); ADR-0001…0006; and `docs/status.md`.
 
 ## 1. Data model (Prisma, portable per ADR-0003)
 

@@ -16,7 +16,11 @@ Each behavior is written as a contract with fixed fields:
 
 ## Status
 
-All contracts in this directory have the status **SPECIFIED — NOT IMPLEMENTED**. A contract here is a commitment for the MVP, not a description of current reality. QA verifies implementation against these contracts, acceptance examples included.
+These files define required product behavior. Implementation status varies by
+contract and is recorded in each file and in `docs/status.md`. Items requiring
+external OAuth, production storage, a production worker, or real model
+providers remain unverified or incomplete. `pending-behaviors.md` is explicitly
+future work.
 
 ## Index
 
