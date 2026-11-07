@@ -28,6 +28,8 @@ results viewer, and Python media-processing worker. Evidence references in the
 developer context link claims to a source timestamp and certainty label; they
 are clickable in the results viewer and included in JSON exports. The current
 production deployment serves the landing page, demo, docs, and sign-in screen.
+The GitHub repository is connected to Vercel, and pushes to `main` create
+production deployments.
 GitHub OAuth, a persistent production database, object storage, and the
 processor worker still need production configuration before real uploads can
 be processed. See [`docs/swarm/STATE.md`](docs/swarm/STATE.md) for the remaining

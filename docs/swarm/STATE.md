@@ -21,21 +21,20 @@ Core product flows and the processing worker are committed. Evidence review is n
 
 ## Current repository state
 
-- Branch: `feat/slice-1-public-experience`.
-- `HEAD`: `96cb84d` (`feat: build OpenContext MVP with evidence-linked context`).
-- The MVP is committed; evidence-review changes are currently uncommitted. Commit `96cb84d` includes the deletion of `AGENTS.md`.
+- Production branch: `main`; active development branch: `feat/slice-1-public-experience`.
+- The MVP and evidence-review changes are committed on both branches. Commit `96cb84d` includes the deletion of `AGENTS.md`.
 - Prior status notes and product copy were stale; README, worker README, landing roadmap copy, behavior contract, and this state file now reflect the current working-tree scope.
 
 ## Verification and release gates
 
 - Web lint/typecheck and 83 tests passed; worker ruff and 108 tests passed. The production build and Vercel production build both succeeded.
-- Vercel production: https://opencontext-swart.vercel.app (project root `apps/web`; deployed from the local CLI, with no Git auto-deploy connection).
+- Vercel production: https://opencontext-swart.vercel.app (project root `apps/web`; connected to `kylosonic/opencontext`, with automatic deployments enabled for `main`).
 - Smoke checks returned HTTP 200 for `/`, `/demo`, `/docs`, and `/auth/signin`.
 - Exercise one short synthetic upload through the web app and worker. Reconcile the TypeScript/Python job and evidence payloads.
 - Complete upload/auth/worker-token/FFmpeg security review and the behavior checklist in `docs/behaviors/README.md`.
 - Configure GitHub OAuth, a persistent database, object storage, worker host/token, and model-provider credentials; deploy the worker and verify one real job. OAuth and the Auth.js production secret are configured separately; OAuth provider credentials are still absent.
 - Replace the 500 MB server-side upload path with direct-to-object-storage uploads for production deployment.
-- The web deployment came from the local CLI. Connect the Git repository and configure automatic deployments after the deployment branch is pushed.
+- Keep the `kylosonic/opencontext` Git connection and the `main` production branch active so production deployments remain automated.
 
 ## Product direction
 
