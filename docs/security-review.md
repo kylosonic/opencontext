@@ -29,6 +29,9 @@ work. It is not a penetration-test report.
   best-effort cleanup. Upload intents expire and are swept with their objects.
 - **Direct transfer:** production media bytes go directly to object storage;
   the application does not proxy large upload bodies.
+- **Dependency advisories:** the 2026-11-08 audit findings that affected
+  network-facing runtime packages were resolved by upgrading Next.js to
+  16.4.5, Zod to 4.6.7, and Vitest to 5.1.0. No critical npm advisories remain.
 
 ## Verified tests
 
@@ -48,4 +51,8 @@ work. It is not a penetration-test report.
   instances.
 - Add provider-specific Postgres migrations before making schema changes in a
   long-lived production database.
+- The Prisma 6 CLI still has a high-severity transitive `deepmerge-ts`
+  advisory. It processes trusted local schema files during development and
+  deployment, not untrusted request data; a Prisma 7 migration is tracked
+  separately. `npm audit` also reports moderate development-tool advisories.
 - Run an independent penetration test before claiming production security.
