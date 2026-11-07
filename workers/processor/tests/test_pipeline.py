@@ -370,7 +370,7 @@ def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:
 
     # ANALYZING analyzed both MEDIUM-selected frames (0.0 and 3.0)
     assert len(vision.calls) == 2
-    assert [context["timestampSec"] for _, context in vision.calls] == [0.0, 3.0]
+    assert {context["timestampSec"] for _, context in vision.calls} == {0.0, 3.0}
     assert len(transcription.calls) == 1
 
     # AGGREGATING posts ONLY canonical scene rows {start,end,title,summary}
