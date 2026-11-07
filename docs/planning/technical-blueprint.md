@@ -35,7 +35,7 @@ enum Certainty { OBSERVED INFERRED UNCERTAIN }
 - **VisualObservation**: `id`, `jobId`, `frameId?`, `timestampSec`, `certainty @default(OBSERVED)`, `sceneTitle?`, `visualDescription?`, `uiElements Json`, `visibleText Json`, `interactions Json`, `layoutDescription?`, `designObservations Json`, `importantChanges Json`, `provider?`, `createdAt`. Uncertain sub-fields carry `"uncertain": true` flags.
 - **OCRObservation**: `id`, `jobId`, `frameId?`, `timestampSec`, `text`, `confidence?`, `provider?`, `createdAt`.
 - **ProcessingResult**: `id`, `jobId @unique`, `markdown String`, `json Json` (full structured result), `formatVersion @default(1)`, `generatedAt`, `updatedAt`. Upserted at GENERATING_CONTEXT.
-- **ProviderConfiguration — deliberately NOT created.** MVP provider config is env-driven via `packages/config` (no per-user providers; non-scope per STATE.md). Future extension path documented.
+- **ProviderConfiguration — deliberately NOT created.** MVP provider config is env-driven via `packages/config`; per-user provider configuration is outside the current scope. Future extension path documented.
 
 **Retry-storage contract (B5):** stage results live in dedicated tables. Manual retry resets only FAILED/not-run stages in `stageStates`; SUCCEEDED/SKIPPED rows and tables stay untouched → worker skips them. AGGREGATING and GENERATING_CONTEXT always reset (cheap downstream consumers).
 
