@@ -85,8 +85,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   storage, and a production worker still need configuration.
 - No real-model quality evaluation is published. Fixture-provider tests prove
   plumbing only.
-- Docker Compose is implemented, but the full image build was not completed in
-  the recorded verification environment because Debian downloads stalled.
+- Docker Compose is implemented and its configuration validates, but the full
+  image stack has not been verified end to end in the current environment.
 - Python and npm packages have not been published.
 - PostgreSQL currently uses a bootstrap `db push` path; provider-specific
   migrations are tracked in the roadmap.

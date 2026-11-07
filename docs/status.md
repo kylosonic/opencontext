@@ -30,8 +30,8 @@ service.
 ## Known gaps
 
 - No real-model quality evaluation is published.
-- Docker Compose configuration validates, but the full image build was not
-  completed in the recorded local environment because Debian downloads stalled.
+- Docker Compose configuration validates, but the full image stack has not been
+  verified end to end in the current environment.
 - PostgreSQL uses a bootstrap `db push` flow; provider-specific migrations are
   planned.
 - Packages are not published.
