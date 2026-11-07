@@ -128,11 +128,12 @@ the providers you choose. SQLite and local storage are the development defaults.
 | --- | --- | --- |
 | `DATABASE_URL` | Database connection string | SQLite file (`file:./dev.db`) |
 | `STORAGE_PROVIDER` | Media storage backend: `local` or `s3` | `local` |
-| `S3_ENDPOINT` | S3-compatible endpoint (used when `STORAGE_PROVIDER=s3`) | — |
-| `S3_BUCKET` | Bucket for media objects | — |
-| `S3_REGION` | Region for S3-compatible storage | — |
-| `S3_ACCESS_KEY_ID` | S3-compatible access key id | — |
-| `S3_SECRET_ACCESS_KEY` | S3-compatible secret access key | — |
+| `STORAGE_PATH` | Local-disk storage root | `storage` |
+| `STORAGE_S3_ENDPOINT` | S3-compatible endpoint (used when `STORAGE_PROVIDER=s3`) | — |
+| `STORAGE_S3_BUCKET` | Bucket for media objects | — |
+| `STORAGE_S3_REGION` | Region for S3-compatible storage | — |
+| `STORAGE_S3_ACCESS_KEY_ID` | S3-compatible access key id | — |
+| `STORAGE_S3_SECRET_ACCESS_KEY` | S3-compatible secret access key | — |
 | `REDIS_URL` | Optional Redis URL (future queue backends) | unset (DB-backed queue) |
 | `AUTH_SECRET` | Secret for signing sessions/tokens | — |
 | `AUTH_GITHUB_ID` | GitHub OAuth app client id | — |
@@ -148,6 +149,7 @@ the providers you choose. SQLite and local storage are the development defaults.
 | `TEXT_PROVIDER` | Provider for text-only AI steps | — |
 | `TEXT_MODEL` | Model name for text-only AI steps | — |
 | `NEXT_PUBLIC_APP_URL` | Public URL of the web app (exposed to the browser) | `http://localhost:3000` |
+| `APP_BASE_URL` | Server-side base URL used by background services | — |
 
 ## Architecture
 

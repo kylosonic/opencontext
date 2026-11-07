@@ -1,12 +1,14 @@
 # OpenContext Project State
 
-Last updated: 2026-11-03
+Last updated: 2026-11-07
 
 ## Status
 
-Core product flows and the processing worker are committed. Evidence review is now implemented in the working tree, but the project has not completed a fresh end-to-end verification or production rollout. Treat this as an implementation preview, not a release.
+Core product flows and the processing worker are committed and tested, but
+production provider, database, and worker configuration is incomplete. Treat
+this as an implementation preview, not a public production release.
 
-## Implemented in the working tree
+## Implemented
 
 - Public landing page, docs, deterministic demo, and reusable results viewer.
 - GitHub authentication, protected app pages, upload form, job list/detail, retry/delete controls, and polling status.
@@ -27,13 +29,12 @@ Core product flows and the processing worker are committed. Evidence review is n
 
 ## Verification and release gates
 
-- Web lint/typecheck and 83 tests passed; worker ruff and 108 tests passed. The production build and Vercel production build both succeeded.
+- Web lint/typecheck and 99 tests passed; worker ruff and 114 tests passed. The production build succeeded.
 - Vercel production: https://opencontext-swart.vercel.app (project root `apps/web`; connected to `kylosonic/opencontext`, with automatic deployments enabled for `main`).
 - Smoke checks returned HTTP 200 for `/`, `/demo`, `/docs`, and `/auth/signin`.
-- Exercise one short synthetic upload through the web app and worker. Reconcile the TypeScript/Python job and evidence payloads.
-- Complete upload/auth/worker-token/FFmpeg security review and the behavior checklist in `docs/behaviors/README.md`.
+- The generated-video test exercises direct upload, queue claim, worker processing, persisted evidence, and Markdown/JSON output.
+- The upload/auth/ownership/worker-token/FFmpeg/rate-limit review is recorded in `docs/security-review.md`.
 - Configure GitHub OAuth, a persistent database, object storage, worker host/token, and model-provider credentials; deploy the worker and verify one real job. OAuth and the Auth.js production secret are configured separately; OAuth provider credentials are still absent.
-- Replace the 500 MB server-side upload path with direct-to-object-storage uploads for production deployment.
 - Keep the `kylosonic/opencontext` Git connection and the `main` production branch active so production deployments remain automated.
 
 ## Product direction

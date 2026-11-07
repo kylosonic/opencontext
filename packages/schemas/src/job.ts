@@ -42,6 +42,13 @@ export const UPLOAD_LIMITS = {
   maxBytes: 500 * 1024 * 1024,
   maxDurationSec: 1800,
   allowedExtensions: [".mp4", ".mov", ".webm", ".mkv"],
+  allowedMimeTypes: [
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+    "video/x-matroska",
+  ],
+  intentTtlSec: 15 * 60,
 } as const;
 
 /** Data retention windows (days). */

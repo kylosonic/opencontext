@@ -1,6 +1,6 @@
 # ADR-0002: Server-side multipart uploads for the MVP
 
-Status: Accepted (2026-09-02)
+Status: Superseded by ADR-0006 (2026-11-07)
 
 ## Context
 The master prompt prefers signed object-storage uploads but says "should ideally." Signed uploads require a configured bucket + presign flow, which cannot be verified in the current environment (no object storage service configured).
@@ -15,3 +15,7 @@ MVP uploads go through the web app as validated multipart requests (500 MB cap, 
 
 ## Rejected alternatives
 - Presigned uploads now: blocked on bucket credentials; delays MVP.
+
+## Superseded
+The production upload path now uses direct presigned object-storage uploads.
+See `0006-direct-uploads.md`.

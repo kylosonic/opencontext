@@ -98,11 +98,32 @@ describe("S3Storage (mocked AWS SDK)", () => {
     expect(await storage.get("missing")).toBeNull();
   });
 
+  it("head returns object metadata and null for a missing object", async () => {
+    const storage = new S3Storage(config);
+    state.sendMock.mockResolvedValueOnce({ ContentLength: 42, ContentType: "video/mp4" });
+    expect(await storage.head("jobs/j1/source.mp4")).toEqual({
+      sizeBytes: 42,
+      contentType: "video/mp4",
+    });
+    state.sendMock.mockRejectedValueOnce({ name: "NotFound" });
+    expect(await storage.head("missing")).toBeNull();
+  });
+
   it("presign returns the signed URL", async () => {
     const storage = new S3Storage(config);
     expect(await storage.presign("jobs/j1/source.mp4", 900)).toBe(
       "https://signed.example/oc-media/key?token=abc",
     );
+  });
+
+  it("presignPut signs a PUT with the declared content type", async () => {
+    const storage = new S3Storage(config);
+    expect(await storage.presignPut("incoming/video.mp4", "video/mp4", 900)).toBe(
+      "https://signed.example/oc-media/key?token=abc",
+    );
+    const input = lastCommand("PutObjectCommand");
+    expect(input.Key).toBe("incoming/video.mp4");
+    expect(input.ContentType).toBe("video/mp4");
   });
 
   it("move copies then deletes", async () => {

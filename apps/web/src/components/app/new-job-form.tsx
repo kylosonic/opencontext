@@ -57,13 +57,67 @@ interface UploadError {
 
 const ALLOWED_ACCEPT = ".mp4,.mov,.webm,.mkv,video/mp4,video/quicktime,video/webm,video/x-matroska";
 
+class UploadRequestError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+async function uploadError(response: Response): Promise<UploadRequestError> {
+  try {
+    const body = (await response.json()) as {
+      error?: { code?: string; message?: string };
+    };
+    return new UploadRequestError(
+      body.error?.code ?? "INTERNAL",
+      body.error?.message ?? "Upload failed - please try again.",
+    );
+  } catch {
+    return new UploadRequestError("INTERNAL", "Upload failed - please try again.");
+  }
+}
+
+function putFileWithProgress(
+  target: { url: string; headers: Record<string, string> },
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const absoluteUrl = new URL(target.url, window.location.origin);
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", absoluteUrl.href);
+    xhr.withCredentials = absoluteUrl.origin === window.location.origin;
+    for (const [name, value] of Object.entries(target.headers)) {
+      xhr.setRequestHeader(name, value);
+    }
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      reject(new UploadRequestError("TRANSFER_FAILED", "The file transfer failed."));
+    };
+    xhr.onerror = () => reject(new UploadRequestError("NETWORK", "Network error"));
+    xhr.onabort = () => reject(new UploadRequestError("NETWORK", "Upload canceled"));
+    xhr.send(file);
+  });
+}
+
 /**
  * New-job upload form (upload.md B1-B6 + analysis-modes.md B2).
  * - Client-side pre-flight with instant named rejections; the server's
  *   4xx envelope is displayed verbatim when it disagrees.
- * - One transfer at a time (B4); honest local progress (B3: a failed
- *   transfer never created a job, so restarting from zero is the story).
- * - On 201 the browser lands on the new job's detail page.
+ * - Creates a short-lived upload intent, transfers directly to the target
+ *   URL, then asks the server to verify and finalize the object.
+ * - One transfer at a time; a failed transfer never creates a job.
  */
 export function NewJobForm() {
   const router = useRouter();
@@ -103,81 +157,63 @@ export function NewJobForm() {
     setPhase("ready");
   }
 
-  function startUpload(): void {
+  async function startUpload(): Promise<void> {
     if (!file || phase !== "ready" || uploading) return;
     setError(null);
     setPhase("uploading");
     setProgress(0);
 
-    const form = new FormData();
-    form.set("file", file, file.name);
-    form.set("detailLevel", detailLevel);
+    try {
+      const intentResponse = await fetch("/api/uploads", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          sizeBytes: file.size,
+          mime: file.type || undefined,
+          detailLevel,
+        }),
+      });
+      if (!intentResponse.ok) throw await uploadError(intentResponse);
+      const target = (await intentResponse.json()) as {
+        uploadId: string;
+        url: string;
+        headers: Record<string, string>;
+      };
 
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/jobs");
+      await putFileWithProgress(target, file, setProgress);
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && event.total > 0) {
-        setProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
+      const completeResponse = await fetch(
+        `/api/uploads/${encodeURIComponent(target.uploadId)}/complete`,
+        {
+          method: "POST",
+          headers: { Accept: "application/json" },
+        },
+      );
+      if (!completeResponse.ok) throw await uploadError(completeResponse);
+      const summary = (await completeResponse.json()) as { id?: string };
+      if (!summary.id) throw new Error("The job response did not contain an id");
 
-    xhr.onload = () => {
-      if (xhr.status === 201) {
-        try {
-          const summary = JSON.parse(xhr.responseText) as { id?: string };
-          if (!summary.id) throw new Error("missing id");
-          setCreatedId(summary.id);
-          setPhase("created");
-          // Short beat so the success state is visible before landing.
-          window.setTimeout(() => {
-            router.push(`/app/jobs/${encodeURIComponent(summary.id ?? "")}`);
-          }, 450);
-          return;
-        } catch {
-          setError({
-            code: "INTERNAL",
-            message: "The job was created but its page could not be opened - see your job list.",
-          });
-          setPhase("error");
-          return;
-        }
-      }
-      // Named server rejection (FILE_TOO_LARGE / FORMAT_UNSUPPORTED /
-      // VALIDATION_ERROR / UNAUTHORIZED / INTERNAL) - show it verbatim.
-      let envelope = { code: "INTERNAL", message: "Upload failed - please try again." };
-      try {
-        const parsed = JSON.parse(xhr.responseText) as { error?: { code?: string; message?: string } };
-        envelope = {
-          code: parsed.error?.code ?? envelope.code,
-          message: parsed.error?.message ?? envelope.message,
-        };
-      } catch {
-        // non-JSON failure body; keep the generic message
-      }
+      setCreatedId(summary.id);
+      setPhase("created");
+      window.setTimeout(() => {
+        router.push(`/app/jobs/${encodeURIComponent(summary.id ?? "")}`);
+      }, 450);
+    } catch (caught) {
+      const envelope =
+        caught instanceof UploadRequestError
+          ? { code: caught.code, message: caught.message }
+          : {
+              code: "NETWORK",
+              message:
+                "The upload did not complete - no job was created. Check your connection and try again.",
+            };
       setError(envelope);
       setPhase("error");
-    };
-
-    xhr.onerror = () => {
-      // Transfer interruption (upload.md B3): nothing was created.
-      setError({
-        code: "NETWORK",
-        message:
-          "The upload did not complete - no job was created. Check your connection and try again.",
-      });
-      setPhase("error");
-    };
-
-    xhr.onabort = () => {
-      setError({
-        code: "NETWORK",
-        message: "The upload was stopped - no job was created.",
-      });
-      setPhase("error");
-    };
-
-    xhr.send(form);
+    }
   }
 
   function resetForm(): void {

@@ -1,6 +1,6 @@
 # Upload
 
-Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
+Status: IMPLEMENTED — DIRECT UPLOAD PATH TESTED
 
 ## B1 — Accepted files
 
@@ -10,6 +10,7 @@ Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
 - **Expected outcome:** MP4, MOV, WebM, and MKV files up to 500 MB are accepted; the upload proceeds
 - **Failure outcome:** anything else is rejected immediately with a named reason ("This format is not supported — use MP4, MOV, WebM, or MKV" / "File is too large — the limit is 500 MB"); the dropzone stays usable; no job is created
 - **Edge cases:** a file renamed to look like video but not video passes the form and must be caught at processing time (see `jobs.md` B6); files with no extension are rejected as unsupported
+- **Transport:** the browser uploads to a presigned S3 URL in production or to a session-authenticated local-disk URL in development. The server verifies the stored object's size and MIME type before creating a job.
 - **Acceptance:** drop a .txt → immediate rejection message; drop a 600 MB MP4 → size rejection; drop a valid 20 MB MP4 → accepted
 
 ## B2 — Duration limit
@@ -28,6 +29,7 @@ Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
 - **Visible state:** the progress indicator stops; on return, a clear failure message
 - **Expected outcome:** no job is created; partial data never enters processing; the user can select the file again and restart from zero
 - **Edge cases:** browser crash — reopening the app shows no half job anywhere
+- **Cleanup:** an abandoned upload intent expires after 15 minutes; its temporary object is removed by the retention sweep.
 - **Acceptance:** start an upload, disable the network → upload shows failure, job list is empty, retrying the same file works
 
 ## B4 — One upload at a time

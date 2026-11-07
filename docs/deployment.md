@@ -1,0 +1,87 @@
+# Deployment Guide
+
+## Web application
+
+Use a persistent PostgreSQL database and S3-compatible object storage.
+
+```bash
+export DATABASE_URL='postgresql://user:password@host:5432/opencontext'
+export AUTH_SECRET='a-long-random-secret'
+export AUTH_GITHUB_ID='...'
+export AUTH_GITHUB_SECRET='...'
+export STORAGE_PROVIDER='s3'
+export STORAGE_S3_ENDPOINT='https://...'
+export STORAGE_S3_REGION='...'
+export STORAGE_S3_BUCKET='opencontext-media'
+export STORAGE_S3_ACCESS_KEY_ID='...'
+export STORAGE_S3_SECRET_ACCESS_KEY='...'
+export WORKER_API_TOKEN='a-separate-long-random-secret'
+export APP_BASE_URL='https://your-app.example'
+```
+
+Create the GitHub OAuth app with the callback URL:
+
+`https://your-app.example/api/auth/callback/github`
+
+Generate the PostgreSQL Prisma client and apply the schema:
+
+```bash
+npm run prisma:generate:postgres --workspace web
+npm run prisma:push:postgres --workspace web
+npm run build
+npm run start --workspace web
+```
+
+`prisma:push:postgres` is the current bootstrap path. Before evolving a
+long-lived production schema, add and review provider-specific PostgreSQL
+migrations.
+
+## Object storage
+
+The bucket must allow browser `PUT` requests from the web origin and expose
+`Content-Type`. A minimal CORS rule is:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://your-app.example"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["content-type"],
+    "ExposeHeaders": ["etag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Keep the bucket private. The worker reads source media through a short-lived
+presigned GET URL. Upload completion verifies size and content type before
+moving the object to its final key.
+
+## Worker
+
+The worker needs FFmpeg, Python 3.13+, network access to the web API and any
+model providers, and the same `WORKER_API_TOKEN`.
+
+```bash
+cd workers/processor
+python -m venv .venv
+.venv/bin/python -m pip install -e ".[local]"
+export WORKER_API_URL='https://your-app.example'
+export WORKER_API_TOKEN='the-same-worker-token'
+export TRANSCRIPTION_PROVIDER='faster_whisper'
+export TRANSCRIPTION_MODEL='base'
+export VISION_PROVIDER='ollama'
+export OLLAMA_BASE_URL='http://localhost:11434'
+export TEXT_PROVIDER='template'
+.venv/bin/python -m oc_worker.main
+```
+
+Use a process supervisor or container restart policy. Run one worker with
+`--once` for cron-style execution or long-running workers with
+`WORKER_CONCURRENCY` set to the host capacity.
+
+## Compose
+
+`docker compose up --build` provides a local PostgreSQL-backed web app, worker,
+and local-only sign-in. It is a development stack, not a production hardening
+recipe. See `docs/security-review.md` before exposing any instance publicly.

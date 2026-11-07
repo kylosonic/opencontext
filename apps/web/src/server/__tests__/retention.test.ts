@@ -80,4 +80,28 @@ describe("retentionSweep (jobs.md B9)", () => {
     expect(first.deleted).toBe(1);
     expect(second).toEqual({ scanned: 0, deleted: 0 });
   });
+
+  it("removes expired upload intents and their temporary objects", async () => {
+    const user = await createUser();
+    const tempKey = "incoming/expired.mp4";
+    await storage.put(tempKey, new Blob([TEST_BYTES]).stream(), {
+      sizeBytes: TEST_BYTES.length,
+    });
+    await prisma.uploadIntent.create({
+      data: {
+        userId: user.id,
+        tempKey,
+        filename: "expired.mp4",
+        sourceExt: "mp4",
+        sizeBytes: TEST_BYTES.length,
+        mime: "video/mp4",
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+
+    const result = await retentionSweep();
+    expect(result.deleted).toBe(1);
+    expect(await prisma.uploadIntent.count()).toBe(0);
+    expect(await storage.get(tempKey)).toBeNull();
+  });
 });
