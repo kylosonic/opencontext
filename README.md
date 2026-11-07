@@ -40,6 +40,25 @@ release work.
 Prerequisites: Node.js 20+ (24 recommended), npm 10+, Python 3.13+, and
 FFmpeg available on `PATH` for the worker.
 
+### Docker: full web, worker, and Postgres stack
+
+The fastest path uses no provider credentials and starts the web app, worker,
+and PostgreSQL with a local-only sign-in identity:
+
+```bash
+npm run fixture
+docker compose up --build
+```
+
+Open <http://localhost:3000/auth/signin>, choose **Continue as local user**, and
+upload `.artifacts/opencontext-fixture.mp4`. The Compose worker uses
+`faster_whisper` with the `tiny.en` model for local speech recognition and a
+deterministic fixture provider for visual observations. The fixture provider is
+clearly labeled: it does not perform computer vision. `DEV_AUTH_ENABLED=true` is
+set only by Compose; keep it disabled on public deployments.
+
+### Native development
+
 ```bash
 # 1. Install all workspace dependencies
 npm install
@@ -52,8 +71,17 @@ cd workers/processor
 python -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev,local]"     # Windows
 # macOS/Linux: .venv/bin/python -m pip install -e ".[dev,local]"
+.venv/Scripts/python -m oc_worker.main                  # Windows
+# macOS/Linux: .venv/bin/python -m oc_worker.main
 .venv/Scripts/python -m pytest
 ```
+
+For native development, copy `.env.example` to `.env` and set
+`DEV_AUTH_ENABLED=true`, `WORKER_API_TOKEN`, `TRANSCRIPTION_PROVIDER`,
+`VISION_PROVIDER`, and `STORAGE_PATH` as needed. `faster_whisper` runs locally
+after downloading a model; `ollama` can run local vision; `fixture` providers
+produce offline deterministic test output and must not be presented as real AI
+analysis.
 
 ## Development checks
 
@@ -68,6 +96,12 @@ cd workers/processor
 .venv/Scripts/python -m ruff check src tests
 .venv/Scripts/python -m pytest
 ```
+
+`npm test` includes a cross-language contract test and, when Python and FFmpeg
+are available, a generated-video end-to-end test that uploads through the jobs
+API, claims the queued job, runs the worker over HTTP, persists transcript,
+observations, OCR, evidence, Markdown, and JSON, and checks the stored media
+artifacts.
 
 ## Environment variables
 

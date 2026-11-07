@@ -40,6 +40,11 @@ MASTER BUILD PROMPT*.md
 
 # vitest local storage scratch
 .test-storage
+.tmp
+.artifacts
+
+# generated provider-specific Prisma schemas
+apps/web/prisma/.generated/
 
 # local uploaded media and processing artifacts
 /apps/web/storage/

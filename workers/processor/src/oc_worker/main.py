@@ -6,6 +6,7 @@ Concurrency is bounded by WORKER_CONCURRENCY (default 1).
 
 from __future__ import annotations
 
+import argparse
 import logging
 import threading
 import time
@@ -52,9 +53,30 @@ def _worker_loop(settings: Settings, worker_number: int) -> None:
             time.sleep(IDLE_POLL_SECONDS)
 
 
+def _run_once(settings: Settings) -> int:
+    api = ApiClient(
+        base_url=settings.worker_api_url,
+        token=settings.worker_api_token,
+        worker_id=settings.worker_id,
+    )
+    pipeline = Pipeline(api, settings)
+    outcome = _process_once(api, pipeline)
+    log.info("worker=%s status=%s", settings.worker_id, outcome)
+    return 0
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Run the OpenContext worker.")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Claim and process at most one job, then exit.",
+    )
+    args = parser.parse_args()
     settings = Settings.from_env()
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    if args.once:
+        raise SystemExit(_run_once(settings))
     concurrency = max(1, settings.worker_concurrency)
     threads = [
         threading.Thread(target=_worker_loop, args=(settings, index), daemon=True)

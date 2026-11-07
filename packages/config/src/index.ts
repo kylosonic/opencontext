@@ -148,6 +148,19 @@ export function authGithubConfigured(): boolean {
   return authGithub() !== undefined;
 }
 
+/**
+ * Explicit opt-in development identity. This is never enabled by default.
+ * Compose and local quick-start documentation set it to true to avoid
+ * requiring a GitHub OAuth app for the first upload.
+ */
+export function devAuthEnabled(): boolean {
+  return getEnvBoolean("DEV_AUTH_ENABLED", false);
+}
+
+export function devAuthEmail(): string {
+  return getEnv("DEV_AUTH_EMAIL", "local@opencontext.dev") ?? "local@opencontext.dev";
+}
+
 export interface HttpProviderConfig {
   provider: string;
   baseUrl?: string;

@@ -24,5 +24,26 @@ python -m venv .venv
 .venv/bin/python -m oc_worker.main
 ```
 
+Use `--once` to claim and process at most one job, which is useful for
+integration tests and cron-style deployments:
+
+```bash
+python -m oc_worker.main --once
+```
+
 Set `WORKER_API_TOKEN` to the same value used by the web app before starting
 the worker. Provider settings are read from the worker process environment.
+
+## Local providers
+
+- `TRANSCRIPTION_PROVIDER=faster_whisper` runs speech recognition locally;
+  install the `local` extra and allow the first model download.
+- `VISION_PROVIDER=ollama` uses a locally running Ollama server.
+- `TRANSCRIPTION_PROVIDER=fixture` and `VISION_PROVIDER=fixture` provide
+  deterministic, clearly labeled output for offline tests. They do not run
+  speech recognition or computer vision and should not be used to claim real
+  analysis quality.
+
+The generated-video integration test is
+`tests/test_e2e_fixture.py`. It invokes real FFmpeg for probing, audio
+extraction, and frame extraction, while using fixture providers for inference.
