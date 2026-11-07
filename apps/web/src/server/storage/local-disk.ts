@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -86,8 +86,15 @@ export class LocalDiskStorage implements Storage {
     try {
       await rename(from, to);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ENOENT") {
         throw new Error(`Cannot move ${fromKey}: source object does not exist`);
+      }
+      if (code === "EXDEV" || code === "EPERM") {
+        // Some Windows and sandboxed environments reject rename within a volume.
+        await copyFile(from, to);
+        await rm(from, { force: true });
+        return;
       }
       throw error;
     }

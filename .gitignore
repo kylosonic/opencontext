@@ -22,6 +22,7 @@ __pycache__
 .venv
 venv
 workers/processor/src/oc_worker.egg-info
+*.egg-info
 
 # coverage
 coverage
