@@ -30,6 +30,7 @@ about the current Vercel deployment or future releases.
 - Python wheel and sdist build; `twine check` passes.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - No critical npm advisories remain after the Next.js, Zod, and Vitest updates.
+- Next.js uses the current `proxy.ts` request interception convention.
 
 ## Public deployment
 

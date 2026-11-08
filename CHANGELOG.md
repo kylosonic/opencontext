@@ -23,6 +23,7 @@ All notable changes are documented here. The project follows
 - Added a PostgreSQL migration baseline, deploy command, and CI drift check.
 - Added real S3-compatible storage integration coverage.
 - Added independent Tesseract OCR with fixture and vision-compatible modes.
+- Replaced the deprecated Next.js middleware convention with `proxy.ts`.
 
 ## 0.1.0 - 2026-11-03
 
