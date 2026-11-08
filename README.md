@@ -70,6 +70,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   development storage.
 - Explicit size/MIME validation, worker-token authentication, rate limits,
   retention cleanup, and tested FFmpeg argument handling.
+- Upload cancellation with temporary-object cleanup and immediate retry.
+- Memory or shared database rate limiting for single or multi-instance web
+  deployments.
 - Database-backed queue and resumable worker stages.
 - Faster Whisper, OpenAI-compatible, Ollama, and deterministic fixture
   providers.
@@ -77,7 +80,10 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
 - Generated-video end-to-end test from upload through worker output.
-- Standalone `opencontext analyze` CLI and release-ready shared npm schemas.
+- Real S3-compatible presigned upload/download coverage in CI.
+- Standalone `opencontext analyze` CLI with directory/batch mode,
+  `opencontext doctor`, and release-ready shared schemas.
+- Keyboard-tested result tabs, timeline seeking, and evidence labels.
 
 ## What is not ready
 
@@ -89,8 +95,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Docker Compose is implemented and its configuration validates, but the full
   image stack has not been verified end to end in the current environment.
 - Python and npm packages have not been published.
-- PostgreSQL currently uses a bootstrap `db push` path; provider-specific
-  migrations are tracked in the roadmap.
+- Real Ollama vision output has not been verified in this environment.
+- The full Compose image stack and a deployed production worker still need an
+  end-to-end run.
 - No independent penetration test has been performed.
 
 Current verification and remaining work:
