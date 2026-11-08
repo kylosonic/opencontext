@@ -79,7 +79,15 @@ describe.skipIf(!enabled)("S3-compatible upload integration", () => {
     });
     try {
       await client.send(new CreateBucketCommand({ Bucket: config.bucket })).catch((error) => {
-        if ((error as { name?: string }).name !== "BucketAlreadyOwnedByYou") {
+        const sdkError = error as {
+          name?: string;
+          $metadata?: { httpStatusCode?: number };
+        };
+        if (
+          sdkError.name !== "BucketAlreadyOwnedByYou" &&
+          sdkError.name !== "BucketAlreadyExists" &&
+          sdkError.$metadata?.httpStatusCode !== 409
+        ) {
           throw error;
         }
       });
