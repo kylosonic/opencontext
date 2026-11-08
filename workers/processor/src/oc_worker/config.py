@@ -10,6 +10,7 @@ risk note in the blueprint (§8).
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,6 +42,21 @@ def load_local_env() -> None:
     for candidate in (Path.cwd() / ".env", repo_root / ".env"):
         if candidate.is_file():
             load_dotenv(candidate, override=False)
+
+
+def _default_ffmpeg_path() -> str:
+    configured = _env("FFMPEG_PATH")
+    if configured:
+        return configured
+    system = shutil.which("ffmpeg")
+    if system:
+        return system
+    try:
+        from imageio_ffmpeg import get_ffmpeg_exe
+
+        return get_ffmpeg_exe()
+    except (ImportError, RuntimeError):
+        return "ffmpeg"
 
 
 @dataclass(frozen=True)
@@ -91,7 +107,7 @@ class Settings:
     text_model: str = field(
         default_factory=lambda: _env("TEXT_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
     )
-    ffmpeg_path: str = field(default_factory=lambda: _env("FFMPEG_PATH", "ffmpeg") or "ffmpeg")
+    ffmpeg_path: str = field(default_factory=_default_ffmpeg_path)
     ffprobe_path: str = field(default_factory=lambda: _env("FFPROBE_PATH") or "")
 
     @classmethod

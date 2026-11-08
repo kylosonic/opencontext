@@ -65,7 +65,7 @@ services:
       TRANSCRIPTION_PROVIDER: faster_whisper
       TRANSCRIPTION_MODEL: tiny.en
       VISION_PROVIDER: fixture
-      OCR_PROVIDER: tesseract
+      OCR_PROVIDER: vision
       OCR_LANGUAGE: eng
       TEXT_PROVIDER: template
       FIXTURE_VISIBLE_TEXT: OpenContext local compose fixture

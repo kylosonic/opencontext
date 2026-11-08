@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,8 @@ def probe(path: str | Path, ffmpeg_path: str | None = None) -> dict[str, Any]:
 
 def _probe_with_ffprobe(target: str, ffmpeg: str) -> dict[str, Any] | None:
     ffprobe = _ffprobe_path(ffmpeg)
+    if not Path(ffprobe).is_file() and shutil.which(ffprobe) is None:
+        return None
     proc = _run(
         [
             ffprobe,

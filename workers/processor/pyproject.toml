@@ -22,6 +22,7 @@ classifiers = [
 ]
 dependencies = [
   "httpx",
+  "imageio-ffmpeg",
   "pydantic",
   "python-dotenv",
 ]
@@ -43,7 +44,7 @@ dev = [
 ]
 local = [
   "faster-whisper",
-    "av>=11,<19",
+  "av>=11,<19",
 ]
 
 [tool.setuptools.packages.find]
