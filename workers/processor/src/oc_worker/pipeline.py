@@ -81,9 +81,9 @@ class Pipeline:
         vision_provider: VisionProvider | None = None,
         ocr_provider: OcrProvider | None = None,
         text_provider: TextProvider | None = None,
-        probe_fn: ProbeFn = probe,
-        extract_audio_fn: ExtractAudioFn = extract_audio,
-        extract_frames_fn: ExtractFramesFn = extract_frames,
+        probe_fn: ProbeFn | None = None,
+        extract_audio_fn: ExtractAudioFn | None = None,
+        extract_frames_fn: ExtractFramesFn | None = None,
     ) -> None:
         self.api = api
         self.settings = settings
@@ -99,9 +99,26 @@ class Pipeline:
             ocr_provider if ocr_provider is not None else build_ocr(settings)
         )
         self.text_provider = text_provider if text_provider is not None else build_text(settings)
-        self._probe = probe_fn
-        self._extract_audio = extract_audio_fn
-        self._extract_frames = extract_frames_fn
+        configured_ffmpeg = settings.ffmpeg_path or None
+        self._probe = (
+            probe_fn
+            if probe_fn is not None
+            else lambda source: probe(source, configured_ffmpeg)
+        )
+        self._extract_audio = (
+            extract_audio_fn
+            if extract_audio_fn is not None
+            else lambda source, destination: extract_audio(
+                source, destination, configured_ffmpeg
+            )
+        )
+        self._extract_frames = (
+            extract_frames_fn
+            if extract_frames_fn is not None
+            else lambda source, output_dir: extract_frames(
+                source, output_dir, ffmpeg_path=configured_ffmpeg
+            )
+        )
         self._current_stage = "EXTRACTING"
 
     # -- helpers ----------------------------------------------------------

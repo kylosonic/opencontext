@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 
 from oc_worker import api_client as api_module
+from oc_worker import pipeline as pipeline_module
 from oc_worker.api_client import ApiClient
 from oc_worker.config import Settings
 from oc_worker.errors import TransientFailure
@@ -219,6 +220,48 @@ def _make_pipeline(
         extract_audio_fn=extract_audio or _extract_audio_ok(),
         extract_frames_fn=extract_frames or _extract_frames_ok(),
     )
+
+
+def test_pipeline_uses_configured_ffmpeg_path(monkeypatch) -> None:
+    calls: list[tuple[str, str, str | None]] = []
+
+    def fake_probe(source: str, ffmpeg_path: str | None = None) -> dict:
+        calls.append(("probe", source, ffmpeg_path))
+        return {}
+
+    def fake_extract_audio(
+        source: str, destination: str, ffmpeg_path: str | None = None
+    ) -> bool:
+        calls.append(("audio", source, ffmpeg_path))
+        return True
+
+    def fake_extract_frames(
+        source: str, output_dir: str, *, ffmpeg_path: str | None = None
+    ) -> list[dict]:
+        calls.append(("frames", source, ffmpeg_path))
+        return []
+
+    monkeypatch.setattr(pipeline_module, "probe", fake_probe)
+    monkeypatch.setattr(pipeline_module, "extract_audio", fake_extract_audio)
+    monkeypatch.setattr(pipeline_module, "extract_frames", fake_extract_frames)
+
+    pipeline = Pipeline(
+        _api(_Handler()),
+        Settings(ffmpeg_path="/custom/ffmpeg"),
+        transcription_provider=FakeTranscription(),
+        vision_provider=FakeVision(),
+        ocr_provider=FakeOcr(),
+        text_provider=FakeText(),
+    )
+    pipeline._probe("source.mp4")
+    pipeline._extract_audio("source.mp4", "audio.wav")
+    pipeline._extract_frames("source.mp4", "frames")
+
+    assert calls == [
+        ("probe", "source.mp4", "/custom/ffmpeg"),
+        ("audio", "source.mp4", "/custom/ffmpeg"),
+        ("frames", "source.mp4", "/custom/ffmpeg"),
+    ]
 
 
 def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:

@@ -92,12 +92,12 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   storage, and a production worker still need configuration.
 - No real-model quality evaluation is published. Fixture-provider tests prove
   plumbing only.
-- Docker Compose is implemented and its configuration validates, but the full
-  image stack has not been verified end to end in the current environment.
+- Docker Compose has been verified locally through a real upload and completed
+  PostgreSQL-backed web/worker job; adding that flow to CI remains on the
+  roadmap.
 - Python and npm packages have not been published.
 - Real Ollama vision output has not been verified in this environment.
-- The full Compose image stack and a deployed production worker still need an
-  end-to-end run.
+- A deployed production worker still needs an end-to-end run.
 - No independent penetration test has been performed.
 
 Current verification and remaining work:

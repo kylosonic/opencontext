@@ -4,7 +4,7 @@ import { authGithub, authSecret } from "@opencontext/config";
 
 /**
  * Edge-safe Auth.js configuration (no Prisma imports) — shared by the
- * full `src/auth.ts` (adapter included) and `src/middleware.ts`
+ * full `src/auth.ts` (adapter included) and `src/proxy.ts`
  * (session decode only). GitHub sign-in is offered only when
  * AUTH_GITHUB_ID/AUTH_GITHUB_SECRET are both present; otherwise the
  * providers array is empty and the app boots with the honest
@@ -14,6 +14,7 @@ const github = authGithub();
 
 export const authConfig = {
   secret: authSecret(),
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/auth/signin",

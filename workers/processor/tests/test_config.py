@@ -1,5 +1,7 @@
 """Settings.from_env tests (monkeypatched environment, no real env access)."""
 
+from pathlib import Path
+
 from oc_worker.config import Settings
 
 _ENV_KEYS = [
@@ -42,7 +44,7 @@ def test_defaults_with_empty_environment(monkeypatch) -> None:
     assert settings.ollama_base_url == "http://localhost:11434"
     assert settings.text_provider == ""
     assert settings.text_model == "gpt-4o-mini"
-    assert settings.ffmpeg_path == "ffmpeg"
+    assert Path(settings.ffmpeg_path).is_file()
     assert settings.ffprobe_path == ""
 
 
@@ -95,3 +97,10 @@ def test_from_env_reads_current_process_environment(monkeypatch) -> None:
     settings = Settings.from_env()
     assert settings.worker_id == "env-worker"
     assert settings.worker_api_token == "tok"
+
+
+def test_ffmpeg_falls_back_to_bundled_binary(monkeypatch) -> None:
+    monkeypatch.delenv("FFMPEG_PATH", raising=False)
+    monkeypatch.setenv("PATH", "")
+    settings = Settings()
+    assert Path(settings.ffmpeg_path).is_file()

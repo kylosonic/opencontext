@@ -13,7 +13,7 @@ fixture output in automated runs, so this draft covers Ollama specifically.
 
 ## Acceptance
 
-- [ ] Test is skipped unless `OPENCONTEXT_MODEL_E2E=1`.
+- [ ] Test is skipped unless `OPENCONTEXT_OLLAMA_E2E=1`.
 - [ ] Test fails with actionable setup text when Ollama is unavailable.
 - [ ] At least one visual observation is asserted.
 - [ ] Documentation avoids presenting one smoke test as model quality evidence.

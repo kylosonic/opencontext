@@ -4,7 +4,7 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Now
 
-- Run the Compose stack end to end in CI or a clean-machine check.
+- Add the verified local Compose upload flow to CI.
 - Configure production GitHub OAuth, PostgreSQL, object storage, and a worker;
   run one deployed upload-to-export smoke test.
 - Validate one real job with a local Ollama vision model.
