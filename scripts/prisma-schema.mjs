@@ -9,7 +9,10 @@ if (!["postgresql", "sqlite"].includes(provider)) {
 }
 
 const sourcePath = path.join(repoRoot, "apps", "web", "prisma", "schema.prisma");
-const outputDir = path.join(repoRoot, "apps", "web", "prisma", ".generated");
+const outputDir =
+  provider === "postgresql"
+    ? path.join(repoRoot, "apps", "web", "prisma", "postgres")
+    : path.join(repoRoot, "apps", "web", "prisma", ".generated");
 const outputPath = path.join(outputDir, "schema.prisma");
 const source = await readFile(sourcePath, "utf8");
 const generated = source.replace(

@@ -9,8 +9,8 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "pretypecheck": "npm --prefix ../../packages/schemas run build",
-    "prisma:generate:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma generate --schema prisma/.generated/schema.prisma",
-    "prisma:push:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma db push --schema prisma/.generated/schema.prisma --skip-generate",
+    "prisma:generate:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma generate --schema prisma/postgres/schema.prisma",
+    "prisma:migrate:deploy:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma migrate deploy --schema prisma/postgres/schema.prisma",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

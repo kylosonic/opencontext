@@ -33,14 +33,27 @@ Generate the PostgreSQL Prisma client and apply the schema:
 
 ```bash
 npm run prisma:generate:postgres --workspace web
-npm run prisma:push:postgres --workspace web
+npm run prisma:migrate:deploy:postgres --workspace web
 npm run build
 npm run start --workspace web
 ```
 
-`prisma:push:postgres` is the current bootstrap path. Before evolving a
-long-lived production schema, add and review provider-specific PostgreSQL
-migrations.
+PostgreSQL migrations live in `apps/web/prisma/postgres/migrations`. Generate
+and review a new migration before deploying schema changes. An existing
+database that was created with the old `db push` path needs its schema
+baselined separately before `migrate deploy`; new databases apply the checked-in
+baseline automatically.
+
+For a schema change, point `DATABASE_URL` at a disposable PostgreSQL database
+and generate the named migration from the checked-in PostgreSQL schema:
+
+```bash
+cd apps/web
+npx prisma migrate dev --schema prisma/postgres/schema.prisma --name describe_change
+```
+
+Commit and review the generated SQL. CI applies the migration chain to a fresh
+PostgreSQL service and fails if the resulting database differs from the schema.
 
 ## Object storage
 

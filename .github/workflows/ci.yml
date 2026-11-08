@@ -73,3 +73,51 @@ jobs:
 
       - name: Test
         run: pytest
+
+  postgres:
+    name: PostgreSQL migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: opencontext
+          POSTGRES_PASSWORD: opencontext
+          POSTGRES_DB: opencontext
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opencontext -d opencontext"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://opencontext:opencontext@localhost:5432/opencontext?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate PostgreSQL schema and client
+        run: npm run prisma:generate:postgres --workspace web
+
+      - name: Check generated schema is current
+        run: git diff --exit-code -- apps/web/prisma/postgres/schema.prisma
+
+      - name: Apply migrations to a fresh database
+        run: npx prisma migrate deploy --schema apps/web/prisma/postgres/schema.prisma
+
+      - name: Check for schema drift
+        run: >-
+          npx prisma migrate diff
+          --from-url "$DATABASE_URL"
+          --to-schema-datamodel apps/web/prisma/postgres/schema.prisma
+          --exit-code

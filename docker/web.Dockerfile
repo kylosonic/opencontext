@@ -21,4 +21,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 ENV NODE_ENV=production
 COPY --from=builder /app ./
 EXPOSE 3000
-CMD ["sh", "-c", "npm run prisma:push:postgres --workspace web && npm run start --workspace web"]
+CMD ["sh", "-c", "npm run prisma:migrate:deploy:postgres --workspace web && npm run start --workspace web"]
