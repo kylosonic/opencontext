@@ -81,8 +81,10 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   human-review metadata.
 - Generated-video end-to-end test from upload through worker output.
 - Real S3-compatible presigned upload/download coverage in CI.
-- Standalone `opencontext analyze` CLI with directory/batch mode,
-  `opencontext doctor`, and release-ready shared schemas.
+- Standalone `opencontext analyze`, `brief`, `evaluate`, and `doctor` CLI
+  workflows with release-ready shared schemas.
+- Repository-aware implementation briefs and a local MCP server that expose
+  evidence-linked video context directly to coding agents.
 - Keyboard-tested result tabs, timeline seeking, and evidence labels.
 
 ## What is not ready
@@ -131,6 +133,10 @@ opencontext analyze video.mp4 --out context.md --json context.json
 are release-ready in the source tree but not published. See
 [docs/installable-packages.md](docs/installable-packages.md) and
 [docs/releasing.md](docs/releasing.md).
+
+Coding agents can use the local MCP server or generate a repository-aware brief
+from an existing result. See
+[docs/agent-integration.md](docs/agent-integration.md).
 
 ## Development checks
 

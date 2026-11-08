@@ -14,10 +14,10 @@ there is no reproducible evaluation of transcript, visual, or OCR accuracy.
 
 ## Acceptance
 
-- [ ] Dataset provenance and license are documented.
-- [ ] Evaluation is rerunnable from a clean checkout.
-- [ ] Results distinguish fixture, smoke-test, and measured-quality claims.
-- [ ] Limitations and model versions are recorded.
+- [x] Dataset provenance and license are documented.
+- [x] Evaluation is rerunnable from a clean checkout.
+- [x] Results distinguish fixture, smoke-test, and measured-quality claims.
+- [x] Limitations and model versions are recorded.
 
 ## Files
 

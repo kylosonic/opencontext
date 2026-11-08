@@ -23,8 +23,10 @@ from typing import Any
 import httpx
 
 from oc_worker import aggregation, context, package_version
+from oc_worker.agent import build_implementation_brief, load_context_payload
 from oc_worker.config import Settings, load_local_env
 from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.evaluation import evaluate_context
 from oc_worker.ffmpeg import extract_audio, extract_frames, probe
 from oc_worker.models import DetailLevel, OCRObservation, VisualObservation
 from oc_worker.pipeline import MAX_DURATION_SECONDS, NOT_A_VIDEO_MESSAGE, TOO_LONG_MESSAGE
@@ -514,6 +516,32 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use deterministic fixture transcription and vision output.",
     )
+    brief = commands.add_parser(
+        "brief",
+        help="Turn a context JSON result into a repository-aware agent brief",
+    )
+    brief.add_argument("context", type=Path)
+    brief.add_argument(
+        "--repo",
+        type=Path,
+        help="Target repository to inspect for language and technology signals",
+    )
+    brief.add_argument("--task", help="Requested implementation task")
+    brief.add_argument("--out", type=Path, help="Write the brief to this path")
+    evaluate = commands.add_parser(
+        "evaluate",
+        help="Score a context JSON against a ground-truth evaluation item",
+    )
+    evaluate.add_argument("prediction", type=Path)
+    evaluate.add_argument("--truth", type=Path, required=True)
+    evaluate.add_argument("--model-name", required=True)
+    evaluate.add_argument("--model-version", required=True)
+    evaluate.add_argument(
+        "--measurement-kind",
+        choices=["fixture-baseline", "smoke", "measured"],
+        required=True,
+    )
+    evaluate.add_argument("--out", type=Path)
     doctor = commands.add_parser(
         "doctor",
         help="Check FFmpeg and configured provider readiness",
@@ -542,6 +570,53 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     load_local_env()
     base = Settings.from_env()
+    if args.command == "brief":
+        try:
+            payload = load_context_payload(args.context)
+            rendered = build_implementation_brief(
+                payload,
+                repository=args.repo,
+                task=args.task,
+            )
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(rendered, encoding="utf-8")
+            log.info("Wrote %s", args.out)
+        else:
+            print(rendered)
+        return 0
+    if args.command == "evaluate":
+        try:
+            payload = load_context_payload(args.prediction)
+            manifest = json.loads(args.truth.read_text(encoding="utf-8"))
+            truth = manifest.get("item", manifest) if isinstance(manifest, dict) else None
+            if not isinstance(truth, dict):
+                raise ValueError("Evaluation truth must be an object")
+            if isinstance(manifest, dict):
+                for key in ("datasetId", "provenance", "license"):
+                    if key not in truth and key in manifest:
+                        truth[key] = manifest[key]
+            result = evaluate_context(
+                payload,
+                truth,
+                model_name=args.model_name,
+                model_version=args.model_version,
+                measurement_kind=args.measurement_kind,
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        rendered = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(rendered + "\n", encoding="utf-8")
+            log.info("Wrote %s", args.out)
+        else:
+            print(rendered)
+        return 0
     if args.command == "doctor":
         return run_doctor(
             base,

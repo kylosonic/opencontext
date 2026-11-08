@@ -268,3 +268,113 @@ def test_doctor_json_reports_missing_dependency_and_invalid_provider(
     assert checks["ffmpeg"]["status"] == "missing"
     assert checks["transcription"]["status"] == "missing"
     assert "TRANSCRIPTION_PROVIDER" in checks["transcription"]["detail"]
+
+
+def test_brief_command_writes_repository_aware_prompt(tmp_path: Path) -> None:
+    context_path = tmp_path / "context.json"
+    context_path.write_text(
+        json.dumps(
+            {
+                "source": {"name": "workflow.mp4", "durationSec": 2},
+                "timeline": [],
+                "evidence": [
+                    {
+                        "id": 1,
+                        "kind": "VISUAL",
+                        "timestampSec": 0,
+                        "certainty": "OBSERVED",
+                        "text": "Save button",
+                        "source": {"collection": "uiHierarchy", "index": 0},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "pyproject.toml").write_text(
+        "[project]\nname='example'", encoding="utf-8"
+    )
+    output = tmp_path / "brief.md"
+
+    code = main(
+        [
+            "brief",
+            str(context_path),
+            "--repo",
+            str(repository),
+            "--task",
+            "Implement the recorded save flow.",
+            "--out",
+            str(output),
+        ]
+    )
+
+    assert code == 0
+    rendered = output.read_text(encoding="utf-8")
+    assert "Implement the recorded save flow." in rendered
+    assert "Languages: Python" in rendered
+    assert "[E0001 · 00:00 · Observed]" in rendered
+
+
+def test_evaluate_command_writes_metric_report(tmp_path: Path) -> None:
+    prediction = tmp_path / "context.json"
+    prediction.write_text(
+        json.dumps(
+            {
+                "source": {"name": "fixture.mp4", "durationSec": 2},
+                "timeline": [],
+                "evidence": [],
+                "transcript": [
+                    {"start": 0, "end": 2, "text": "hello world"},
+                ],
+                "visibleText": ["Save"],
+                "visualFindings": [{"text": "A blue save button"}],
+                "uiHierarchy": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    truth = tmp_path / "truth.json"
+    truth.write_text(
+        json.dumps(
+            {
+                "datasetId": "synthetic-v1",
+                "provenance": "generated",
+                "license": "CC0-1.0",
+                "item": {
+                    "id": "item-1",
+                    "transcript": "hello world",
+                    "ocrTexts": ["Save"],
+                    "visualKeywords": ["blue save button"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "evaluation.json"
+
+    code = main(
+        [
+            "evaluate",
+            str(prediction),
+            "--truth",
+            str(truth),
+            "--model-name",
+            "fixture",
+            "--model-version",
+            "1",
+            "--measurement-kind",
+            "fixture-baseline",
+            "--out",
+            str(output),
+        ]
+    )
+
+    assert code == 0
+    result = json.loads(output.read_text(encoding="utf-8"))
+    assert result["transcript"]["wordErrorRate"] == 0.0
+    assert result["ocr"]["f1"] == 1.0
+    assert result["visual"]["recall"] == 1.0
+    assert result["dataset"]["license"] == "CC0-1.0"

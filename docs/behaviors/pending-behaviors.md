@@ -12,8 +12,9 @@ Nothing in this file is a commitment for the MVP. Items move into the behavior f
 6. **URL ingestion** (e.g., YouTube) — explicitly optional per the master prompt.
 7. **Image, PDF, and audio-only analysis** — MVP handles video only.
 8. **Scene-change detection** replacing fixed frame sampling.
-9. **MCP server** and OpenCode / agent integrations — design the internal APIs so this can be added later; do not implement.
-10. **CLI tool.**
+9. **Additional agent-specific integrations** beyond the implemented local MCP
+   server.
+10. **Additional CLI distribution channels** beyond the implemented Python CLI.
 11. **Real-time processing.**
 12. **Local GPU inference** guidance and setup flows.
 13. **Plugin system.**

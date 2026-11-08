@@ -56,6 +56,28 @@ a JSON summary with success and failure counts. It continues after an invalid
 input, preserves outputs that already succeeded, and exits non-zero when any
 item fails. Use `--quiet` to suppress the summary.
 
+Turn an existing result into a repository-aware implementation brief:
+
+```bash
+opencontext brief context.json --repo ../my-app \
+  --task "Implement the recorded settings flow" --out implementation-brief.md
+```
+
+The brief preserves evidence IDs, detects repository languages and manifests,
+and separates observed behavior from inferred or uncertain claims.
+
+Score a context result against a ground-truth evaluation item:
+
+```bash
+opencontext evaluate context.json \
+  --truth docs/evaluation/fixture-dataset.json \
+  --model-name fixture --model-version 1 \
+  --measurement-kind fixture-baseline --out evaluation.json
+```
+
+The report includes transcript WER/CER, OCR precision/recall/F1, and visual
+keyword recall. Fixture, smoke-test, and measured runs remain separately labeled.
+
 Check the local runtime and configured providers before submitting a job:
 
 ```bash
@@ -123,3 +145,31 @@ OPENCONTEXT_OLLAMA_E2E=1 pytest tests/test_ollama_vision_smoke.py -q
 The test generates a synthetic frame, records the selected model, and verifies
 that the provider returns a structured visual observation. It is a setup smoke
 test, not evidence of model quality.
+
+## MCP server
+
+Install the agent extra:
+
+```bash
+pip install "opencontext-video[agent]"
+opencontext-mcp
+```
+
+The stdio MCP server exposes:
+
+- `analyze_video` — analyze a local video and return an evidence-linked brief.
+- `implementation_brief` — convert an existing context JSON result into a brief.
+- `context_evidence` — return the bounded evidence ledger.
+
+Example client configuration:
+
+```json
+{
+  "mcpServers": {
+    "opencontext": {
+      "command": "opencontext-mcp",
+      "args": []
+    }
+  }
+}
+```
