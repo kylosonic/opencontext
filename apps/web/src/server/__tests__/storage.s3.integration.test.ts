@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import {
   CreateBucketCommand,
-  PutBucketCorsCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { describe, expect, it, vi } from "vitest";
@@ -91,22 +90,6 @@ describe.skipIf(!enabled)("S3-compatible upload integration", () => {
           throw error;
         }
       });
-      await client.send(
-        new PutBucketCorsCommand({
-          Bucket: config.bucket,
-          CORSConfiguration: {
-            CORSRules: [
-              {
-                AllowedOrigins: ["https://app.example"],
-                AllowedMethods: ["PUT"],
-                AllowedHeaders: ["content-type"],
-                ExposeHeaders: ["etag"],
-                MaxAgeSeconds: 3600,
-              },
-            ],
-          },
-        }),
-      );
     } finally {
       client.destroy();
     }

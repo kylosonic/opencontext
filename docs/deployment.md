@@ -90,10 +90,11 @@ export STORAGE_S3_SECRET_ACCESS_KEY=test
 npm test --workspace web
 ```
 
-The opt-in test creates the bucket and a narrow CORS rule, generates a short
-video, performs a presigned upload, verifies the object, completes the job, and
-downloads the source through a presigned worker URL. It is skipped when
-`OPENCONTEXT_S3_E2E` is not `1`.
+The opt-in test creates the bucket, generates a short video, performs a
+presigned upload, verifies the object, completes the job, and downloads the
+source through a presigned worker URL. S3Mock does not implement
+`PutBucketCors`; configure and verify production CORS separately. The test is
+skipped when `OPENCONTEXT_S3_E2E` is not `1`.
 
 ## Worker
 
