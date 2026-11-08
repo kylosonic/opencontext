@@ -110,6 +110,7 @@ export function TabList({ label, children, accessory, className }: TabListProps)
     <div
       role="tablist"
       aria-label={label}
+      aria-orientation="horizontal"
       onKeyDown={handleKeyDown}
       className={cx(
         "flex flex-wrap items-center gap-1 border-b border-line",
@@ -146,6 +147,7 @@ export function Tab({ id, children }: TabProps) {
         active
           ? "border-accent text-ink"
           : "border-transparent text-ink-muted hover:text-ink hover:border-line-strong",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
       )}
     >
       {children}
@@ -167,7 +169,11 @@ export function TabPanel({ id, children, className }: TabPanelProps) {
       id={`${baseId}-panel-${id}`}
       aria-labelledby={`${baseId}-tab-${id}`}
       hidden={value !== id}
-      className={cx("pt-5", className)}
+      tabIndex={0}
+      className={cx(
+        "pt-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        className,
+      )}
     >
       {children}
     </div>
