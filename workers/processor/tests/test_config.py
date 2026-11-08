@@ -12,6 +12,8 @@ _ENV_KEYS = [
     "TRANSCRIPTION_PROVIDER",
     "TRANSCRIPTION_MODEL",
     "OPENAI_API_KEY",
+    "OPENCODE_API_KEY",
+    "OPENCODE_SESSION_ID",
     "OPENAI_BASE_URL",
     "VISION_PROVIDER",
     "VISION_MODEL",
@@ -39,6 +41,7 @@ def test_defaults_with_empty_environment(monkeypatch) -> None:
     assert settings.transcription_model == "whisper-1"
     assert settings.openai_api_key == ""
     assert settings.openai_base_url == "https://api.openai.com/v1"
+    assert settings.opencode_session_id == "opencontext-local"
     assert settings.vision_provider == "openai_compatible"
     assert settings.vision_model == "gpt-4o-mini"
     assert settings.ollama_base_url == "http://localhost:11434"
@@ -70,6 +73,17 @@ def test_env_overrides_apply(monkeypatch) -> None:
     assert settings.openai_api_key == "sk-test"
     assert settings.ffmpeg_path == "C:\\tools\\ffmpeg.exe"
     assert settings.ffprobe_path == "C:\\tools\\ffprobe.exe"
+
+
+def test_opencode_key_and_session_are_supported(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENCODE_API_KEY", "opencode-test-key")
+    monkeypatch.setenv("OPENCODE_SESSION_ID", "session-123")
+
+    settings = Settings.from_env()
+
+    assert settings.openai_api_key == "opencode-test-key"
+    assert settings.opencode_session_id == "session-123"
 
 
 def test_empty_string_is_treated_as_unset(monkeypatch) -> None:

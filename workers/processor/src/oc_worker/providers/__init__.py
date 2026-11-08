@@ -45,6 +45,7 @@ def build_transcription(settings: Settings) -> TranscriptionProvider | None:
             base_url=settings.openai_base_url,
             api_key=settings.openai_api_key,
             model=settings.transcription_model,
+            session_id=settings.opencode_session_id,
         )
     raise ProviderConfigurationError(
         f"Unknown TRANSCRIPTION_PROVIDER={settings.transcription_provider!r}; "
@@ -61,7 +62,9 @@ def build_vision(settings: Settings) -> VisionProvider | None:
         return FixtureVisionProvider()
     if provider == "ollama":
         return OllamaVisionProvider(
-            base_url=settings.ollama_base_url, model=settings.vision_model
+            base_url=settings.ollama_base_url,
+            model=settings.vision_model,
+            session_id=settings.opencode_session_id,
         )
     if provider == "openai_compatible":
         if not settings.openai_api_key:
@@ -72,6 +75,7 @@ def build_vision(settings: Settings) -> VisionProvider | None:
             base_url=settings.openai_base_url,
             api_key=settings.openai_api_key,
             model=settings.vision_model,
+            session_id=settings.opencode_session_id,
         )
     raise ProviderConfigurationError(
         f"Unknown VISION_PROVIDER={settings.vision_provider!r}; "
@@ -103,7 +107,11 @@ def build_text(settings: Settings) -> TextProvider:
     if provider in ("", "template"):
         return TemplateTextProvider()
     if provider == "ollama":
-        return OllamaTextProvider(base_url=settings.ollama_base_url, model=settings.text_model)
+        return OllamaTextProvider(
+            base_url=settings.ollama_base_url,
+            model=settings.text_model,
+            session_id=settings.opencode_session_id,
+        )
     if provider == "openai_compatible":
         if not settings.openai_api_key:
             raise ProviderConfigurationError(
@@ -113,6 +121,7 @@ def build_text(settings: Settings) -> TextProvider:
             base_url=settings.openai_base_url,
             api_key=settings.openai_api_key,
             model=settings.text_model,
+            session_id=settings.opencode_session_id,
         )
     raise ProviderConfigurationError(
         f"Unknown TEXT_PROVIDER={settings.text_provider!r}; "

@@ -79,10 +79,16 @@ class Settings:
     transcription_model: str = field(
         default_factory=lambda: _env("TRANSCRIPTION_MODEL", "whisper-1") or "whisper-1"
     )
-    openai_api_key: str = field(default_factory=lambda: _env("OPENAI_API_KEY") or "")
+    openai_api_key: str = field(
+        default_factory=lambda: _env("OPENAI_API_KEY") or _env("OPENCODE_API_KEY") or ""
+    )
     openai_base_url: str = field(
         default_factory=lambda: _env("OPENAI_BASE_URL", "https://api.openai.com/v1")
         or "https://api.openai.com/v1"
+    )
+    opencode_session_id: str = field(
+        default_factory=lambda: _env("OPENCODE_SESSION_ID", "opencontext-local")
+        or "opencontext-local"
     )
     vision_provider: str = field(
         default_factory=lambda: _env("VISION_PROVIDER", "openai_compatible") or "openai_compatible"

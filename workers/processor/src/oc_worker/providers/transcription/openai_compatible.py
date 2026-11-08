@@ -15,7 +15,10 @@ import httpx
 
 from oc_worker.errors import TransientFailure
 from oc_worker.models import Segment
-from oc_worker.providers.http_status import raise_for_provider_status
+from oc_worker.providers.http_status import (
+    openai_compatible_headers,
+    raise_for_provider_status,
+)
 
 
 class OpenAICompatibleTranscriptionProvider:
@@ -27,17 +30,21 @@ class OpenAICompatibleTranscriptionProvider:
         base_url: str,
         api_key: str,
         model: str,
+        session_id: str | None = None,
         timeout: float = 120.0,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+        self.session_id = session_id
         self._client = client or httpx.Client(timeout=timeout)
 
     def transcribe(self, audio_path: str) -> list[Segment]:
         url = f"{self.base_url}/audio/transcriptions"
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        headers = openai_compatible_headers(
+            self.api_key, self.base_url, self.session_id
+        )
         try:
             with open(audio_path, "rb") as handle:
                 response = self._client.post(

@@ -14,7 +14,10 @@ from typing import Any
 import httpx
 
 from oc_worker.errors import TransientFailure
-from oc_worker.providers.http_status import raise_for_provider_status
+from oc_worker.providers.http_status import (
+    openai_compatible_headers,
+    raise_for_provider_status,
+)
 
 _SYSTEM_PROMPT = (
     "You analyze individual frames of a recorded software session. "
@@ -59,12 +62,14 @@ class OpenAICompatibleVisionProvider:
         base_url: str,
         api_key: str,
         model: str,
+        session_id: str | None = None,
         timeout: float = 120.0,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+        self.session_id = session_id
         self._client = client or httpx.Client(timeout=timeout)
 
     def analyze(self, frame_bytes: bytes, context: dict[str, Any]) -> dict[str, Any]:
@@ -91,7 +96,9 @@ class OpenAICompatibleVisionProvider:
                 },
             ],
         }
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        headers = openai_compatible_headers(
+            self.api_key, self.base_url, self.session_id
+        )
         try:
             response = self._client.post(
                 f"{self.base_url}/chat/completions", headers=headers, json=payload
@@ -108,21 +115,40 @@ class OpenAICompatibleVisionProvider:
 
 
 def _normalize(raw: dict[str, Any]) -> dict[str, Any]:
-    interactions = raw.get("interactions") or []
+    interactions = _string_list(raw.get("interactions"))
     for item in interactions:
         if isinstance(item, dict):
             item.setdefault("certainty", "INFERRED")
+    certainty = str(raw.get("certainty") or "UNCERTAIN").upper()
+    certainty = {
+        "HIGH": "OBSERVED",
+        "MEDIUM": "INFERRED",
+        "LOW": "UNCERTAIN",
+    }.get(certainty, certainty)
+    design = raw.get("designObservations") or {}
+    if isinstance(design, str):
+        design = {"summary": design}
+    elif not isinstance(design, dict):
+        design = {}
     observation: dict[str, Any] = {
-        "certainty": str(raw.get("certainty") or "OBSERVED").upper(),
+        "certainty": certainty,
         "sceneTitle": raw.get("sceneTitle"),
         "visualDescription": raw.get("visualDescription"),
-        "uiElements": raw.get("uiElements") or [],
-        "visibleText": raw.get("visibleText") or [],
+        "uiElements": _string_list(raw.get("uiElements")),
+        "visibleText": _string_list(raw.get("visibleText")),
         "interactions": interactions,
         "layoutDescription": raw.get("layoutDescription"),
-        "designObservations": raw.get("designObservations") or [],
-        "importantChanges": raw.get("importantChanges") or [],
+        "designObservations": {
+            str(key): str(value) for key, value in design.items()
+        },
+        "importantChanges": _string_list(raw.get("importantChanges")),
     }
     if observation["certainty"] not in ("OBSERVED", "INFERRED", "UNCERTAIN"):
-        observation["certainty"] = "OBSERVED"
+        observation["certainty"] = "UNCERTAIN"
     return observation
+
+
+def _string_list(value: Any) -> list[Any]:
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    return value if isinstance(value, list) else []

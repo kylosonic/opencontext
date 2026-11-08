@@ -10,10 +10,14 @@ about the current Vercel deployment or future releases.
 - Web lint, typecheck, and production build pass. The local suite reports 113
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
-- Worker Ruff passes with 208 tests; real Tesseract and Ollama smoke tests are
-  skipped locally unless their binaries/models and opt-in flags are present.
+- Worker Ruff passes with 210 tests; real Tesseract and OpenCode Go vision
+  smoke tests are skipped unless their binaries/credentials and opt-in flags
+  are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
   generated speech with no cloud credentials.
+- OpenCode Go `glm-5.3-flash` completed a real hosted-vision analysis of the
+  generated fixture, producing 19 evidence records. The raw Markdown and JSON
+  are published under `docs/evaluation/` and labeled as smoke evidence.
 - Cross-language contract test validates Python payloads with the shared Zod
   schemas.
 - Generated-video test performs direct upload, queue claim, worker HTTP calls,
@@ -67,8 +71,8 @@ service.
 
 ## Known gaps
 
-- No real-model quality evaluation is published, and Ollama vision has not
-  been verified in this environment.
+- No real-model quality evaluation is published yet. The OpenCode Go vision
+  smoke test passed, but one synthetic video does not establish quality.
 - Faster Whisper output from one generated speech sample proves setup, not
   transcription quality.
 - Packages are not published.
