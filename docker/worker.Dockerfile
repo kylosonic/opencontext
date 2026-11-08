@@ -1,6 +1,7 @@
 FROM python:3.13-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg tesseract-ocr ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY workers/processor/pyproject.toml workers/processor/README.md ./
 COPY workers/processor/src ./src

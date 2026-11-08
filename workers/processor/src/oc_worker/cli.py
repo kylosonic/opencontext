@@ -28,7 +28,7 @@ from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.ffmpeg import extract_audio, extract_frames, probe
 from oc_worker.models import DetailLevel, OCRObservation, VisualObservation
 from oc_worker.pipeline import MAX_DURATION_SECONDS, NOT_A_VIDEO_MESSAGE, TOO_LONG_MESSAGE
-from oc_worker.providers import build_text, build_transcription, build_vision
+from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
 
 log = logging.getLogger("oc_worker.cli")
 
@@ -224,6 +224,32 @@ def _provider_checks(
             }
         )
 
+    ocr = settings.ocr_provider.lower()
+    if ocr in ("", "none", "vision"):
+        checks.append(
+            {
+                "name": "ocr",
+                "status": "ok",
+                "detail": "vision-derived OCR compatibility mode",
+            }
+        )
+    elif ocr == "fixture":
+        checks.append(
+            {"name": "ocr", "status": "ok", "detail": "fixture OCR provider"}
+        )
+    elif ocr == "tesseract":
+        check = _command_status("ocr", settings.tesseract_path, required=True)
+        check["detail"] += f"; language={settings.ocr_language}"
+        checks.append(check)
+    else:
+        checks.append(
+            {
+                "name": "ocr",
+                "status": "unverified",
+                "detail": f"provider is {ocr or 'not configured'}",
+            }
+        )
+
     text = settings.text_provider.lower()
     if text in ("", "template"):
         checks.append(
@@ -308,6 +334,7 @@ def analyze_file(
 
     transcription = build_transcription(settings)
     vision = build_vision(settings)
+    ocr_provider = build_ocr(settings)
     text = build_text(settings)
     if vision is None:
         raise PermanentFailure(
@@ -354,13 +381,34 @@ def analyze_file(
             raw["provider"] = vision.name
             observation = VisualObservation.model_validate(raw)
             observations.append(observation)
-            for text_item in observation.visibleText:
-                if text_item.strip():
+            if ocr_provider is None:
+                for text_item in observation.visibleText:
+                    if text_item.strip():
+                        ocr.append(
+                            OCRObservation(
+                                timestampSec=timestamp,
+                                text=text_item.strip(),
+                                provider=vision.name,
+                            )
+                        )
+            else:
+                recognized = ocr_provider.extract(
+                    Path(frame["path"]).read_bytes(),
+                    {
+                        "timestampSec": timestamp,
+                        "sourceName": video.name,
+                    },
+                )
+                for item in recognized:
+                    text_value = str(item.get("text") or "").strip()
+                    if not text_value:
+                        continue
                     ocr.append(
                         OCRObservation(
                             timestampSec=timestamp,
-                            text=text_item.strip(),
-                            provider=vision.name,
+                            text=text_value,
+                            confidence=item.get("confidence"),
+                            provider=ocr_provider.name,
                         )
                     )
 
@@ -411,6 +459,9 @@ def _parser() -> argparse.ArgumentParser:
     analyze.add_argument("--transcription-model")
     analyze.add_argument("--vision-provider")
     analyze.add_argument("--vision-model")
+    analyze.add_argument("--ocr-provider")
+    analyze.add_argument("--ocr-language")
+    analyze.add_argument("--tesseract-path")
     analyze.add_argument("--text-provider")
     analyze.add_argument("--ffmpeg-path")
     analyze.add_argument(
@@ -468,6 +519,7 @@ def main(argv: list[str] | None = None) -> int:
     vision_provider = (
         "fixture" if args.offline else args.vision_provider or base.vision_provider
     )
+    ocr_provider = "fixture" if args.offline else args.ocr_provider or base.ocr_provider
     text_provider = "template" if args.offline else args.text_provider or base.text_provider
     settings = replace(
         base,
@@ -475,6 +527,9 @@ def main(argv: list[str] | None = None) -> int:
         transcription_model=args.transcription_model or base.transcription_model,
         vision_provider=vision_provider,
         vision_model=args.vision_model or base.vision_model,
+        ocr_provider=ocr_provider,
+        ocr_language=args.ocr_language or base.ocr_language,
+        tesseract_path=args.tesseract_path or base.tesseract_path,
         text_provider=text_provider,
         ffmpeg_path=args.ffmpeg_path or base.ffmpeg_path,
     )

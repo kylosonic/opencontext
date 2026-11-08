@@ -91,6 +91,9 @@ the worker. Provider settings are read from the worker process environment.
 - `TRANSCRIPTION_PROVIDER=faster_whisper` runs speech recognition locally;
   install the `local` extra and allow the first model download.
 - `VISION_PROVIDER=ollama` uses a locally running Ollama server.
+- `OCR_PROVIDER=tesseract` extracts text independently with the local
+  Tesseract binary. `OCR_PROVIDER=vision` keeps the compatibility behavior of
+  deriving OCR rows from the vision provider's `visibleText`.
 - `TRANSCRIPTION_PROVIDER=fixture` and `VISION_PROVIDER=fixture` provide
   deterministic, clearly labeled output for offline tests. They do not run
   speech recognition or computer vision and should not be used to claim real

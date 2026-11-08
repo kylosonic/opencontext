@@ -73,6 +73,7 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Database-backed queue and resumable worker stages.
 - Faster Whisper, OpenAI-compatible, Ollama, and deterministic fixture
   providers.
+- Independently selectable Tesseract OCR or vision-derived OCR compatibility.
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
 - Generated-video end-to-end test from upload through worker output.

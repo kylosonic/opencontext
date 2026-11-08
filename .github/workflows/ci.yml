@@ -28,7 +28,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr
 
       - name: Start MinIO for storage integration
         run: |
@@ -90,6 +90,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
+      - name: Install media tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr
 
       - name: Install dependencies
         run: pip install -e ".[dev]"
