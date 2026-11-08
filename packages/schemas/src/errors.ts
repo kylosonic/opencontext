@@ -40,21 +40,62 @@ export const ErrorEnvelopeSchema = z.object({
 
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelopeSchema>;
 
-/** HTTP status paired with each error code (blueprint §2: "400/413 named reasons"). */
-export const ERROR_STATUS: Record<ErrorCode, number> = {
-  FILE_TOO_LARGE: 413,
-  FORMAT_UNSUPPORTED: 400,
-  VALIDATION_ERROR: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  RETRY_NOT_ALLOWED: 409,
-  UPLOAD_EXPIRED: 410,
-  UPLOAD_INCOMPLETE: 409,
-  RATE_LIMITED: 429,
-  WORKER_UNAUTHORIZED: 401,
-  INTERNAL: 500,
-};
+/** Public API error contract, including the HTTP status and operator meaning. */
+export const ERROR_CATALOG = {
+  FILE_TOO_LARGE: {
+    status: 413,
+    description: "The upload exceeds the configured media size limit.",
+  },
+  FORMAT_UNSUPPORTED: {
+    status: 400,
+    description: "The media extension or detected format is not supported.",
+  },
+  VALIDATION_ERROR: {
+    status: 400,
+    description: "A request body, query, or path parameter is invalid.",
+  },
+  UNAUTHORIZED: {
+    status: 401,
+    description: "A user session is absent, expired, or invalid.",
+  },
+  FORBIDDEN: {
+    status: 403,
+    description: "The authenticated identity cannot access this resource.",
+  },
+  NOT_FOUND: {
+    status: 404,
+    description: "The requested resource does not exist or is not visible.",
+  },
+  RETRY_NOT_ALLOWED: {
+    status: 409,
+    description: "The job state does not permit another processing attempt.",
+  },
+  UPLOAD_EXPIRED: {
+    status: 410,
+    description: "The upload intent expired before the object was completed.",
+  },
+  UPLOAD_INCOMPLETE: {
+    status: 409,
+    description: "The uploaded object is missing or does not match its intent.",
+  },
+  RATE_LIMITED: {
+    status: 429,
+    description: "The caller exceeded the configured request rate.",
+  },
+  WORKER_UNAUTHORIZED: {
+    status: 401,
+    description: "The worker token or worker identity is invalid.",
+  },
+  INTERNAL: {
+    status: 500,
+    description: "The server encountered an unexpected internal failure.",
+  },
+} as const satisfies Record<ErrorCode, { status: number; description: string }>;
+
+/** HTTP status paired with each error code. */
+export const ERROR_STATUS = Object.fromEntries(
+  Object.entries(ERROR_CATALOG).map(([code, entry]) => [code, entry.status]),
+) as Record<ErrorCode, number>;
 
 /** Skip reason recorded when TRANSCRIBING is skipped because the source has no audio. */
 export const SKIP_REASON_NO_AUDIO = "NO_AUDIO";
