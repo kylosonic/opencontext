@@ -55,7 +55,7 @@ beforeEach(async () => {
   authMock.auth.mockReset();
   await resetDatabase();
   await resetStorage();
-  resetRateLimits();
+  await resetRateLimits();
 });
 
 describe("401 — anonymous callers", () => {
@@ -163,6 +163,39 @@ describe("direct upload + list", () => {
     expect(response.status).toBe(400);
     expect((await response.json()).error.code).toBe("FORMAT_UNSUPPORTED");
     expect(await prisma.job.count()).toBe(0);
+  });
+
+  it("returns Retry-After when the upload-intent quota is exhausted", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await uploadsPost(
+        new Request("http://test.local/api/uploads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: `attempt-${attempt}.mp4`,
+            sizeBytes: 4,
+            mime: "video/mp4",
+          }),
+        }),
+      );
+      expect(response.status).toBe(201);
+    }
+
+    const blocked = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "blocked.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
 
   it("complete rejects a missing object with 409 UPLOAD_INCOMPLETE", async () => {

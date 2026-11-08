@@ -20,7 +20,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
     const { id } = await context.params;
-    const limit = consumeRateLimit(`job-retry:${session.user.id}:${id}`, 5, 60_000);
+    const limit = await consumeRateLimit(`job-retry:${session.user.id}:${id}`, 5, 60_000);
     if (!limit.allowed) {
       const response = errorResponse(
         "RATE_LIMITED",

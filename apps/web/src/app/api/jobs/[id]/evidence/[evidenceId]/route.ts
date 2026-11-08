@@ -45,7 +45,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     if (!Number.isSafeInteger(evidenceId) || evidenceId < 1) {
       return errorResponse("VALIDATION_ERROR", "Evidence id must be a positive integer");
     }
-    const limit = consumeRateLimit(
+    const limit = await consumeRateLimit(
       `evidence-review:${session.user.id}:${id}`,
       30,
       60_000,

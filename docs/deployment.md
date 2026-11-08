@@ -17,7 +17,13 @@ export STORAGE_S3_ACCESS_KEY_ID='...'
 export STORAGE_S3_SECRET_ACCESS_KEY='...'
 export WORKER_API_TOKEN='a-separate-long-random-secret'
 export APP_BASE_URL='https://your-app.example'
+export RATE_LIMIT_BACKEND='database'
+export RATE_LIMIT_FAILURE_MODE='open'
 ```
+
+Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
+same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
+during a limiter outage is safer for your deployment than allowing it.
 
 Create the GitHub OAuth app with the callback URL:
 

@@ -104,4 +104,29 @@ describe("retentionSweep (jobs.md B9)", () => {
     expect(await prisma.uploadIntent.count()).toBe(0);
     expect(await storage.get(tempKey)).toBeNull();
   });
+
+  it("removes long-expired rate-limit buckets", async () => {
+    await prisma.rateLimitBucket.create({
+      data: {
+        key: "expired",
+        count: 1,
+        resetAt: new Date(Date.now() - 2 * DAY),
+      },
+    });
+    await prisma.rateLimitBucket.create({
+      data: {
+        key: "active",
+        count: 1,
+        resetAt: new Date(Date.now() + DAY),
+      },
+    });
+
+    await retentionSweep();
+    expect(
+      await prisma.rateLimitBucket.findUnique({ where: { key: "expired" } }),
+    ).toBeNull();
+    expect(
+      await prisma.rateLimitBucket.findUnique({ where: { key: "active" } }),
+    ).not.toBeNull();
+  });
 });

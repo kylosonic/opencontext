@@ -15,7 +15,7 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
-    const limit = consumeRateLimit(`upload-cancel:${session.user.id}`, 30, 60_000);
+    const limit = await consumeRateLimit(`upload-cancel:${session.user.id}`, 30, 60_000);
     if (!limit.allowed) {
       const response = errorResponse("RATE_LIMITED", "Too many upload cancellations");
       response.headers.set("Retry-After", String(limit.retryAfterSec));

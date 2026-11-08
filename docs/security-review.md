@@ -21,10 +21,11 @@ work. It is not a penetration-test report.
 - **FFmpeg arguments:** subprocesses use list arguments with no shell. Media
   paths are passed as values to `-i`; option-like filenames cannot become
   commands. Automated tests pin this behavior.
-- **Rate limiting:** upload intent creation, upload completion, retries, and
-  evidence review are rate limited per user. The built-in limiter is
-  per-process; distributed production deployments should also configure
-  platform or WAF limits.
+- **Rate limiting:** upload intent creation, completion, cancellation, retries,
+  and evidence review are rate limited per user. `memory` is the local
+  single-instance default; `database` shares fixed-window quotas through the
+  application database for multi-instance deployments. Backend failure can be
+  configured fail-open or fail-closed, and platform/WAF limits remain useful.
 - **Temporary files:** worker jobs use isolated temporary directories and
   best-effort cleanup. Upload intents expire and are swept with their objects.
 - **Direct transfer:** production media bytes go directly to object storage;
