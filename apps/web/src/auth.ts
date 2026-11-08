@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/server/db/prisma";
 import { authConfig } from "@/auth.config";
+import { devAuthProviders } from "@/auth-dev";
 
 /**
  * Full Auth.js v5 instance. The Prisma adapter persists OAuth accounts;
@@ -14,6 +15,7 @@ import { authConfig } from "@/auth.config";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   ...authConfig,
+  providers: [...authConfig.providers, ...devAuthProviders()],
   events: {
     async signIn({ user, account, profile }) {
       if (account?.provider !== "github") {

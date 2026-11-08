@@ -8,10 +8,12 @@ from oc_worker.providers.text.ollama import OllamaTextProvider
 from oc_worker.providers.text.openai_compatible import OpenAICompatibleTextProvider
 from oc_worker.providers.text.template import TemplateTextProvider
 from oc_worker.providers.transcription.base import TranscriptionProvider
+from oc_worker.providers.transcription.fixture import FixtureTranscriptionProvider
 from oc_worker.providers.transcription.openai_compatible import (
     OpenAICompatibleTranscriptionProvider,
 )
 from oc_worker.providers.vision.base import VisionProvider
+from oc_worker.providers.vision.fixture import FixtureVisionProvider
 from oc_worker.providers.vision.ollama import OllamaVisionProvider
 from oc_worker.providers.vision.openai_compatible import OpenAICompatibleVisionProvider
 
@@ -21,6 +23,8 @@ def build_transcription(settings: Settings) -> TranscriptionProvider | None:
     provider = settings.transcription_provider.lower()
     if provider in ("", "none", "off"):
         return None
+    if provider == "fixture":
+        return FixtureTranscriptionProvider()
     if provider == "faster_whisper":
         from oc_worker.providers.transcription.faster_whisper import (
             FasterWhisperTranscriptionProvider,
@@ -41,6 +45,8 @@ def build_vision(settings: Settings) -> VisionProvider | None:
     provider = settings.vision_provider.lower()
     if provider in ("", "none", "off"):
         return None
+    if provider == "fixture":
+        return FixtureVisionProvider()
     if provider == "ollama":
         return OllamaVisionProvider(
             base_url=settings.ollama_base_url, model=settings.vision_model

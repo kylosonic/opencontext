@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "postinstall": "prisma generate",
+    "prisma:generate:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma generate --schema prisma/.generated/schema.prisma",
+    "prisma:push:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma db push --schema prisma/.generated/schema.prisma --skip-generate",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

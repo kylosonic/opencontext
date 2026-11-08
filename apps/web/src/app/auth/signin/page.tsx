@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth, signIn } from "@/auth";
-import { authGithubConfigured } from "@opencontext/config";
+import { authGithubConfigured, devAuthEnabled } from "@opencontext/config";
 
 /**
  * Custom sign-in page (Auth.js v5). Offers "Sign in with GitHub" when the
@@ -16,6 +16,7 @@ export default async function SignInPage({
   const session = await auth();
   const { callbackUrl, error } = await searchParams;
   const configured = authGithubConfigured();
+  const localDev = devAuthEnabled();
 
   // Open-redirect guard: only allow same-origin relative destinations.
   const safeCallbackUrl =
@@ -43,7 +44,9 @@ export default async function SignInPage({
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
         <p className="text-sm text-zinc-500">
-          Creating and viewing jobs requires a GitHub account.
+          {localDev
+            ? "Use the local development identity for this checkout, or sign in with GitHub when configured."
+            : "Creating and viewing jobs requires a GitHub account."}
         </p>
       </div>
 
@@ -73,11 +76,30 @@ export default async function SignInPage({
           </button>
         </form>
       ) : (
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-          Sign-in is not configured on this deployment. You can continue
-          browsing the public pages and the demo.
-        </div>
+        !localDev ? (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+            Sign-in is not configured on this deployment. You can continue
+            browsing the public pages and the demo.
+          </div>
+        ) : null
       )}
+
+      {localDev ? (
+        <form
+          action={async () => {
+            "use server";
+            await signIn("local-dev", { redirectTo: safeCallbackUrl });
+          }}
+          className="w-full"
+        >
+          <button
+            type="submit"
+            className="w-full rounded-lg border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50"
+          >
+            Continue as local user
+          </button>
+        </form>
+      ) : null}
 
       <Link
         href="/"
