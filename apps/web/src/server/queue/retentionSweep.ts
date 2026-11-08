@@ -46,5 +46,15 @@ export async function retentionSweep(): Promise<RetentionSweepResult> {
     deleted += 1;
   }
 
-  return { scanned: expired.length, deleted };
+  const expiredIntents = await prisma.uploadIntent.findMany({
+    where: { expiresAt: { lte: new Date(now) } },
+    select: { id: true, tempKey: true },
+  });
+  for (const intent of expiredIntents) {
+    await storage.delete(intent.tempKey).catch(() => undefined);
+    await prisma.uploadIntent.delete({ where: { id: intent.id } });
+    deleted += 1;
+  }
+
+  return { scanned: expired.length + expiredIntents.length, deleted };
 }

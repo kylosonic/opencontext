@@ -11,8 +11,20 @@ describe("validateUpload (upload.md B1 — authoritative server gate)", () => {
       expect(result.ok, extension).toBe(true);
       if (result.ok) {
         expect(result.extension).toBe(extension.slice(1).toLowerCase());
+        expect(result.mime).toMatch(/^video\//);
       }
     }
+  });
+
+  it("accepts a matching declared media type", () => {
+    expect(validateUpload("video.mp4", 1000, "video/mp4").ok).toBe(true);
+    expect(validateUpload("video.mkv", 1000, "video/x-matroska").ok).toBe(true);
+  });
+
+  it("rejects unsupported or mismatched media types", () => {
+    expect(validateUpload("video.mp4", 1000, "text/plain").ok).toBe(false);
+    expect(validateUpload("video.mp4", 1000, "video/webm").ok).toBe(false);
+    expect(validateUpload("video.mov", 1000, "video/mp4").ok).toBe(false);
   });
 
   it("rejects unsupported formats with FORMAT_UNSUPPORTED", () => {

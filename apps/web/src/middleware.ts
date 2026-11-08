@@ -34,5 +34,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/app/:path*", "/api/jobs/:path*"],
+  matcher: ["/app/:path*", "/api/jobs/:path*", "/api/uploads/:path*"],
 };

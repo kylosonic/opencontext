@@ -12,6 +12,11 @@ export interface PutOptions {
   sizeBytes: number;
 }
 
+export interface StoredObjectInfo {
+  sizeBytes: number;
+  contentType: string | null;
+}
+
 export interface Storage {
   readonly provider: StorageProviderKind;
 
@@ -23,6 +28,9 @@ export interface Storage {
 
   /** Read the full object (bounded by callers to known-size objects). */
   get(key: string): Promise<Uint8Array | null>;
+
+  /** Return stored-object metadata without downloading the body. */
+  head(key: string): Promise<StoredObjectInfo | null>;
 
   /** Open a streaming read. Returns null when the object does not exist. */
   stream(key: string): Promise<ReadableStream<Uint8Array> | null>;
@@ -40,6 +48,16 @@ export interface Storage {
    * with the worker token instead).
    */
   presign(key: string, expiresInSec?: number): Promise<string | null>;
+
+  /**
+   * Presigned direct upload URL. Local disk returns null and the route
+   * provides a session-authenticated proxy URL instead.
+   */
+  presignPut(
+    key: string,
+    contentType: string,
+    expiresInSec?: number,
+  ): Promise<string | null>;
 
   delete(key: string): Promise<void>;
 

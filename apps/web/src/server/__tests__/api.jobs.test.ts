@@ -8,7 +8,10 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const { authMock } = vi.hoisted(() => ({ authMock: { auth: vi.fn() } }));
 vi.mock("@/auth", () => ({ auth: authMock.auth }));
 
-import { GET as apiJobsGet, POST as apiJobsPost } from "@/app/api/jobs/route";
+import { GET as apiJobsGet } from "@/app/api/jobs/route";
+import { POST as uploadsPost } from "@/app/api/uploads/route";
+import { PUT as uploadBodyPut } from "@/app/api/uploads/[id]/body/route";
+import { POST as uploadCompletePost } from "@/app/api/uploads/[id]/complete/route";
 import {
   GET as apiJobGet,
   DELETE as apiJobDelete,
@@ -18,6 +21,7 @@ import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
 import { initialStageStates } from "@/server/jobs";
 import { createUser, resetDatabase, resetStorage } from "./helpers";
+import { resetRateLimits } from "@/server/security/rate-limit";
 
 function asUser(userId: string): void {
   authMock.auth.mockResolvedValue({ user: { id: userId, name: "Test User" } });
@@ -50,6 +54,7 @@ beforeEach(async () => {
   authMock.auth.mockReset();
   await resetDatabase();
   await resetStorage();
+  resetRateLimits();
 });
 
 describe("401 — anonymous callers", () => {
@@ -62,9 +67,11 @@ describe("401 — anonymous callers", () => {
     });
   });
 
-  it("POST /api/jobs → 401 without a session", async () => {
+  it("POST /api/uploads → 401 without a session", async () => {
     asAnonymous();
-    const response = await apiJobsPost(new Request("http://test.local/api/jobs", { method: "POST" }));
+    const response = await uploadsPost(
+      new Request("http://test.local/api/uploads", { method: "POST" }),
+    );
     expect(response.status).toBe(401);
   });
 
@@ -80,22 +87,52 @@ describe("401 — anonymous callers", () => {
   });
 });
 
-describe("create + list (POST/GET /api/jobs)", () => {
-  it("POST multipart creates a job and returns 201 summary", async () => {
+describe("direct upload + list", () => {
+  it("intent → local PUT → complete creates a queued job", async () => {
     const user = await createUser();
     asUser(user.id);
 
-    const form = new FormData();
-    form.set("file", new File([new Uint8Array([1, 2, 3, 4])], "banking demo (final).mp4", { type: "video/mp4" }));
-    form.set("detailLevel", "HIGH");
-    const request = new Request("http://test.local/api/jobs", {
-      method: "POST",
-      body: form,
-    });
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "banking demo (final).mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+          detailLevel: "HIGH",
+        }),
+      }),
+    );
+    expect(intentResponse.status).toBe(201);
+    const intent = (await intentResponse.json()) as {
+      uploadId: string;
+      url: string;
+      headers: Record<string, string>;
+    };
+    expect(intent.url).toBe(`/api/uploads/${intent.uploadId}/body`);
 
-    const response = await apiJobsPost(request);
-    expect(response.status).toBe(201);
-    const summary = await response.json();
+    const putResponse = await uploadBodyPut(
+      new Request(`http://test.local${intent.url}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": intent.headers["Content-Type"],
+          "Content-Length": "4",
+        },
+        body: new Uint8Array([1, 2, 3, 4]),
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(putResponse.status).toBe(204);
+
+    const completeResponse = await uploadCompletePost(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`, {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(completeResponse.status).toBe(201);
+    const summary = await completeResponse.json();
     expect(summary.id).toBeTruthy();
     expect(summary.displayName).toBe("banking demo (final).mp4");
     expect(summary.status).toBe("QUEUED");
@@ -111,14 +148,153 @@ describe("create + list (POST/GET /api/jobs)", () => {
   it("POST rejects an unsupported format with 400 FORMAT_UNSUPPORTED", async () => {
     const user = await createUser();
     asUser(user.id);
-    const form = new FormData();
-    form.set("file", new File([new Uint8Array([1, 2])], "notes.txt", { type: "text/plain" }));
-    const response = await apiJobsPost(
-      new Request("http://test.local/api/jobs", { method: "POST", body: form }),
+    const response = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "notes.txt",
+          sizeBytes: 2,
+          mime: "text/plain",
+        }),
+      }),
     );
     expect(response.status).toBe(400);
     expect((await response.json()).error.code).toBe("FORMAT_UNSUPPORTED");
     expect(await prisma.job.count()).toBe(0);
+  });
+
+  it("complete rejects a missing object with 409 UPLOAD_INCOMPLETE", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "missing.mp4",
+          sizeBytes: 5,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = await intentResponse.json();
+    const response = await uploadCompletePost(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("UPLOAD_INCOMPLETE");
+  });
+
+  it("non-owner cannot upload into or complete another user's intent", async () => {
+    const owner = await createUser();
+    const intruder = await createUser();
+    asUser(owner.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "owned.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = await intentResponse.json();
+
+    asUser(intruder.id);
+    const putResponse = await uploadBodyPut(
+      new Request(`http://test.local${intent.url}`, {
+        method: "PUT",
+        headers: { "Content-Type": "video/mp4" },
+        body: new Uint8Array([1, 2, 3, 4]),
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(putResponse.status).toBe(403);
+    const completeResponse = await uploadCompletePost(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(completeResponse.status).toBe(403);
+  });
+
+  it("rejects an expired intent with 410 UPLOAD_EXPIRED", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "expired.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = await intentResponse.json();
+    await prisma.uploadIntent.update({
+      where: { id: intent.uploadId },
+      data: { expiresAt: new Date(Date.now() - 1_000) },
+    });
+
+    const response = await uploadCompletePost(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(response.status).toBe(410);
+    expect((await response.json()).error.code).toBe("UPLOAD_EXPIRED");
+  });
+
+  it("rejects a local body whose byte count differs from the intent", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "short.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = await intentResponse.json();
+    const response = await uploadBodyPut(
+      new Request(`http://test.local${intent.url}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "video/mp4",
+          "Content-Length": "3",
+        },
+        body: new Uint8Array([1, 2, 3]),
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("UPLOAD_INCOMPLETE");
+  });
+
+  it("rejects a declared MIME type that disagrees with the extension", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const response = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "video.mp4",
+          sizeBytes: 10,
+          mime: "video/webm",
+        }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("do not match");
   });
 
   it("GET lists only the caller's jobs, newest first", async () => {

@@ -14,7 +14,9 @@ import {
 const { authMock } = vi.hoisted(() => ({ authMock: { auth: vi.fn() } }));
 vi.mock("@/auth", () => ({ auth: authMock.auth }));
 
-import { POST as apiJobsPost } from "@/app/api/jobs/route";
+import { POST as uploadsPost } from "@/app/api/uploads/route";
+import { PUT as uploadBodyPut } from "@/app/api/uploads/[id]/body/route";
+import { POST as uploadCompletePost } from "@/app/api/uploads/[id]/complete/route";
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
 import { jobToDetail } from "@/server/jobs";
@@ -22,6 +24,7 @@ import { applyProgress, applyStageResult, getWorkerSourceInfo, storeArtifact } f
 import { claimJob, completeJob, failJob } from "@/server/queue";
 import { createUser, resetDatabase, resetStorage } from "./helpers";
 import { findWorkerPython, REPO_ROOT, workerPythonEnv } from "./python-process";
+import { resetRateLimits } from "@/server/security/rate-limit";
 
 const python = findWorkerPython();
 const ffmpeg = (() => {
@@ -256,6 +259,7 @@ beforeEach(async () => {
   authMock.auth.mockReset();
   await resetDatabase();
   await resetStorage();
+  resetRateLimits();
 });
 
 afterEach(async () => {
@@ -273,11 +277,41 @@ describe.skipIf(!python || !ffmpeg)("local end-to-end job", () => {
     generateFixture(fixturePath);
     const source = readFileSync(fixturePath);
 
-    const form = new FormData();
-    form.set("file", new File([source], "fixture.mp4", { type: "video/mp4" }));
-    form.set("detailLevel", "MEDIUM");
-    const upload = await apiJobsPost(
-      new Request("http://test.local/api/jobs", { method: "POST", body: form }),
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "fixture.mp4",
+          sizeBytes: source.length,
+          mime: "video/mp4",
+          detailLevel: "MEDIUM",
+        }),
+      }),
+    );
+    expect(intentResponse.status).toBe(201);
+    const intent = (await intentResponse.json()) as {
+      uploadId: string;
+      url: string;
+      headers: Record<string, string>;
+    };
+    const putResponse = await uploadBodyPut(
+      new Request(`http://test.local${intent.url}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": intent.headers["Content-Type"],
+          "Content-Length": String(source.length),
+        },
+        body: new Uint8Array(source),
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(putResponse.status).toBe(204);
+    const upload = await uploadCompletePost(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`, {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
     );
     expect(upload.status).toBe(201);
     const summary = (await upload.json()) as { id: string; status: string };

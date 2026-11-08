@@ -66,6 +66,18 @@ export class LocalDiskStorage implements Storage {
     }
   }
 
+  async head(key: string) {
+    try {
+      const info = await stat(this.resolve(key));
+      return { sizeBytes: info.size, contentType: null };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async stream(key: string): Promise<ReadableStream<Uint8Array> | null> {
     const target = this.resolve(key);
     try {
@@ -102,6 +114,17 @@ export class LocalDiskStorage implements Storage {
 
   async presign(_key: string, _expiresInSec?: number): Promise<string | null> {
     void _key;
+    void _expiresInSec;
+    return null;
+  }
+
+  async presignPut(
+    _key: string,
+    _contentType: string,
+    _expiresInSec?: number,
+  ): Promise<string | null> {
+    void _key;
+    void _contentType;
     void _expiresInSec;
     return null;
   }

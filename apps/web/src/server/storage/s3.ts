@@ -58,6 +58,23 @@ export class S3Storage implements Storage {
     }
   }
 
+  async head(key: string) {
+    try {
+      const response = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.config.bucket, Key: key }),
+      );
+      return {
+        sizeBytes: response.ContentLength ?? 0,
+        contentType: response.ContentType ?? null,
+      };
+    } catch (error) {
+      if (isNotFound(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   async stream(key: string): Promise<ReadableStream<Uint8Array> | null> {
     const response = await this.client.send(
       new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
@@ -82,6 +99,22 @@ export class S3Storage implements Storage {
     return getSignedUrl(
       this.client,
       new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
+      { expiresIn: expiresInSec },
+    );
+  }
+
+  async presignPut(
+    key: string,
+    contentType: string,
+    expiresInSec = 900,
+  ): Promise<string | null> {
+    return getSignedUrl(
+      this.client,
+      new PutObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        ContentType: contentType,
+      }),
       { expiresIn: expiresInSec },
     );
   }

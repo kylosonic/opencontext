@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
 import { getJob } from "@/server/jobs";
+import { consumeRateLimit } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,19 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     const evidenceId = Number(rawEvidenceId);
     if (!Number.isSafeInteger(evidenceId) || evidenceId < 1) {
       return errorResponse("VALIDATION_ERROR", "Evidence id must be a positive integer");
+    }
+    const limit = consumeRateLimit(
+      `evidence-review:${session.user.id}:${id}`,
+      30,
+      60_000,
+    );
+    if (!limit.allowed) {
+      const response = errorResponse(
+        "RATE_LIMITED",
+        "Too many evidence review updates — wait a moment and try again",
+      );
+      response.headers.set("Retry-After", String(limit.retryAfterSec));
+      return response;
     }
 
     const jobResult = await getJob(id, session.user.id);

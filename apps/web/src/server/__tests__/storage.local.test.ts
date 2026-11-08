@@ -52,6 +52,17 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
     expect(await storage.stream("jobs/missing/source.mp4")).toBeNull();
   });
 
+  it("head returns size without downloading and null when missing", async () => {
+    await storage.put("jobs/head/source.mp4", testStream(), {
+      sizeBytes: TEST_BYTES.length,
+    });
+    expect(await storage.head("jobs/head/source.mp4")).toEqual({
+      sizeBytes: TEST_BYTES.length,
+      contentType: null,
+    });
+    expect(await storage.head("jobs/head/missing.mp4")).toBeNull();
+  });
+
   it("move relocates an object (rename semantics)", async () => {
     await storage.put("incoming/tmp", testStream(), { sizeBytes: TEST_BYTES.length });
     await storage.move("incoming/tmp", "jobs/j3/source.mp4");
@@ -89,6 +100,7 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
   it("presign returns null (local media is served via the worker media route)", async () => {
     await storage.put("x.bin", testStream(), { sizeBytes: TEST_BYTES.length });
     expect(await storage.presign("x.bin")).toBeNull();
+    expect(await storage.presignPut("x.bin", "application/octet-stream")).toBeNull();
   });
 
   it("writes real files under the root", async () => {

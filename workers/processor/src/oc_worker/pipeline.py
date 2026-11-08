@@ -387,7 +387,9 @@ class Pipeline:
         detail_level = DetailLevel(str(job.get("detailLevel") or "MEDIUM").upper())
         started = time.monotonic()
         try:
-            with tempfile.TemporaryDirectory(prefix=f"oc-worker-{job_id}-") as tmp:
+            with tempfile.TemporaryDirectory(
+                prefix="oc-worker-", ignore_cleanup_errors=True
+            ) as tmp:
                 workdir = Path(tmp)
                 resume_extracting = self._done(job, "EXTRACTING")
                 probe_data, audio_path, frames = self._extracting(job, workdir, resume_extracting)

@@ -7,10 +7,21 @@ import { UPLOAD_LIMITS, type ErrorCode } from "@opencontext/schemas";
  */
 
 export type UploadValidation =
-  | { ok: true; extension: string }
+  | { ok: true; extension: string; mime: string }
   | { ok: false; code: ErrorCode; message: string };
 
-export function validateUpload(filename: string, sizeBytes: number): UploadValidation {
+const MIME_BY_EXTENSION: Record<string, string> = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+};
+
+export function validateUpload(
+  filename: string,
+  sizeBytes: number,
+  mime?: string | null,
+): UploadValidation {
   if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
     return {
       ok: false,
@@ -48,7 +59,27 @@ export function validateUpload(filename: string, sizeBytes: number): UploadValid
       message: "This format is not supported — use MP4, MOV, WebM, or MKV",
     };
   }
-  return { ok: true, extension: extension.slice(1) };
+  const normalizedExtension = extension.slice(1);
+  const inferredMime = MIME_BY_EXTENSION[normalizedExtension];
+  const normalizedMime = mime?.trim().toLowerCase() || inferredMime;
+  if (
+    !normalizedMime ||
+    !(UPLOAD_LIMITS.allowedMimeTypes as readonly string[]).includes(normalizedMime)
+  ) {
+    return {
+      ok: false,
+      code: "FORMAT_UNSUPPORTED",
+      message: "This file does not have a supported video media type",
+    };
+  }
+  if (normalizedMime !== inferredMime) {
+    return {
+      ok: false,
+      code: "FORMAT_UNSUPPORTED",
+      message: "The file extension and media type do not match",
+    };
+  }
+  return { ok: true, extension: normalizedExtension, mime: normalizedMime };
 }
 
 const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;

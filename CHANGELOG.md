@@ -10,6 +10,8 @@ All notable changes are documented here. The project follows
 - Docker Compose stack for web, worker, and PostgreSQL.
 - Standalone `opencontext analyze` CLI.
 - Publishable `opencontext-video` Python package and `@opencontext/schemas` npm package.
+- Patched reachable npm dependency advisories and documented the remaining
+  development-tool audit findings.
 
 ## 0.1.0 - 2026-11-03
 

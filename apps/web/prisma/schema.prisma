@@ -83,9 +83,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts Account[]
-  sessions Session[]
-  jobs     Job[]
+  accounts      Account[]
+  sessions      Session[]
+  jobs          Job[]
+  uploadIntents UploadIntent[]
 }
 
 model Account {
@@ -127,17 +128,17 @@ model VerificationToken {
 // ─── Pipeline ────────────────────────────────────────────────────────────────
 
 model Job {
-  id          String       @id @default(cuid())
+  id          String      @id @default(cuid())
   userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName String
-  status      JobStatus    @default(QUEUED)
-  detailLevel DetailLevel  @default(MEDIUM)
-  progress    Int          @default(0)
+  status      JobStatus   @default(QUEUED)
+  detailLevel DetailLevel @default(MEDIUM)
+  progress    Int         @default(0)
   error       String?
   errorStage  StageName?
-  failureKind FailureKind  @default(NONE)
-  retryCount  Int          @default(0)
+  failureKind FailureKind @default(NONE)
+  retryCount  Int         @default(0)
 
   // Single authority for stage completion (blueprint §1; powers B4/B5 resume).
   // Required (no DB default) — the jobs layer always writes the 5-stage array.
@@ -145,10 +146,10 @@ model Job {
 
   // Queue fields (ADR-0001): claimedBy is the worker id; leaseUntil is the
   // visibility timeout; availableAt delays re-claim for auto-retry backoff.
-  claimedBy  String?
-  leaseUntil DateTime?
+  claimedBy   String?
+  leaseUntil  DateTime?
   availableAt DateTime?
-  attempts   Int       @default(0)
+  attempts    Int       @default(0)
 
   // Source probe metadata (set by EXTRACTING stage-result).
   sourceKey    String?
@@ -164,8 +165,8 @@ model Job {
   // keep their timeline viewable even when GENERATING_CONTEXT never ran.
   timeline Json?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   completedAt DateTime?
 
   media        Media[]
@@ -194,6 +195,22 @@ model Media {
   @@index([jobId, kind])
 }
 
+model UploadIntent {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tempKey     String      @unique
+  filename    String
+  sourceExt   String
+  sizeBytes   Int
+  mime        String
+  detailLevel DetailLevel @default(MEDIUM)
+  expiresAt   DateTime
+  createdAt   DateTime    @default(now())
+
+  @@index([userId, expiresAt])
+}
+
 model TranscriptSegment {
   id        String   @id @default(cuid())
   jobId     String
@@ -208,22 +225,22 @@ model TranscriptSegment {
 }
 
 model VisualObservation {
-  id                String    @id @default(cuid())
-  jobId             String
-  job               Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  frameId           String?
-  timestampSec      Float
-  certainty         Certainty @default(OBSERVED)
-  sceneTitle        String?
-  visualDescription String?
-  uiElements        Json
-  visibleText       Json
-  interactions      Json
-  layoutDescription String?
+  id                 String    @id @default(cuid())
+  jobId              String
+  job                Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  frameId            String?
+  timestampSec       Float
+  certainty          Certainty @default(OBSERVED)
+  sceneTitle         String?
+  visualDescription  String?
+  uiElements         Json
+  visibleText        Json
+  interactions       Json
+  layoutDescription  String?
   designObservations Json
-  importantChanges  Json
-  provider          String?
-  createdAt         DateTime  @default(now())
+  importantChanges   Json
+  provider           String?
+  createdAt          DateTime  @default(now())
 
   @@index([jobId, timestampSec])
 }
