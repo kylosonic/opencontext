@@ -35,6 +35,11 @@ All notable changes are documented here. The project follows
   endpoints.
 - Added opt-in real Ollama vision smoke coverage plus packaged-container and
   full Compose upload-to-export CI jobs.
+- Added deterministic repository-aware implementation briefs and a local MCP
+  server exposing analysis, brief generation, and evidence lookup to coding
+  agents.
+- Added a reproducible model-quality evaluation harness with transcript,
+  OCR, visual recall, provenance, licensing, and measurement-kind reporting.
 
 ## 0.1.0 - 2026-11-03
 

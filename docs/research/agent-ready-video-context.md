@@ -12,7 +12,10 @@ Research date: 2026-11-03
 
 OpenContext should lead with an evidence-linked developer handoff rather than a generic video chat. Preserve the existing Markdown and JSON exports, then attach a stable evidence ID, timestamp, and certainty to each atomic extracted claim. In the results viewer, citations and timeline ranges seek to the source video when playback is available. Keep interactions explicitly inferred.
 
-This is an additive improvement to the existing product contract. MCP connections, repository-aware briefs, and CI replay remain candidates for later slices; they need their own auth, security, and deployment design.
+This is an additive improvement to the existing product contract. A local MCP
+server and repository-aware implementation briefs are implemented; hosted
+connections and CI replay still require separate auth, security, and deployment
+design.
 
 ## Implemented
 
@@ -21,3 +24,7 @@ This is an additive improvement to the existing product contract. MCP connection
 - Job owners can confirm or flag evidence claims and export reviewer notes or suggested corrections without replacing the original extracted text.
 - Context viewer evidence markers and timeline ranges seek the source player; when media streaming is unavailable, the selected timestamp is still shown.
 - Open-source site copy and the project status notes describe the current implementation and verification work accurately.
+- Deterministic implementation briefs combine evidence with repository
+  technology signals without uploading repository contents.
+- A local stdio MCP server exposes analysis, brief generation, and evidence
+  lookup to coding agents.

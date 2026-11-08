@@ -10,7 +10,7 @@ about the current Vercel deployment or future releases.
 - Web lint, typecheck, and production build pass. The local suite reports 113
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
-- Worker Ruff passes with 199 tests; real Tesseract and Ollama smoke tests are
+- Worker Ruff passes with 208 tests; real Tesseract and Ollama smoke tests are
   skipped locally unless their binaries/models and opt-in flags are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
   generated speech with no cloud credentials.
@@ -35,6 +35,13 @@ about the current Vercel deployment or future releases.
 - The public API error catalog is generated from the shared contract and has a
   drift test. Owner-only Markdown and JSON result exports are available through
   `/api/jobs/[id]/export`.
+- `opencontext brief` turns context JSON into a repository-aware implementation
+  prompt while preserving evidence IDs and separating uncertain claims.
+- The `opencontext-mcp` stdio server exposes local video analysis, implementation
+  brief generation, and bounded evidence lookup to coding agents.
+- `opencontext evaluate` computes transcript WER/CER, OCR precision/recall/F1,
+  and visual keyword recall against a versioned synthetic dataset, while keeping
+  fixture baselines, smoke tests, and measured model runs separately labeled.
 - Python wheel and sdist build; `twine check` passes.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - Prisma 7.10.1 uses driver adapters for SQLite and PostgreSQL; the migration

@@ -34,13 +34,18 @@ Issues = "https://github.com/kylosonic/opencontext/issues"
 
 [project.scripts]
 opencontext = "oc_worker.cli:main"
+opencontext-mcp = "oc_worker.mcp_server:main"
 
 [project.optional-dependencies]
 dev = [
   "build",
+  "mcp>=2.3,<3",
   "pytest",
   "ruff",
   "twine",
+]
+agent = [
+  "mcp>=2.3,<3",
 ]
 local = [
   "faster-whisper",
