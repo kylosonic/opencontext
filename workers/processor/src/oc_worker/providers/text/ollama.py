@@ -38,11 +38,13 @@ class OllamaTextProvider:
         *,
         base_url: str,
         model: str,
+        session_id: str | None = None,
         timeout: float = 300.0,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.session_id = session_id
         self._client = client or httpx.Client(timeout=timeout)
 
     def refine(self, payload: dict[str, Any], baseline_markdown: str) -> str:

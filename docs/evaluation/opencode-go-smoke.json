@@ -1,0 +1,305 @@
+{
+  "evidence": [
+    {
+      "certainty": "OBSERVED",
+      "endSec": 1.0,
+      "id": 1,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 0
+      },
+      "text": "Deterministic fixture transcription (no speech model used).",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 2,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 0
+      },
+      "text": "SMPTE Color Bars Test Pattern with Timecode Overlay",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 3,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 1
+      },
+      "text": "A full-screen SMPTE-style color bar test pattern with vertical stripes of red, green, yellow, blue, magenta, and cyan. A diagonal rainbow gradient beam crosses from upper-left to mid-right. A digital timecode display reading 00:00:00.000 appears in the top-left corner, and small cyan squares and a checkered pattern appear over the blue and magenta bars.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 4,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 2
+      },
+      "text": "Six equal-width vertical color bars fill the frame. The timecode readout sits in a small dark box at the top-left. A thin diagonal rainbow beam spans from the top-left toward the right edge, and decorative cyan squares and a checkerboard cluster overlay the right-center area.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 5,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 0
+      },
+      "text": "Timecode display",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 6,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 1
+      },
+      "text": "Color bar stripes",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 7,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 2
+      },
+      "text": "Diagonal gradient beam",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 8,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 3
+      },
+      "text": "Cyan square markers",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 9,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 4
+      },
+      "text": "Checkered pattern overlay",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "INFERRED",
+      "id": 10,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "interactions",
+        "index": 0
+      },
+      "text": "No user interaction is visible; the frame shows a static test pattern at timecode zero",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 11,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 0
+      },
+      "text": "00:00:00.000",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 12,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 1
+      },
+      "text": "0",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 13,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "stateTransitions",
+        "index": 0
+      },
+      "text": "Frame is at timecode 00:00:00.000, indicating the start of the recording",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 14,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 0
+      },
+      "text": "graphics: Diagonal rainbow gradient beam and pixelated cyan accents",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 15,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 1
+      },
+      "text": "layout: Full-bleed vertical color bars",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 16,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 2
+      },
+      "text": "overlay: Digital timecode in top-left corner",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 17,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 3
+      },
+      "text": "purpose: Video calibration / fixture test pattern",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 18,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 2
+      },
+      "text": "00:00:00.000",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 19,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 3
+      },
+      "text": "0",
+      "timestampSec": 0.0
+    }
+  ],
+  "evidenceVersion": 1,
+  "formatVersion": 2,
+  "generatedAt": "2026-11-08T21:15:06+00:00",
+  "implementationObservations": [
+    {
+      "note": "graphics: Diagonal rainbow gradient beam and pixelated cyan accents",
+      "timestampSec": 0.0
+    },
+    {
+      "note": "layout: Full-bleed vertical color bars",
+      "timestampSec": 0.0
+    },
+    {
+      "note": "overlay: Digital timecode in top-left corner",
+      "timestampSec": 0.0
+    },
+    {
+      "note": "purpose: Video calibration / fixture test pattern",
+      "timestampSec": 0.0
+    }
+  ],
+  "interactions": [
+    "No user interaction is visible; the frame shows a static test pattern at timecode zero"
+  ],
+  "source": {
+    "detailLevel": "MEDIUM",
+    "durationSec": 3.0,
+    "name": "opencontext-fixture.mp4"
+  },
+  "stateTransitions": [
+    {
+      "change": "Frame is at timecode 00:00:00.000, indicating the start of the recording",
+      "timestampSec": 0.0
+    }
+  ],
+  "timeline": [
+    {
+      "end": 3.0,
+      "start": 0.0,
+      "summary": "A full-screen SMPTE-style color bar test pattern with vertical stripes of red, green, yellow, blue, magenta, and cyan. A diagonal rainbow gradient beam crosses from upper-left to mid-right. A digital timecode display reading 00:00:00.000 appears in the top-left corner, and small cyan squares and a checkered pattern appear over the blue and magenta bars.; changes: Frame is at timecode 00:00:00.000, indicating the start of the recording",
+      "title": "SMPTE Color Bars Test Pattern with Timecode Overlay"
+    }
+  ],
+  "transcript": [
+    {
+      "end": 1.0,
+      "start": 0.0,
+      "text": "Deterministic fixture transcription (no speech model used)."
+    }
+  ],
+  "uiHierarchy": [
+    "Timecode display",
+    "Color bar stripes",
+    "Diagonal gradient beam",
+    "Cyan square markers",
+    "Checkered pattern overlay"
+  ],
+  "visibleText": [
+    "00:00:00.000",
+    "0",
+    {
+      "confidence": null,
+      "text": "00:00:00.000",
+      "timestampSec": 0.0
+    },
+    {
+      "confidence": null,
+      "text": "0",
+      "timestampSec": 0.0
+    }
+  ],
+  "visualFindings": [
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "SMPTE Color Bars Test Pattern with Timecode Overlay",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A full-screen SMPTE-style color bar test pattern with vertical stripes of red, green, yellow, blue, magenta, and cyan. A diagonal rainbow gradient beam crosses from upper-left to mid-right. A digital timecode display reading 00:00:00.000 appears in the top-left corner, and small cyan squares and a checkered pattern appear over the blue and magenta bars.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Six equal-width vertical color bars fill the frame. The timecode readout sits in a small dark box at the top-left. A thin diagonal rainbow beam spans from the top-left toward the right edge, and decorative cyan squares and a checkerboard cluster overlay the right-center area.",
+      "timestampSec": 0.0
+    }
+  ]
+}

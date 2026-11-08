@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import httpx
@@ -127,3 +128,54 @@ def test_provider_transport_errors_are_transient(factory, tmp_path: Path) -> Non
 
     with pytest.raises(TransientFailure):
         _invoke(provider, tmp_path)
+
+
+def test_opencode_headers_and_string_fields_are_normalized() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.update({key.lower(): value for key, value in request.headers.items()})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "certainty": "high",
+                                    "sceneTitle": "Dashboard",
+                                    "visualDescription": "A chart",
+                                    "uiElements": "Export button",
+                                    "visibleText": "Export",
+                                    "interactions": "The user clicks Export",
+                                    "layoutDescription": "Single column",
+                                    "designObservations": "Rounded cards",
+                                    "importantChanges": "A toast appears",
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleVisionProvider(
+        base_url="https://opencode.ai/inference/go/openai/v1",
+        api_key="secret",
+        model="glm-5.3-flash",
+        session_id="session-123",
+        client=client,
+    )
+
+    observation = provider.analyze(b"frame", {"timestampSec": 0})
+
+    assert seen["x-opencode-session"] == "session-123"
+    assert seen["user-agent"] == "opencontext-video"
+    assert observation["certainty"] == "OBSERVED"
+    assert observation["uiElements"] == ["Export button"]
+    assert observation["visibleText"] == ["Export"]
+    assert observation["interactions"] == ["The user clicks Export"]
+    assert observation["designObservations"] == {"summary": "Rounded cards"}
+    assert observation["importantChanges"] == ["A toast appears"]

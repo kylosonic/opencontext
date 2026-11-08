@@ -6,7 +6,6 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 - Configure production GitHub OAuth, PostgreSQL, object storage, and a worker;
   run one deployed upload-to-export smoke test.
-- Validate one real job with a local Ollama vision model.
 - Publish the first Python and npm packages through protected environments.
 
 ## Next

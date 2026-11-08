@@ -40,6 +40,8 @@ All notable changes are documented here. The project follows
   agents.
 - Added a reproducible model-quality evaluation harness with transcript,
   OCR, visual recall, provenance, licensing, and measurement-kind reporting.
+- Added OpenCode Go API-key and session-header support and verified
+  `glm-5.3-flash` on a generated video with normalized evidence output.
 
 ## 0.1.0 - 2026-11-03
 

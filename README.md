@@ -81,6 +81,7 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   human-review metadata.
 - Generated-video end-to-end test from upload through worker output.
 - Real S3-compatible presigned upload/download coverage in CI.
+- OpenCode Go hosted vision smoke coverage with raw Markdown/JSON evidence.
 - Standalone `opencontext analyze`, `brief`, `evaluate`, and `doctor` CLI
   workflows with release-ready shared schemas.
 - Repository-aware implementation briefs and a local MCP server that expose
@@ -98,7 +99,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   PostgreSQL-backed web/worker job; adding that flow to CI remains on the
   roadmap.
 - Python and npm packages have not been published.
-- Real Ollama vision output has not been verified in this environment.
+- OpenCode Go vision passed a real synthetic-video smoke test; measured quality
+  across a real-world evaluation set remains pending.
 - A deployed production worker still needs an end-to-end run.
 - No independent penetration test has been performed.
 

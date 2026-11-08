@@ -52,3 +52,17 @@ The synthetic set does not establish real-world speech, OCR, or visual quality.
 A measured claim requires at least one documented real model run and published
 raw outputs. Small datasets have high variance and must not be presented as a
 broad model ranking.
+
+## OpenCode Go smoke result
+
+- Date: 2026-11-08
+- Endpoint: `https://opencode.ai/inference/go/openai/v1/chat/completions`
+- Model: `glm-5.3-flash`
+- Input: generated `opencontext-fixture.mp4` test pattern
+- Result: HTTP 200, 19 evidence records, three visual findings, and normalized
+  UI, interaction, visible-text, transition, and implementation observations
+- Raw output: [Markdown](opencode-go-smoke.md) and
+  [JSON](opencode-go-smoke.json)
+
+This proves hosted vision connectivity and output normalization for one
+synthetic video. It is labeled as a smoke result and is not a quality score.

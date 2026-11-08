@@ -118,7 +118,10 @@ the worker. Provider settings are read from the worker process environment.
 
 - `TRANSCRIPTION_PROVIDER=faster_whisper` runs speech recognition locally;
   install the `local` extra and allow the first model download.
-- `VISION_PROVIDER=ollama` uses a locally running Ollama server.
+- `VISION_PROVIDER=ollama` remains available for a local Ollama server.
+- `VISION_PROVIDER=openai_compatible` can call OpenCode Go with
+  `OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1`,
+  `OPENCODE_API_KEY`, and an image-capable `VISION_MODEL`.
 - `OCR_PROVIDER=tesseract` extracts text independently with the local
   Tesseract binary. `OCR_PROVIDER=vision` keeps the compatibility behavior of
   deriving OCR rows from the vision provider's `visibleText`.
@@ -131,20 +134,20 @@ The generated-video integration test is
 `tests/test_e2e_fixture.py`. It invokes real FFmpeg for probing, audio
 extraction, and frame extraction, while using fixture providers for inference.
 
-## Real Ollama smoke test
+## Real OpenCode Go vision smoke test
 
-The Ollama test is opt-in because it requires a downloaded vision model. Start
-Ollama, pull a vision model, and run:
+The hosted vision test is opt-in because it calls an external API:
 
 ```bash
-export OLLAMA_VISION_MODEL=qwen2.5vl:3b
-ollama pull "$OLLAMA_VISION_MODEL"
-OPENCONTEXT_OLLAMA_E2E=1 pytest tests/test_ollama_vision_smoke.py -q
+export OPENCODE_API_KEY=...
+export OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1
+export VISION_MODEL=glm-5.3-flash
+OPENCONTEXT_OPENCODE_E2E=1 pytest tests/test_opencode_vision_smoke.py -q
 ```
 
-The test generates a synthetic frame, records the selected model, and verifies
-that the provider returns a structured visual observation. It is a setup smoke
-test, not evidence of model quality.
+The test verifies the model catalog accepts image input, generates a synthetic
+frame, and checks the normalized visual response. It is a setup smoke test, not
+evidence of model quality.
 
 ## MCP server
 

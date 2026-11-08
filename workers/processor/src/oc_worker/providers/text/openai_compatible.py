@@ -8,7 +8,10 @@ from typing import Any
 import httpx
 
 from oc_worker.errors import TransientFailure
-from oc_worker.providers.http_status import raise_for_provider_status
+from oc_worker.providers.http_status import (
+    openai_compatible_headers,
+    raise_for_provider_status,
+)
 from oc_worker.providers.text.base import anchored_lines
 
 _SYSTEM_PROMPT = (
@@ -39,12 +42,14 @@ class OpenAICompatibleTextProvider:
         base_url: str,
         api_key: str,
         model: str,
+        session_id: str | None = None,
         timeout: float = 120.0,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+        self.session_id = session_id
         self._client = client or httpx.Client(timeout=timeout)
 
     def refine(self, payload: dict[str, Any], baseline_markdown: str) -> str:
@@ -68,7 +73,9 @@ class OpenAICompatibleTextProvider:
                 },
             ],
         }
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        headers = openai_compatible_headers(
+            self.api_key, self.base_url, self.session_id
+        )
         try:
             response = self._client.post(
                 f"{self.base_url}/chat/completions", headers=headers, json=body

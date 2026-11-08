@@ -7,6 +7,18 @@ import httpx
 from oc_worker.errors import PermanentFailure, TransientFailure
 
 
+def openai_compatible_headers(
+    api_key: str,
+    base_url: str,
+    session_id: str | None = None,
+) -> dict[str, str]:
+    headers = {"Authorization": f"Bearer {api_key}"}
+    if "opencode.ai" in base_url:
+        headers["x-opencode-session"] = session_id or "opencontext-local"
+        headers["User-Agent"] = "opencontext-video"
+    return headers
+
+
 def raise_for_provider_status(provider: str, response: httpx.Response) -> None:
     """Raise a retryable or permanent failure for an unsuccessful response."""
     status = response.status_code
