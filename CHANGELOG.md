@@ -12,6 +12,8 @@ All notable changes are documented here. The project follows
 - Publishable `opencontext-video` Python package and `@opencontext/schemas` npm package.
 - Patched reachable npm dependency advisories and documented the remaining
   development-tool audit findings.
+- Verified a real Faster Whisper transcription locally and pinned PyAV below
+  19 for compatibility with Faster Whisper 1.2.1.
 
 ## 0.1.0 - 2026-11-03
 

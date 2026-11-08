@@ -22,6 +22,10 @@ For local speech recognition:
 pip install "opencontext-video[local]"
 ```
 
+The `local` extra pins PyAV below 19 because Faster Whisper 1.2.1 still passes
+the removed `metadata_errors` argument to `av.open()`. Remove the pin after
+Faster Whisper publishes a release compatible with PyAV 19+.
+
 ## CLI
 
 Analyze a local video without running the web app or database:
