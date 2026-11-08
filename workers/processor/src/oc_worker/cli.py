@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 import tempfile
 from dataclasses import replace
@@ -25,6 +26,37 @@ from oc_worker.pipeline import MAX_DURATION_SECONDS, NOT_A_VIDEO_MESSAGE, TOO_LO
 from oc_worker.providers import build_text, build_transcription, build_vision
 
 log = logging.getLogger("oc_worker.cli")
+
+SUPPORTED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv"}
+
+
+def _expand_inputs(inputs: list[Path]) -> list[Path]:
+    """Expand directories into a stable list of supported video files."""
+    videos: list[Path] = []
+    for item in inputs:
+        if item.is_dir():
+            videos.extend(
+                candidate
+                for candidate in sorted(item.rglob("*"))
+                if candidate.is_file()
+                and candidate.suffix.lower() in SUPPORTED_VIDEO_EXTENSIONS
+            )
+        else:
+            # Preserve missing paths so each one becomes a reported failure.
+            videos.append(item)
+    return videos
+
+
+def _output_base(output_dir: Path, source: Path, used: set[str]) -> Path:
+    """Return a stable, collision-safe stem for one input's outputs."""
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", source.stem).strip("-._") or "video"
+    candidate = stem
+    counter = 2
+    while candidate.casefold() in used:
+        candidate = f"{stem}-{counter}"
+        counter += 1
+    used.add(candidate.casefold())
+    return output_dir / candidate
 
 
 def analyze_file(
@@ -123,10 +155,23 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version="%(prog)s 0.1.0")
     commands = parser.add_subparsers(dest="command", required=True)
-    analyze = commands.add_parser("analyze", help="Analyze a local video file")
-    analyze.add_argument("video", type=Path)
+    analyze = commands.add_parser(
+        "analyze",
+        help="Analyze one video, multiple videos, or a directory",
+    )
+    analyze.add_argument("videos", nargs="+", type=Path)
     analyze.add_argument("--out", type=Path, help="Write Markdown to this path")
     analyze.add_argument("--json", type=Path, dest="json_out", help="Write JSON to this path")
+    analyze.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Write one Markdown/JSON pair per input to this directory",
+    )
+    analyze.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress the per-item JSON batch summary.",
+    )
     analyze.add_argument(
         "--detail-level",
         choices=[level.value for level in DetailLevel],
@@ -151,6 +196,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.command != "analyze":
         return 2
 
+    inputs = [Path(item) for item in args.videos]
+    batch = (
+        args.output_dir is not None
+        or len(inputs) > 1
+        or any(item.is_dir() for item in inputs)
+    )
+    if batch and (args.out or args.json_out):
+        print(
+            "error: --out/--json apply to one input; use --output-dir for batch analysis",
+            file=sys.stderr,
+        )
+        return 2
+
     load_local_env()
     base = Settings.from_env()
     transcription_provider = (
@@ -170,12 +228,61 @@ def main(argv: list[str] | None = None) -> int:
         ffmpeg_path=args.ffmpeg_path or base.ffmpeg_path,
     )
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    detail_level = DetailLevel(args.detail_level)
+    if batch:
+        videos = _expand_inputs(inputs)
+        if not videos:
+            log.error("No supported video files found")
+            return 1
+        output_dir = args.output_dir or Path("opencontext-output")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        used: set[str] = set()
+        results: list[dict[str, Any]] = []
+        for video in videos:
+            base_name = _output_base(output_dir, video, used)
+            markdown_path = base_name.parent / f"{base_name.name}.md"
+            json_path = base_name.parent / f"{base_name.name}.json"
+            try:
+                markdown, payload = analyze_file(video, settings, detail_level=detail_level)
+                markdown_path.write_text(markdown, encoding="utf-8")
+                json_path.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+            except (PermanentFailure, TransientFailure, RuntimeError, ValueError) as exc:
+                log.error("%s: %s", video, exc)
+                results.append(
+                    {
+                        "input": str(video),
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
+                continue
+            results.append(
+                {
+                    "input": str(video),
+                    "status": "ok",
+                    "markdown": str(markdown_path),
+                    "json": str(json_path),
+                    "evidenceCount": len(payload.get("evidence") or []),
+                }
+            )
+
+        succeeded = sum(item["status"] == "ok" for item in results)
+        summary = {
+            "total": len(results),
+            "succeeded": succeeded,
+            "failed": len(results) - succeeded,
+            "results": results,
+        }
+        if not args.quiet:
+            print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+        return 0 if summary["failed"] == 0 else 1
+
+    video = inputs[0]
     try:
-        markdown, payload = analyze_file(
-            args.video,
-            settings,
-            detail_level=DetailLevel(args.detail_level),
-        )
+        markdown, payload = analyze_file(video, settings, detail_level=detail_level)
     except (PermanentFailure, TransientFailure, RuntimeError, ValueError) as exc:
         log.error("%s", exc)
         return 1

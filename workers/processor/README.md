@@ -41,6 +41,17 @@ The CLI accepts `LOW`, `MEDIUM`, or `HIGH` via `--detail-level`, and provider
 overrides via `--transcription-provider`, `--vision-provider`, and
 `--text-provider`.
 
+Analyze every supported video in a directory:
+
+```bash
+opencontext analyze ./recordings --output-dir ./context --offline
+```
+
+Batch mode writes collision-safe `<name>.md` and `<name>.json` pairs and prints
+a JSON summary with success and failure counts. It continues after an invalid
+input, preserves outputs that already succeeded, and exits non-zero when any
+item fails. Use `--quiet` to suppress the summary.
+
 When configuring `TRANSCRIPTION_PROVIDER=faster_whisper` as in `.env.example`,
 install the `local` extra alongside `dev`:
 
