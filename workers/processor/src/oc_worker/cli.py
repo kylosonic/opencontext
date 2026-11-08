@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from oc_worker import aggregation, context
-from oc_worker.config import Settings
+from oc_worker.config import Settings, load_local_env
 from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.ffmpeg import extract_audio, extract_frames, probe
 from oc_worker.models import DetailLevel, OCRObservation, VisualObservation
@@ -52,7 +52,9 @@ def analyze_file(
             f"No vision provider configured (VISION_PROVIDER={settings.vision_provider})"
         )
 
-    with tempfile.TemporaryDirectory(prefix="opencontext-cli-") as tmp:
+    with tempfile.TemporaryDirectory(
+        prefix="opencontext-cli-", ignore_cleanup_errors=True
+    ) as tmp:
         workdir = Path(tmp)
         audio_path = workdir / "audio.wav"
         segments = []
@@ -149,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command != "analyze":
         return 2
 
+    load_local_env()
     base = Settings.from_env()
     transcription_provider = (
         "fixture" if args.offline else args.transcription_provider or base.transcription_provider

@@ -12,7 +12,7 @@ import threading
 import time
 
 from oc_worker.api_client import ApiClient
-from oc_worker.config import Settings
+from oc_worker.config import Settings, load_local_env
 from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.pipeline import Pipeline
 
@@ -73,6 +73,7 @@ def main() -> None:
         help="Claim and process at most one job, then exit.",
     )
     args = parser.parse_args()
+    load_local_env()
     settings = Settings.from_env()
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     if args.once:

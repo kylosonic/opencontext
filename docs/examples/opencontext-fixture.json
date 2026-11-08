@@ -1,0 +1,109 @@
+{
+  "evidence": [
+    {
+      "certainty": "OBSERVED",
+      "endSec": 1.0,
+      "id": 1,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 0
+      },
+      "text": "This synthetic fixture demonstrates OpenContext evidence links without claiming speech-model output.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 2,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 0
+      },
+      "text": "Fixture scene",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 3,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 1
+      },
+      "text": "Deterministic fixture observation at 0.0s (no vision model used).",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 4,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 0
+      },
+      "text": "OpenContext fixture",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 5,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 1
+      },
+      "text": "OpenContext fixture",
+      "timestampSec": 0.0
+    }
+  ],
+  "evidenceVersion": 1,
+  "formatVersion": 2,
+  "generatedAt": "2026-11-07T20:53:54+00:00",
+  "implementationObservations": [],
+  "interactions": [],
+  "source": {
+    "detailLevel": "MEDIUM",
+    "durationSec": 3.0,
+    "name": "opencontext-fixture.mp4"
+  },
+  "stateTransitions": [],
+  "timeline": [
+    {
+      "end": 3.0,
+      "start": 0.0,
+      "summary": "Deterministic fixture observation at 0.0s (no vision model used). (inferred)",
+      "title": "Fixture scene"
+    }
+  ],
+  "transcript": [
+    {
+      "end": 1.0,
+      "start": 0.0,
+      "text": "This synthetic fixture demonstrates OpenContext evidence links without claiming speech-model output."
+    }
+  ],
+  "uiHierarchy": [],
+  "visibleText": [
+    "OpenContext fixture",
+    {
+      "confidence": null,
+      "text": "OpenContext fixture",
+      "timestampSec": 0.0
+    }
+  ],
+  "visualFindings": [
+    {
+      "certainty": "UNCERTAIN",
+      "field": "sceneTitle",
+      "text": "Fixture scene",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "visualDescription",
+      "text": "Deterministic fixture observation at 0.0s (no vision model used).",
+      "timestampSec": 0.0
+    }
+  ]
+}

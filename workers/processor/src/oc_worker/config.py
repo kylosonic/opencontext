@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -28,6 +31,16 @@ def _env_int(name: str, default: int) -> int:
         return int(raw)
     except ValueError:
         return default
+
+
+def load_local_env() -> None:
+    """Load `.env` files for native CLI/worker runs without overriding real env."""
+    if os.getenv("OPENCONTEXT_SKIP_DOTENV") == "1":
+        return
+    repo_root = Path(__file__).resolve().parents[4]
+    for candidate in (Path.cwd() / ".env", repo_root / ".env"):
+        if candidate.is_file():
+            load_dotenv(candidate, override=False)
 
 
 @dataclass(frozen=True)
