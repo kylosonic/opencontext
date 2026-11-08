@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from oc_worker.errors import TransientFailure
+from oc_worker.providers.http_status import raise_for_provider_status
 from oc_worker.providers.text.base import anchored_lines
 
 _SYSTEM_PROMPT = (
@@ -74,10 +75,7 @@ class OpenAICompatibleTextProvider:
             )
         except (httpx.TimeoutException, httpx.TransportError) as exc:
             raise TransientFailure(f"text refinement request failed: {exc}") from exc
-        if response.status_code == 429 or response.status_code >= 500:
-            raise TransientFailure(f"text provider returned {response.status_code}")
-        if response.status_code >= 400:
-            raise TransientFailure(f"text provider returned {response.status_code}")
+        raise_for_provider_status("text", response)
         try:
             content = response.json()["choices"][0]["message"]["content"]
         except (ValueError, KeyError, IndexError, TypeError) as exc:

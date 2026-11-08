@@ -60,11 +60,13 @@ Check the local runtime and configured providers before submitting a job:
 
 ```bash
 opencontext doctor --offline
+opencontext doctor --offline --json
 ```
 
 The report labels each item `OK`, `MISSING`, or `UNVERIFIED` without printing
 API keys or tokens. Network checks are opt-in with `--check-network` and use a
-three-second timeout.
+three-second timeout. `--json` emits one document containing an overall `ok`
+value and ordered checks for setup scripts and CI preflight checks.
 
 When configuring `TRANSCRIPTION_PROVIDER=faster_whisper` as in `.env.example`,
 install the `local` extra alongside `dev`:
@@ -106,3 +108,18 @@ the worker. Provider settings are read from the worker process environment.
 The generated-video integration test is
 `tests/test_e2e_fixture.py`. It invokes real FFmpeg for probing, audio
 extraction, and frame extraction, while using fixture providers for inference.
+
+## Real Ollama smoke test
+
+The Ollama test is opt-in because it requires a downloaded vision model. Start
+Ollama, pull a vision model, and run:
+
+```bash
+export OLLAMA_VISION_MODEL=qwen2.5vl:3b
+ollama pull "$OLLAMA_VISION_MODEL"
+OPENCONTEXT_OLLAMA_E2E=1 pytest tests/test_ollama_vision_smoke.py -q
+```
+
+The test generates a synthetic frame, records the selected model, and verifies
+that the provider returns a structured visual observation. It is a setup smoke
+test, not evidence of model quality.

@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from importlib.metadata import version
 from pathlib import Path
 
 import httpx
 import pytest
 
+from oc_worker import package_version
 from oc_worker.cli import main
 
 FFMPEG = shutil.which("ffmpeg")
@@ -206,3 +208,63 @@ def test_doctor_network_check_is_bounded_and_reports_ollama(
     output = capsys.readouterr().out
     assert code == 0
     assert "OK         vision: Ollama configured" in output
+
+
+def test_version_uses_package_version_function(monkeypatch, capsys) -> None:
+    monkeypatch.setattr("oc_worker.cli.package_version", lambda: "9.8.7")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version"])
+
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip() == "opencontext 9.8.7"
+
+
+def test_package_version_matches_installed_distribution() -> None:
+    assert package_version() == version("opencontext-video")
+
+
+def test_doctor_json_is_ordered_and_does_not_leak_secrets(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", FFMPEG or "ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("VISION_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("TEXT_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("OPENAI_API_KEY", "doctor-json-secret")
+
+    code = main(["doctor", "--offline", "--json"])
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert code == 0
+    assert payload["ok"] is True
+    assert [check["name"] for check in payload["checks"]] == [
+        "ffmpeg",
+        "ffprobe",
+        "transcription",
+        "vision",
+        "ocr",
+        "text",
+    ]
+    assert all(check["status"] in {"ok", "missing", "unverified"} for check in payload["checks"])
+    assert "doctor-json-secret" not in output
+
+
+def test_doctor_json_reports_missing_dependency_and_invalid_provider(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", "opencontext-missing-ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "mystery")
+    monkeypatch.setenv("VISION_PROVIDER", "fixture")
+    monkeypatch.setenv("TEXT_PROVIDER", "template")
+
+    code = main(["doctor", "--offline", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert payload["ok"] is False
+    checks = {check["name"]: check for check in payload["checks"]}
+    assert checks["ffmpeg"]["status"] == "missing"
+    assert checks["transcription"]["status"] == "missing"
+    assert "TRANSCRIPTION_PROVIDER" in checks["transcription"]["detail"]
