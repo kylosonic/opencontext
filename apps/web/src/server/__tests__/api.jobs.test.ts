@@ -10,6 +10,7 @@ vi.mock("@/auth", () => ({ auth: authMock.auth }));
 
 import { GET as apiJobsGet } from "@/app/api/jobs/route";
 import { POST as uploadsPost } from "@/app/api/uploads/route";
+import { DELETE as uploadDelete } from "@/app/api/uploads/[id]/route";
 import { PUT as uploadBodyPut } from "@/app/api/uploads/[id]/body/route";
 import { POST as uploadCompletePost } from "@/app/api/uploads/[id]/complete/route";
 import {
@@ -219,6 +220,84 @@ describe("direct upload + list", () => {
       { params: Promise.resolve({ id: intent.uploadId }) },
     );
     expect(completeResponse.status).toBe(403);
+  });
+
+  it("owner can cancel an uploaded intent, remove its object, and start another", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "cancel-me.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = await intentResponse.json();
+    const putResponse = await uploadBodyPut(
+      new Request(`http://test.local${intent.url}`, {
+        method: "PUT",
+        headers: { "Content-Type": "video/mp4" },
+        body: new Uint8Array([1, 2, 3, 4]),
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(putResponse.status).toBe(204);
+    const row = await prisma.uploadIntent.findUnique({ where: { id: intent.uploadId } });
+    expect(await storage.head(row?.tempKey as string)).not.toBeNull();
+
+    const cancelResponse = await uploadDelete(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}`, { method: "DELETE" }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(cancelResponse.status).toBe(204);
+    expect(await storage.head(row?.tempKey as string)).toBeNull();
+    expect(await prisma.uploadIntent.findUnique({ where: { id: intent.uploadId } })).toBeNull();
+    expect(await prisma.job.count()).toBe(0);
+
+    const nextResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "next.mp4",
+          sizeBytes: 2,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    expect(nextResponse.status).toBe(201);
+  });
+
+  it("non-owner cannot cancel another user's intent", async () => {
+    const owner = await createUser();
+    const intruder = await createUser();
+    asUser(owner.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "owned.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = await intentResponse.json();
+
+    asUser(intruder.id);
+    const response = await uploadDelete(
+      new Request(`http://test.local/api/uploads/${intent.uploadId}`, { method: "DELETE" }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+    expect(response.status).toBe(403);
+    expect(
+      await prisma.uploadIntent.findUnique({ where: { id: intent.uploadId } }),
+    ).not.toBeNull();
   });
 
   it("rejects an expired intent with 410 UPLOAD_EXPIRED", async () => {
