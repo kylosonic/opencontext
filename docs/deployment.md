@@ -38,6 +38,11 @@ npm run build
 npm run start --workspace web
 ```
 
+Prisma 7 reads the database URL from `apps/web/prisma.config.ts` for SQLite and
+`apps/web/prisma.postgres.config.ts` for PostgreSQL. The web runtime selects the
+`better-sqlite3` or `pg` driver adapter from the `DATABASE_URL` scheme; no
+native Prisma query engine is required.
+
 PostgreSQL migrations live in `apps/web/prisma/postgres/migrations`. Generate
 and review a new migration before deploying schema changes. An existing
 database that was created with the old `db push` path needs its schema
@@ -49,7 +54,7 @@ and generate the named migration from the checked-in PostgreSQL schema:
 
 ```bash
 cd apps/web
-npx prisma migrate dev --schema prisma/postgres/schema.prisma --name describe_change
+npx prisma migrate dev --config prisma.postgres.config.ts --name describe_change
 ```
 
 Commit and review the generated SQL. CI applies the migration chain to a fresh

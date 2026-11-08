@@ -13,7 +13,8 @@ from typing import Any
 
 import httpx
 
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import TransientFailure
+from oc_worker.providers.http_status import raise_for_provider_status
 
 _SYSTEM_PROMPT = (
     "You analyze individual frames of a recorded software session. "
@@ -97,12 +98,7 @@ class OpenAICompatibleVisionProvider:
             )
         except (httpx.TimeoutException, httpx.TransportError) as exc:
             raise TransientFailure(f"vision request failed: {exc}") from exc
-        if response.status_code == 429 or response.status_code >= 500:
-            raise TransientFailure(f"vision provider returned {response.status_code}")
-        if response.status_code in (401, 403):
-            raise PermanentFailure("vision provider rejected credentials (401/403)")
-        if response.status_code >= 400:
-            raise TransientFailure(f"vision provider returned {response.status_code}")
+        raise_for_provider_status("vision", response)
         try:
             body = response.json()
             content = body["choices"][0]["message"]["content"]

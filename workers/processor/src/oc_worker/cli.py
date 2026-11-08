@@ -22,7 +22,7 @@ from typing import Any
 
 import httpx
 
-from oc_worker import aggregation, context
+from oc_worker import aggregation, context, package_version
 from oc_worker.config import Settings, load_local_env
 from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.ffmpeg import extract_audio, extract_frames, probe
@@ -120,7 +120,15 @@ def _provider_checks(
 ) -> list[dict[str, str]]:
     checks: list[dict[str, str]] = []
     transcription = settings.transcription_provider.lower()
-    if transcription == "fixture":
+    if transcription in ("", "none", "off"):
+        checks.append(
+            {
+                "name": "transcription",
+                "status": "ok",
+                "detail": "transcription provider explicitly disabled",
+            }
+        )
+    elif transcription == "fixture":
         checks.append(
             {
                 "name": "transcription",
@@ -158,13 +166,24 @@ def _provider_checks(
         checks.append(
             {
                 "name": "transcription",
-                "status": "unverified",
-                "detail": f"provider is {transcription or 'not configured'}",
+                "status": "missing",
+                "detail": (
+                    f"unknown TRANSCRIPTION_PROVIDER={settings.transcription_provider!r}; "
+                    "expected fixture, faster_whisper, openai_compatible, none, or off"
+                ),
             }
         )
 
     vision = settings.vision_provider.lower()
-    if vision == "fixture":
+    if vision in ("", "none", "off"):
+        checks.append(
+            {
+                "name": "vision",
+                "status": "ok",
+                "detail": "vision provider explicitly disabled",
+            }
+        )
+    elif vision == "fixture":
         checks.append(
             {
                 "name": "vision",
@@ -219,13 +238,24 @@ def _provider_checks(
         checks.append(
             {
                 "name": "vision",
-                "status": "unverified",
-                "detail": f"provider is {vision or 'not configured'}",
+                "status": "missing",
+                "detail": (
+                    f"unknown VISION_PROVIDER={settings.vision_provider!r}; "
+                    "expected fixture, ollama, openai_compatible, none, or off"
+                ),
             }
         )
 
     ocr = settings.ocr_provider.lower()
-    if ocr in ("", "none", "vision"):
+    if ocr in ("", "none", "off"):
+        checks.append(
+            {
+                "name": "ocr",
+                "status": "ok",
+                "detail": "independent OCR provider disabled",
+            }
+        )
+    elif ocr == "vision":
         checks.append(
             {
                 "name": "ocr",
@@ -245,8 +275,11 @@ def _provider_checks(
         checks.append(
             {
                 "name": "ocr",
-                "status": "unverified",
-                "detail": f"provider is {ocr or 'not configured'}",
+                "status": "missing",
+                "detail": (
+                    f"unknown OCR_PROVIDER={settings.ocr_provider!r}; "
+                    "expected vision, fixture, tesseract, none, or off"
+                ),
             }
         )
 
@@ -285,8 +318,11 @@ def _provider_checks(
         checks.append(
             {
                 "name": "text",
-                "status": "unverified",
-                "detail": f"provider is {text or 'not configured'}",
+                "status": "missing",
+                "detail": (
+                    f"unknown TEXT_PROVIDER={settings.text_provider!r}; "
+                    "expected template, ollama, openai_compatible, none, or off"
+                ),
             }
         )
     return checks
@@ -297,6 +333,7 @@ def run_doctor(
     *,
     offline: bool = False,
     check_network: bool = False,
+    json_output: bool = False,
 ) -> int:
     """Print dependency readiness without exposing credentials."""
     checks = [_command_status("ffmpeg", settings.ffmpeg_path, required=True)]
@@ -310,9 +347,13 @@ def run_doctor(
         )
     checks.append(_command_status("ffprobe", ffprobe, required=False))
     checks.extend(_provider_checks(settings, offline=offline, check_network=check_network))
-    for check in checks:
-        print(f"{check['status'].upper():10} {check['name']}: {check['detail']}")
-    return 1 if any(check["status"] == "missing" for check in checks) else 0
+    ok = not any(check["status"] == "missing" for check in checks)
+    if json_output:
+        print(json.dumps({"ok": ok, "checks": checks}, sort_keys=True))
+    else:
+        for check in checks:
+            print(f"{check['status'].upper():10} {check['name']}: {check['detail']}")
+    return 0 if ok else 1
 
 
 def analyze_file(
@@ -431,7 +472,11 @@ def _parser() -> argparse.ArgumentParser:
         prog="opencontext",
         description="Turn a video into evidence-linked developer context.",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 0.1.0")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {package_version()}",
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     analyze = commands.add_parser(
         "analyze",
@@ -484,6 +529,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Make bounded requests to configured local/remote endpoints.",
     )
+    doctor.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Emit one machine-readable JSON readiness document.",
+    )
     return parser
 
 
@@ -496,6 +547,7 @@ def main(argv: list[str] | None = None) -> int:
             base,
             offline=args.offline,
             check_network=args.check_network,
+            json_output=args.json_output,
         )
     if args.command != "analyze":
         return 2

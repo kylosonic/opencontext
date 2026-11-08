@@ -1,6 +1,6 @@
 # Security Review
 
-Last reviewed: 2026-11-07
+Last reviewed: 2026-11-08
 
 This document records implementation-level controls and remaining deployment
 work. It is not a penetration-test report.
@@ -12,7 +12,7 @@ work. It is not a penetration-test report.
   `complete` verifies stored-object metadata before creating a job.
 - **Media validity and duration:** the worker probes the actual file and
   rejects non-video or over-30-minute files before analysis.
-- **Ownership:** job read, delete, retry, evidence review, upload-body, and
+- **Ownership:** job read, delete, retry, export, evidence review, upload-body, and
   upload-complete routes require an authenticated session and compare the
   resource owner.
 - **Worker authentication:** worker routes require a constant-time bearer-token
@@ -32,7 +32,9 @@ work. It is not a penetration-test report.
   the application does not proxy large upload bodies.
 - **Dependency advisories:** the 2026-11-08 audit findings that affected
   network-facing runtime packages were resolved by upgrading Next.js to
-  16.4.5, Zod to 4.6.7, and Vitest to 5.1.0. No critical npm advisories remain.
+  16.4.5, Zod to 4.6.7, Vitest to 5.1.0, and Prisma to 7.10.1 with driver
+  adapters. No high or critical npm advisories remain; eight moderate findings
+  are confined to the TypeScript ESLint development toolchain.
 
 ## Verified tests
 
@@ -52,8 +54,4 @@ work. It is not a penetration-test report.
   instances.
 - Add provider-specific Postgres migrations before making schema changes in a
   long-lived production database.
-- The Prisma 6 CLI still has a high-severity transitive `deepmerge-ts`
-  advisory. It processes trusted local schema files during development and
-  deployment, not untrusted request data; a Prisma 7 migration is tracked
-  separately. `npm audit` also reports moderate development-tool advisories.
 - Run an independent penetration test before claiming production security.

@@ -15,10 +15,10 @@ video with its bundled FFmpeg.
 
 ## Acceptance
 
-- [ ] The test builds `docker/worker.Dockerfile` from a clean checkout.
-- [ ] The container runs without host FFmpeg or Tesseract.
-- [ ] Offline analysis creates non-empty Markdown and valid JSON.
-- [ ] CI prints container logs when the smoke test fails.
+- [x] The test builds `docker/worker.Dockerfile` from a clean checkout.
+- [x] The container runs without host FFmpeg or Tesseract.
+- [x] Offline analysis creates non-empty Markdown and valid JSON.
+- [x] CI prints container logs when the smoke test fails.
 
 ## Files
 

@@ -18,6 +18,7 @@ import {
   DELETE as apiJobDelete,
 } from "@/app/api/jobs/[id]/route";
 import { POST as apiJobRetry } from "@/app/api/jobs/[id]/retry/route";
+import { GET as apiJobExport } from "@/app/api/jobs/[id]/export/route";
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
 import { initialStageStates } from "@/server/jobs";
@@ -470,6 +471,89 @@ describe("GET /api/jobs/[id] — ownership (identity.md B4)", () => {
     );
     expect(response.status).toBe(404);
     expect((await response.json()).error.code).toBe("NOT_FOUND");
+  });
+});
+
+describe("GET /api/jobs/[id]/export — owner-only results", () => {
+  async function completedJob(userId: string): Promise<string> {
+    const jobId = await makeJob(userId, {
+      status: "COMPLETED",
+      completedAt: new Date(),
+      timeline: [{ start: 0, end: 2, title: "Fixture", summary: "Visible fixture" }],
+    });
+    await prisma.processingResult.create({
+      data: {
+        jobId,
+        markdown: "# Context\n\nFixture evidence [E0001 · 00:00 · Observed]",
+        json: {
+          formatVersion: 1,
+          markdown: "# Context",
+          evidenceVersion: 1,
+          evidence: [
+            {
+              id: 1,
+              kind: "VISUAL",
+              timestampSec: 0,
+              certainty: "OBSERVED",
+              text: "Visible fixture",
+              source: { collection: "observations", index: 0 },
+            },
+          ],
+        },
+        formatVersion: 1,
+      },
+    });
+    return jobId;
+  }
+
+  it("returns Markdown and JSON with evidence", async () => {
+    const user = await createUser();
+    const jobId = await completedJob(user.id);
+    asUser(user.id);
+
+    const markdown = await apiJobExport(
+      new Request(jobUrl(jobId, "/export?format=markdown")),
+      { params: Promise.resolve({ id: jobId }) },
+    );
+    expect(markdown.status).toBe(200);
+    expect(markdown.headers.get("content-type")).toContain("text/markdown");
+    expect(await markdown.text()).toContain("E0001");
+
+    const json = await apiJobExport(
+      new Request(jobUrl(jobId, "/export?format=json")),
+      { params: Promise.resolve({ id: jobId }) },
+    );
+    expect(json.status).toBe(200);
+    expect(json.headers.get("content-type")).toContain("application/json");
+    expect((await json.json()).evidence).toHaveLength(1);
+  });
+
+  it("rejects anonymous, non-owner, and invalid-format callers", async () => {
+    const owner = await createUser();
+    const intruder = await createUser();
+    const jobId = await completedJob(owner.id);
+
+    asAnonymous();
+    const anonymous = await apiJobExport(
+      new Request(jobUrl(jobId, "/export?format=json")),
+      { params: Promise.resolve({ id: jobId }) },
+    );
+    expect(anonymous.status).toBe(401);
+
+    asUser(intruder.id);
+    const forbidden = await apiJobExport(
+      new Request(jobUrl(jobId, "/export?format=json")),
+      { params: Promise.resolve({ id: jobId }) },
+    );
+    expect(forbidden.status).toBe(403);
+
+    asUser(owner.id);
+    const invalid = await apiJobExport(
+      new Request(jobUrl(jobId, "/export?format=pdf")),
+      { params: Promise.resolve({ id: jobId }) },
+    );
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json()).error.code).toBe("VALIDATION_ERROR");
   });
 });
 

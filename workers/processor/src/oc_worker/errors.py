@@ -18,6 +18,10 @@ class TransientFailure(Exception):
     """A failure worth a bounded number of automatic retries."""
 
 
+class ProviderConfigurationError(ValueError):
+    """Invalid provider settings that need operator action."""
+
+
 class StageFailure(Exception):
     """A stage-level failure carrying the failure kind."""
 

@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from oc_worker.errors import TransientFailure
+from oc_worker.providers.http_status import raise_for_provider_status
 from oc_worker.providers.vision.openai_compatible import _normalize, _parse_json_object
 
 _PROMPT = (
@@ -56,10 +57,7 @@ class OllamaVisionProvider:
             response = self._client.post(f"{self.base_url}/api/chat", json=payload)
         except (httpx.TimeoutException, httpx.TransportError) as exc:
             raise TransientFailure(f"ollama vision request failed: {exc}") from exc
-        if response.status_code == 429 or response.status_code >= 500:
-            raise TransientFailure(f"ollama vision provider returned {response.status_code}")
-        if response.status_code >= 400:
-            raise TransientFailure(f"ollama vision provider returned {response.status_code}")
+        raise_for_provider_status("ollama vision", response)
         try:
             body = response.json()
             content = body["message"]["content"]

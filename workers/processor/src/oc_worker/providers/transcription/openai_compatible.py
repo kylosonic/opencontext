@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import httpx
 
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import TransientFailure
 from oc_worker.models import Segment
+from oc_worker.providers.http_status import raise_for_provider_status
 
 
 class OpenAICompatibleTranscriptionProvider:
@@ -34,14 +35,6 @@ class OpenAICompatibleTranscriptionProvider:
         self.model = model
         self._client = client or httpx.Client(timeout=timeout)
 
-    def _classify(self, response: httpx.Response) -> None:
-        if response.status_code == 429 or response.status_code >= 500:
-            raise TransientFailure(f"transcription provider returned {response.status_code}")
-        if response.status_code in (401, 403):
-            raise PermanentFailure("transcription provider rejected credentials (401/403)")
-        if response.status_code >= 400:
-            raise TransientFailure(f"transcription provider returned {response.status_code}")
-
     def transcribe(self, audio_path: str) -> list[Segment]:
         url = f"{self.base_url}/audio/transcriptions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -59,7 +52,7 @@ class OpenAICompatibleTranscriptionProvider:
                 )
         except (httpx.TimeoutException, httpx.TransportError) as exc:
             raise TransientFailure(f"transcription request failed: {exc}") from exc
-        self._classify(response)
+        raise_for_provider_status("transcription", response)
         try:
             body = response.json()
         except ValueError as exc:

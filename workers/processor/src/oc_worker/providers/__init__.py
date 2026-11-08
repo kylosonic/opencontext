@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from oc_worker.config import Settings
+from oc_worker.errors import ProviderConfigurationError
 from oc_worker.providers.ocr.base import OcrProvider
 from oc_worker.providers.ocr.fixture import FixtureOcrProvider
 from oc_worker.providers.ocr.tesseract import TesseractOcrProvider
@@ -34,13 +35,21 @@ def build_transcription(settings: Settings) -> TranscriptionProvider | None:
         )
 
         return FasterWhisperTranscriptionProvider(settings.transcription_model)
-    if settings.openai_api_key:
+    if provider == "openai_compatible":
+        if not settings.openai_api_key:
+            raise ProviderConfigurationError(
+                "OPENAI_API_KEY is required when "
+                "TRANSCRIPTION_PROVIDER=openai_compatible"
+            )
         return OpenAICompatibleTranscriptionProvider(
             base_url=settings.openai_base_url,
             api_key=settings.openai_api_key,
             model=settings.transcription_model,
         )
-    return None
+    raise ProviderConfigurationError(
+        f"Unknown TRANSCRIPTION_PROVIDER={settings.transcription_provider!r}; "
+        "expected fixture, faster_whisper, openai_compatible, none, or off"
+    )
 
 
 def build_vision(settings: Settings) -> VisionProvider | None:
@@ -54,13 +63,20 @@ def build_vision(settings: Settings) -> VisionProvider | None:
         return OllamaVisionProvider(
             base_url=settings.ollama_base_url, model=settings.vision_model
         )
-    if settings.openai_api_key:
+    if provider == "openai_compatible":
+        if not settings.openai_api_key:
+            raise ProviderConfigurationError(
+                "OPENAI_API_KEY is required when VISION_PROVIDER=openai_compatible"
+            )
         return OpenAICompatibleVisionProvider(
             base_url=settings.openai_base_url,
             api_key=settings.openai_api_key,
             model=settings.vision_model,
         )
-    return None
+    raise ProviderConfigurationError(
+        f"Unknown VISION_PROVIDER={settings.vision_provider!r}; "
+        "expected fixture, ollama, openai_compatible, none, or off"
+    )
 
 
 def build_ocr(settings: Settings) -> OcrProvider | None:
@@ -75,18 +91,30 @@ def build_ocr(settings: Settings) -> OcrProvider | None:
             executable=settings.tesseract_path,
             language=settings.ocr_language,
         )
-    raise RuntimeError(f"Unknown OCR provider: {settings.ocr_provider}")
+    raise ProviderConfigurationError(
+        f"Unknown OCR_PROVIDER={settings.ocr_provider!r}; "
+        "expected vision, fixture, tesseract, none, or off"
+    )
 
 
 def build_text(settings: Settings) -> TextProvider:
     """Build the text provider; template (deterministic) fallback otherwise."""
     provider = settings.text_provider.lower()
+    if provider in ("", "template"):
+        return TemplateTextProvider()
     if provider == "ollama":
         return OllamaTextProvider(base_url=settings.ollama_base_url, model=settings.text_model)
-    if provider == "openai_compatible" and settings.openai_api_key:
+    if provider == "openai_compatible":
+        if not settings.openai_api_key:
+            raise ProviderConfigurationError(
+                "OPENAI_API_KEY is required when TEXT_PROVIDER=openai_compatible"
+            )
         return OpenAICompatibleTextProvider(
             base_url=settings.openai_base_url,
             api_key=settings.openai_api_key,
             model=settings.text_model,
         )
-    return TemplateTextProvider()
+    raise ProviderConfigurationError(
+        f"Unknown TEXT_PROVIDER={settings.text_provider!r}; "
+        "expected template, ollama, openai_compatible, none, or off"
+    )

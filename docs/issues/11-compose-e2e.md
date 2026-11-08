@@ -14,10 +14,10 @@ web, worker, PostgreSQL, and storage services together.
 
 ## Acceptance
 
-- [ ] `docker compose up --build` reaches healthy web and worker services.
-- [ ] One real upload completes end to end.
-- [ ] The exported JSON contains at least one evidence record.
-- [ ] Logs are uploaded or printed on failure.
+- [x] `docker compose up --build` reaches healthy web and worker services.
+- [x] One real upload completes end to end.
+- [x] The exported JSON contains at least one evidence record.
+- [x] Logs are uploaded or printed on failure.
 
 ## Files
 

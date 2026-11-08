@@ -278,6 +278,17 @@ export default function DocsPage() {
               <CodeBlock code={TIMING_TABLE} label="Demo progress timing table" wrap />
             </Card>
           </div>
+          <p className="mt-6 text-sm leading-relaxed text-ink-muted">
+            Every authenticated and worker endpoint uses the same error
+            envelope. See the{" "}
+            <Link
+              href="/docs/api-errors"
+              className="rounded-sm text-accent underline-offset-2 hover:underline"
+            >
+              public API error catalog
+            </Link>{" "}
+            for stable codes, HTTP statuses, and meanings.
+          </p>
         </Section>
 
         <Section
