@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from oc_worker.config import Settings
+from oc_worker.providers.ocr.base import OcrProvider
+from oc_worker.providers.ocr.fixture import FixtureOcrProvider
+from oc_worker.providers.ocr.tesseract import TesseractOcrProvider
 from oc_worker.providers.text.base import TextProvider
 from oc_worker.providers.text.ollama import OllamaTextProvider
 from oc_worker.providers.text.openai_compatible import OpenAICompatibleTextProvider
@@ -58,6 +61,21 @@ def build_vision(settings: Settings) -> VisionProvider | None:
             model=settings.vision_model,
         )
     return None
+
+
+def build_ocr(settings: Settings) -> OcrProvider | None:
+    """Build an independent OCR provider; None keeps vision-derived OCR."""
+    provider = settings.ocr_provider.lower()
+    if provider in ("", "none", "vision"):
+        return None
+    if provider == "fixture":
+        return FixtureOcrProvider()
+    if provider == "tesseract":
+        return TesseractOcrProvider(
+            executable=settings.tesseract_path,
+            language=settings.ocr_language,
+        )
+    raise RuntimeError(f"Unknown OCR provider: {settings.ocr_provider}")
 
 
 def build_text(settings: Settings) -> TextProvider:

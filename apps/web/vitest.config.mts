@@ -11,7 +11,10 @@ export default defineConfig({
     fileParallelism: false,
     globalSetup: ["./vitest.global-setup.ts"],
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/server/__tests__/**/*.test.ts"],
+    include: [
+      "src/server/__tests__/**/*.test.ts",
+      "src/components/__tests__/**/*.test.tsx",
+    ],
     testTimeout: 30_000,
     hookTimeout: 120_000,
   },

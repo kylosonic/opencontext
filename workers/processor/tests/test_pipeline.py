@@ -108,6 +108,23 @@ class FakeVision:
         }
 
 
+class FakeOcr:
+    name = "fake-ocr"
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def extract(self, frame_bytes: bytes, context: dict) -> list[dict]:
+        assert frame_bytes
+        self.calls.append(context)
+        return [
+            {
+                "text": f"Independent OCR {context['timestampSec']}",
+                "confidence": 0.75,
+            }
+        ]
+
+
 class FakeText:
     name = "fake-text"
 
@@ -185,6 +202,7 @@ def _make_pipeline(
     *,
     transcription: FakeTranscription | None = None,
     vision: FakeVision | None = None,
+    ocr: FakeOcr | None = None,
     text: FakeText | None = None,
     probe: Callable[[str], dict] | None = None,
     extract_audio: Callable[[str, str], bool] | None = None,
@@ -195,6 +213,7 @@ def _make_pipeline(
         _settings(),
         transcription_provider=transcription or FakeTranscription(),
         vision_provider=vision or FakeVision(),
+        ocr_provider=ocr,
         text_provider=text or FakeText(),
         probe_fn=probe or _probe_ok(),
         extract_audio_fn=extract_audio or _extract_audio_ok(),
@@ -397,6 +416,35 @@ def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:
     assert json_payload["timeline"] == expected_timeline
     assert text.payloads and text.payloads[-1]["formatVersion"] == 2
     assert text.payloads[-1] == json_payload
+
+
+def test_independent_ocr_provider_replaces_vision_derived_rows() -> None:
+    handler = _Handler()
+    ocr = FakeOcr()
+    pipeline = _make_pipeline(handler, ocr=ocr)
+
+    assert pipeline.run_job(_job()) == "completed"
+
+    analyzing = next(
+        body
+        for path, body in handler.json_requests()
+        if path.endswith("/stage-result") and body.get("stage") == "ANALYZING"
+    )
+    assert analyzing["data"]["ocr"] == [
+        {
+            "timestampSec": 0.0,
+            "text": "Independent OCR 0.0",
+            "confidence": 0.75,
+            "provider": "fake-ocr",
+        },
+        {
+            "timestampSec": 3.0,
+            "text": "Independent OCR 3.0",
+            "confidence": 0.75,
+            "provider": "fake-ocr",
+        },
+    ]
+    assert len(ocr.calls) == 2
 
 
 def test_no_audio_skips_transcription() -> None:

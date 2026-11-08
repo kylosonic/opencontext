@@ -41,7 +41,8 @@ from oc_worker.models import (
     Segment,
     VisualObservation,
 )
-from oc_worker.providers import build_text, build_transcription, build_vision
+from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
+from oc_worker.providers.ocr.base import OcrProvider
 from oc_worker.providers.text.base import TextProvider
 from oc_worker.providers.transcription.base import TranscriptionProvider
 from oc_worker.providers.vision.base import VisionProvider
@@ -78,6 +79,7 @@ class Pipeline:
         *,
         transcription_provider: TranscriptionProvider | None = None,
         vision_provider: VisionProvider | None = None,
+        ocr_provider: OcrProvider | None = None,
         text_provider: TextProvider | None = None,
         probe_fn: ProbeFn = probe,
         extract_audio_fn: ExtractAudioFn = extract_audio,
@@ -92,6 +94,9 @@ class Pipeline:
         )
         self.vision_provider = (
             vision_provider if vision_provider is not None else build_vision(settings)
+        )
+        self.ocr_provider = (
+            ocr_provider if ocr_provider is not None else build_ocr(settings)
         )
         self.text_provider = text_provider if text_provider is not None else build_text(settings)
         self._probe = probe_fn
@@ -245,27 +250,46 @@ class Pipeline:
             raw["timestampSec"] = float(frame["timestamp"])
             raw["provider"] = self.vision_provider.name
             ocr: list[dict[str, Any]] = []
-            for text_item in raw.get("visibleText") or []:
-                # canonical visibleText entries are strings; legacy providers
-                # may still send {text, confidence?} dicts — accept both.
-                if isinstance(text_item, str):
-                    text = text_item.strip()
-                    confidence: float | None = None
-                elif isinstance(text_item, dict):
-                    text = str(text_item.get("text") or "").strip()
-                    confidence = text_item.get("confidence")
-                else:
-                    continue
-                if not text:
-                    continue
-                row: dict[str, Any] = {
-                    "timestampSec": float(frame["timestamp"]),
-                    "text": text,
-                    "provider": self.vision_provider.name,
-                }
-                if confidence is not None:
-                    row["confidence"] = confidence
-                ocr.append(row)
+            if self.ocr_provider is None:
+                for text_item in raw.get("visibleText") or []:
+                    # canonical visibleText entries are strings; legacy
+                    # providers may still send {text, confidence?} dicts.
+                    if isinstance(text_item, str):
+                        text = text_item.strip()
+                        confidence: float | None = None
+                    elif isinstance(text_item, dict):
+                        text = str(text_item.get("text") or "").strip()
+                        confidence = text_item.get("confidence")
+                    else:
+                        continue
+                    if not text:
+                        continue
+                    row: dict[str, Any] = {
+                        "timestampSec": float(frame["timestamp"]),
+                        "text": text,
+                        "provider": self.vision_provider.name,
+                    }
+                    if confidence is not None:
+                        row["confidence"] = confidence
+                    ocr.append(row)
+            else:
+                recognized = run_with_retry(
+                    lambda: self.ocr_provider.extract(frame_bytes, vision_context)
+                )
+                for item in recognized:
+                    if not isinstance(item, dict):
+                        continue
+                    text = str(item.get("text") or "").strip()
+                    if not text:
+                        continue
+                    row: dict[str, Any] = {
+                        "timestampSec": float(frame["timestamp"]),
+                        "text": text,
+                        "provider": self.ocr_provider.name,
+                    }
+                    if item.get("confidence") is not None:
+                        row["confidence"] = item["confidence"]
+                    ocr.append(row)
             return raw, ocr
 
         observations: list[VisualObservation] = []

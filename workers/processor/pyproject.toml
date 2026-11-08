@@ -43,6 +43,7 @@ dev = [
 ]
 local = [
   "faster-whisper",
+    "av>=11,<19",
 ]
 
 [tool.setuptools.packages.find]

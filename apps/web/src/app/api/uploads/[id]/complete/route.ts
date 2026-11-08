@@ -16,7 +16,7 @@ export async function POST(_request: Request, context: RouteContext): Promise<Re
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
-    const limit = consumeRateLimit(`upload-complete:${session.user.id}`, 20, 60_000);
+    const limit = await consumeRateLimit(`upload-complete:${session.user.id}`, 20, 60_000);
     if (!limit.allowed) {
       const response = errorResponse("RATE_LIMITED", "Too many upload completions");
       response.headers.set("Retry-After", String(limit.retryAfterSec));

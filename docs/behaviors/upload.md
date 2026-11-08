@@ -40,6 +40,16 @@ Status: IMPLEMENTED — DIRECT UPLOAD PATH TESTED
 - **Expected outcome:** exactly one transfer at a time; after a job is created, the form is free again
 - **Acceptance:** start upload A, attempt to drop file B → B refused; after A creates a job, B is accepted
 
+## B4a — Cancel an active upload
+
+- **Actor:** signed-in user during transfer
+- **Trigger:** selects **Cancel upload**
+- **Expected outcome:** the browser aborts the transfer, the temporary object and intent are deleted, and no job is created
+- **Visible state:** the form returns to its empty state immediately and accepts another file
+- **Ownership:** another user cannot cancel the intent
+- **Fallback:** if the browser loses the intent before it can issue cleanup, the 15-minute retention sweep removes the abandoned intent and object
+- **Acceptance:** start a transfer, cancel it, then choose a second file → the second upload starts normally and the job list contains no entry for the canceled file
+
 ## B5 — Same file uploaded twice
 
 - **Actor:** signed-in user

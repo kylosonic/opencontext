@@ -259,7 +259,7 @@ beforeEach(async () => {
   authMock.auth.mockReset();
   await resetDatabase();
   await resetStorage();
-  resetRateLimits();
+  await resetRateLimits();
 });
 
 afterEach(async () => {

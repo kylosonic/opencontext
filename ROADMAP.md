@@ -4,21 +4,20 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Now
 
-- Validate one real job with Faster Whisper and a local Ollama vision model.
-- Add S3/MinIO integration coverage for presigned upload and worker download.
 - Run the Compose stack end to end in CI or a clean-machine check.
-- Finish provider-specific PostgreSQL migration strategy.
+- Configure production GitHub OAuth, PostgreSQL, object storage, and a worker;
+  run one deployed upload-to-export smoke test.
+- Validate one real job with a local Ollama vision model.
 - Upgrade the Prisma 6 toolchain to clear the remaining build-time npm
   advisories.
 - Publish the first Python and npm packages through protected environments.
 
 ## Next
 
-- Independent OCR provider interface and tests.
-- Upload cancellation and stronger distributed rate limiting.
-- Result-viewer accessibility and keyboard media controls.
-- Batch CLI analysis and stable machine-readable progress output.
-- Provider diagnostics and retry classification shared across Python providers.
+- Publish reproducible model-quality evaluation sets and methodology.
+- Load-test the database-backed rate limiter across multiple web instances.
+- Verify production S3 CORS and multipart uploads against the selected provider.
+- Add retry classification and diagnostics coverage for every provider mode.
 
 ## Later
 

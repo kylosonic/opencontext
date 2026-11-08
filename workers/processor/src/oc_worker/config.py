@@ -74,6 +74,15 @@ class Settings:
     vision_model: str = field(
         default_factory=lambda: _env("VISION_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
     )
+    ocr_provider: str = field(
+        default_factory=lambda: _env("OCR_PROVIDER", "vision") or "vision"
+    )
+    ocr_language: str = field(
+        default_factory=lambda: _env("OCR_LANGUAGE", "eng") or "eng"
+    )
+    tesseract_path: str = field(
+        default_factory=lambda: _env("TESSERACT_PATH", "tesseract") or "tesseract"
+    )
     ollama_base_url: str = field(
         default_factory=lambda: _env("OLLAMA_BASE_URL", "http://localhost:11434")
         or "http://localhost:11434"

@@ -1,21 +1,21 @@
-# Add a real local-model smoke test
+# Add a real Ollama vision smoke test
 
 ## Problem
 
-The generated-video test uses deterministic fixture providers. It proves the
-plumbing but not Faster Whisper or Ollama integration.
+Faster Whisper has a verified local smoke test. Vision still uses deterministic
+fixture output in automated runs, so this draft covers Ollama specifically.
 
 ## Scope
 
-- Add an opt-in manual/CI test using Faster Whisper and Ollama.
-- Use a small fixture with known speech or clearly document setup.
+- Add an opt-in manual test using a local Ollama vision model.
+- Use a small fixture with known visible content and document model setup.
 - Record whether the model downloaded and which model name was used.
 
 ## Acceptance
 
 - [ ] Test is skipped unless `OPENCONTEXT_MODEL_E2E=1`.
 - [ ] Test fails with actionable setup text when Ollama is unavailable.
-- [ ] Transcript and at least one visual observation are asserted.
+- [ ] At least one visual observation is asserted.
 - [ ] Documentation avoids presenting one smoke test as model quality evidence.
 
 ## Files
@@ -27,5 +27,5 @@ plumbing but not Faster Whisper or Ollama integration.
 ## Verify
 
 ```bash
-OPENCONTEXT_MODEL_E2E=1 npm test
+OPENCONTEXT_OLLAMA_E2E=1 npm test
 ```

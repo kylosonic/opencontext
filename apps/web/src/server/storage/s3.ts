@@ -24,6 +24,7 @@ export class S3Storage implements Storage {
     this.client = new S3Client({
       region: config.region,
       endpoint: config.endpoint,
+      forcePathStyle: true,
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,

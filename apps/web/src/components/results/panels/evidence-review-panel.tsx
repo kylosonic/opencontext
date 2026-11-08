@@ -193,8 +193,19 @@ function EvidenceReviewItem({
   };
 
   const status = evidence.review?.status;
+  const reviewLabel =
+    status === "CONFIRMED"
+      ? "human confirmed"
+      : status === "FLAGGED"
+        ? "flagged"
+        : "unreviewed";
+  const labelId = `evidence-${evidence.id}-summary`;
   return (
-    <article className="rounded-lg border border-line bg-panel p-4">
+    <article aria-labelledby={labelId} className="rounded-lg border border-line bg-panel p-4">
+      <span id={labelId} className="sr-only">
+        Evidence {evidence.id}, {evidence.kind.toLowerCase()}, {evidence.certainty.toLowerCase()},
+        timestamp {formatClock(evidence.timestampSec)}, {reviewLabel}
+      </span>
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs font-semibold text-ink">
           E{String(evidence.id).padStart(4, "0")}
@@ -222,7 +233,7 @@ function EvidenceReviewItem({
             type="button"
             className="ml-auto rounded-sm font-mono text-xs text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={() => onSeek(evidence.timestampSec)}
-            aria-label={`Jump to evidence ${evidence.id} at ${formatClock(evidence.timestampSec)}`}
+            aria-label={`Jump to evidence ${evidence.id} at ${formatClock(evidence.timestampSec)}, ${reviewLabel}`}
           >
             {formatClock(evidence.timestampSec)} ↗
           </button>

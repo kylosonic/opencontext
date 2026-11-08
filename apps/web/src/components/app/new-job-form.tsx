@@ -48,7 +48,7 @@ const DETAIL_LEVELS: DetailLevelOption[] = [
   },
 ];
 
-type Phase = "idle" | "ready" | "uploading" | "created" | "error";
+type Phase = "idle" | "ready" | "uploading" | "finalizing" | "created" | "error";
 
 interface UploadError {
   code: string;
@@ -84,10 +84,10 @@ function putFileWithProgress(
   target: { url: string; headers: Record<string, string> },
   file: File,
   onProgress: (percent: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const absoluteUrl = new URL(target.url, window.location.origin);
-    const xhr = new XMLHttpRequest();
+): { promise: Promise<void>; abort: () => void } {
+  const absoluteUrl = new URL(target.url, window.location.origin);
+  const xhr = new XMLHttpRequest();
+  const promise = new Promise<void>((resolve, reject) => {
     xhr.open("PUT", absoluteUrl.href);
     xhr.withCredentials = absoluteUrl.origin === window.location.origin;
     for (const [name, value] of Object.entries(target.headers)) {
@@ -106,9 +106,10 @@ function putFileWithProgress(
       reject(new UploadRequestError("TRANSFER_FAILED", "The file transfer failed."));
     };
     xhr.onerror = () => reject(new UploadRequestError("NETWORK", "Network error"));
-    xhr.onabort = () => reject(new UploadRequestError("NETWORK", "Upload canceled"));
+    xhr.onabort = () => reject(new UploadRequestError("CANCELED", "Upload canceled"));
     xhr.send(file);
   });
+  return { promise, abort: () => xhr.abort() };
 }
 
 /**
@@ -122,6 +123,9 @@ function putFileWithProgress(
 export function NewJobForm() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortTransferRef = useRef<(() => void) | null>(null);
+  const activeUploadIdRef = useRef<string | null>(null);
+  const attemptRef = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [detailLevel, setDetailLevel] = useState<DetailLevelId>("MEDIUM");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -131,7 +135,8 @@ export function NewJobForm() {
   const [dragging, setDragging] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  const uploading = phase === "uploading";
+  const uploading = phase === "uploading" || phase === "finalizing";
+  const transferring = phase === "uploading";
 
   /** Refuse new files mid-transfer (upload.md B4). */
   function refuseWhileBusy(): boolean {
@@ -159,6 +164,7 @@ export function NewJobForm() {
 
   async function startUpload(): Promise<void> {
     if (!file || phase !== "ready" || uploading) return;
+    const attempt = ++attemptRef.current;
     setError(null);
     setPhase("uploading");
     setProgress(0);
@@ -183,8 +189,21 @@ export function NewJobForm() {
         url: string;
         headers: Record<string, string>;
       };
+      if (attempt !== attemptRef.current) {
+        await fetch(`/api/uploads/${encodeURIComponent(target.uploadId)}`, {
+          method: "DELETE",
+        }).catch(() => undefined);
+        return;
+      }
+      activeUploadIdRef.current = target.uploadId;
 
-      await putFileWithProgress(target, file, setProgress);
+      const transfer = putFileWithProgress(target, file, setProgress);
+      abortTransferRef.current = transfer.abort;
+      await transfer.promise;
+      if (attempt !== attemptRef.current) return;
+      abortTransferRef.current = null;
+      setProgress(100);
+      setPhase("finalizing");
 
       const completeResponse = await fetch(
         `/api/uploads/${encodeURIComponent(target.uploadId)}/complete`,
@@ -197,12 +216,14 @@ export function NewJobForm() {
       const summary = (await completeResponse.json()) as { id?: string };
       if (!summary.id) throw new Error("The job response did not contain an id");
 
+      activeUploadIdRef.current = null;
       setCreatedId(summary.id);
       setPhase("created");
       window.setTimeout(() => {
         router.push(`/app/jobs/${encodeURIComponent(summary.id ?? "")}`);
       }, 450);
     } catch (caught) {
+      if (attempt !== attemptRef.current) return;
       const envelope =
         caught instanceof UploadRequestError
           ? { code: caught.code, message: caught.message }
@@ -213,16 +234,34 @@ export function NewJobForm() {
             };
       setError(envelope);
       setPhase("error");
+    } finally {
+      if (attempt === attemptRef.current) {
+        abortTransferRef.current = null;
+      }
     }
   }
 
   function resetForm(): void {
+    activeUploadIdRef.current = null;
     setFile(null);
     setPhase("idle");
     setProgress(0);
     setError(null);
     setBusyNotice(null);
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function cancelUploadTransfer(): Promise<void> {
+    if (phase !== "uploading") return;
+    attemptRef.current += 1;
+    abortTransferRef.current?.();
+    abortTransferRef.current = null;
+    const uploadId = activeUploadIdRef.current;
+    resetForm();
+    if (!uploadId) return;
+    await fetch(`/api/uploads/${encodeURIComponent(uploadId)}`, {
+      method: "DELETE",
+    }).catch(() => undefined);
   }
 
   function onDrop(event: React.DragEvent<HTMLDivElement>): void {
@@ -390,7 +429,7 @@ export function NewJobForm() {
               disabled={phase !== "ready"}
               className="min-w-40"
             >
-              {uploading ? "Uploading…" : "Analyze video"}
+              {transferring ? "Uploading…" : phase === "finalizing" ? "Creating job…" : "Analyze video"}
             </Button>
             <Button
               variant="ghost"
@@ -434,6 +473,15 @@ export function NewJobForm() {
                 ? "Received - creating your job…"
                 : "Uploading to OpenContext. Large files can take a while; keep this tab open."}
             </p>
+            {transferring && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void cancelUploadTransfer()}
+              >
+                Cancel upload
+              </Button>
+            )}
           </div>
         </Card>
       )}

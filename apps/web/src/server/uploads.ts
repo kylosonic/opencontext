@@ -193,3 +193,29 @@ export async function completeUpload(
   await prisma.uploadIntent.delete({ where: { id: intent.id } }).catch(() => undefined);
   return { kind: "OK", job };
 }
+
+export type CancelUploadResult =
+  | { kind: "NOT_FOUND" }
+  | { kind: "FORBIDDEN" }
+  | { kind: "OK" };
+
+/**
+ * Abort an upload intent and remove its temporary object. Expired intents are
+ * still cancellable by their owner so the client can clean up a late transfer.
+ */
+export async function cancelUpload(
+  uploadId: string,
+  userId: string,
+): Promise<CancelUploadResult> {
+  const intent = await prisma.uploadIntent.findUnique({ where: { id: uploadId } });
+  if (!intent) {
+    return { kind: "NOT_FOUND" };
+  }
+  if (intent.userId !== userId) {
+    return { kind: "FORBIDDEN" };
+  }
+
+  await storage.delete(intent.tempKey);
+  await prisma.uploadIntent.delete({ where: { id: intent.id } });
+  return { kind: "OK" };
+}

@@ -14,7 +14,11 @@ export async function POST(request: Request): Promise<Response> {
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
-    const limit = consumeRateLimit(`upload-intent:${session.user.id}`, 10, 10 * 60_000);
+    const limit = await consumeRateLimit(
+      `upload-intent:${session.user.id}`,
+      10,
+      10 * 60_000,
+    );
     if (!limit.allowed) {
       const response = errorResponse(
         "RATE_LIMITED",

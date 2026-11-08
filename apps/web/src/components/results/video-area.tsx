@@ -32,6 +32,8 @@ export function VideoArea({
     return (
       <div
         id="source-video"
+        role="region"
+        aria-label="Source video"
         className={cx("overflow-hidden rounded-lg border border-line", className)}
       >
         {videoSlot}
@@ -42,6 +44,8 @@ export function VideoArea({
   return (
     <div
       id="source-video"
+      role="region"
+      aria-label="Source video"
       className={cx(
         "bg-grid relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-line bg-code-bg",
         className,

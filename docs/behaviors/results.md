@@ -44,3 +44,11 @@ No stage may render a blank tab:
 - Completed results include an Evidence review tab. Job owners can confirm or flag a claim, add a note or suggested correction, and clear a review. The original claim is retained, and the review is persisted in Markdown and JSON exports. Demo evidence is read-only.
 - Interaction claims are marked `INFERRED` even when the surrounding frame is `OBSERVED`.
 - **Acceptance:** select an `INFERRED` marker in a completed job → the source player seeks to its timestamp; the JSON evidence ledger contains the same ID, claim, timestamp, certainty, and collection index.
+
+## B7 — Keyboard and screen-reader access
+
+- Result tabs follow the WAI-ARIA tabs pattern: Left/Right/Home/End move focus and selection, with one tab in the page tab order.
+- Timeline entries and evidence seek controls are native buttons with visible focus. Enter and Space activate them without changing the visual layout.
+- Evidence articles expose the evidence ID, kind, timestamp, certainty, and review status as their accessible name. The seek control repeats the ID, timestamp, and review status.
+- The source-video area is a named region so screen-reader users can identify playback context.
+- **Acceptance:** navigate the result tabs and seek controls using only the keyboard; focus remains visible and the selected source timestamp is announced by the control labels.

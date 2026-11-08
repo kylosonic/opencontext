@@ -56,5 +56,9 @@ export async function retentionSweep(): Promise<RetentionSweepResult> {
     deleted += 1;
   }
 
+  await prisma.rateLimitBucket.deleteMany({
+    where: { resetAt: { lt: new Date(now - DAY) } },
+  });
+
   return { scanned: expired.length + expiredIntents.length, deleted };
 }

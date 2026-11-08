@@ -28,7 +28,21 @@ jobs:
           python-version: "3.13"
 
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr
+
+      - name: Start S3Mock for storage integration
+        run: |
+          docker run -d --name opencontext-s3mock \
+            -p 9090:9090 \
+            adobe/s3mock:5
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:9090/; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs opencontext-s3mock
+          exit 1
 
       - name: Install dependencies
         run: npm ci
@@ -45,10 +59,20 @@ jobs:
       - name: Test
         env:
           OPENCONTEXT_PYTHON: python
+          OPENCONTEXT_S3_E2E: "1"
+          STORAGE_S3_ENDPOINT: http://127.0.0.1:9090
+          STORAGE_S3_REGION: us-east-1
+          STORAGE_S3_BUCKET: opencontext-test
+          STORAGE_S3_ACCESS_KEY_ID: test
+          STORAGE_S3_SECRET_ACCESS_KEY: test
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Stop S3Mock
+        if: always()
+        run: docker rm -f opencontext-s3mock || true
 
   worker:
     name: Worker — ruff, pytest
@@ -65,6 +89,9 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install media tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr
+
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
@@ -73,3 +100,51 @@ jobs:
 
       - name: Test
         run: pytest
+
+  postgres:
+    name: PostgreSQL migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: opencontext
+          POSTGRES_PASSWORD: opencontext
+          POSTGRES_DB: opencontext
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opencontext -d opencontext"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://opencontext:opencontext@localhost:5432/opencontext?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate PostgreSQL schema and client
+        run: npm run prisma:generate:postgres --workspace web
+
+      - name: Check generated schema is current
+        run: git diff --exit-code -- apps/web/prisma/postgres/schema.prisma
+
+      - name: Apply migrations to a fresh database
+        run: npx prisma migrate deploy --schema apps/web/prisma/postgres/schema.prisma
+
+      - name: Check for schema drift
+        run: >-
+          npx prisma migrate diff
+          --from-url "$DATABASE_URL"
+          --to-schema-datamodel apps/web/prisma/postgres/schema.prisma
+          --exit-code

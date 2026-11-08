@@ -65,6 +65,8 @@ services:
       TRANSCRIPTION_PROVIDER: faster_whisper
       TRANSCRIPTION_MODEL: tiny.en
       VISION_PROVIDER: fixture
+      OCR_PROVIDER: tesseract
+      OCR_LANGUAGE: eng
       TEXT_PROVIDER: template
       FIXTURE_VISIBLE_TEXT: OpenContext local compose fixture
       HF_HOME: /models
@@ -73,6 +75,13 @@ services:
     depends_on:
       web:
         condition: service_healthy
+
+  s3mock:
+    image: adobe/s3mock:5
+    profiles: ["storage-test"]
+    container_name: opencontext-s3mock
+    ports:
+      - "9090:9090"
 
 volumes:
   postgres-data:

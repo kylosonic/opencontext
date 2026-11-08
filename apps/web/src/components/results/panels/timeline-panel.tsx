@@ -41,7 +41,7 @@ export function TimelinePanel({ entries, onSeek }: TimelinePanelProps) {
         );
 
         const sharedClass =
-          "block w-full rounded-lg border border-line bg-panel p-4 text-left transition-colors";
+          "block w-full rounded-lg border border-line bg-panel p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
         return (
           <li key={index}>
@@ -49,7 +49,9 @@ export function TimelinePanel({ entries, onSeek }: TimelinePanelProps) {
               <button
                 type="button"
                 onClick={() => onSeek(entry.start)}
-                aria-label={`Seek to ${formatRange(entry.start, entry.end)}`}
+                aria-label={`Seek to ${formatRange(entry.start, entry.end)}${
+                  entry.title ? `: ${entry.title}` : ""
+                }`}
                 className={`${sharedClass} hover:bg-panel-muted`}
               >
                 {content}
