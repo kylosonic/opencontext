@@ -1,4 +1,4 @@
-# oc-worker
+# opencontext-video
 
 The OpenContext media processing worker. It ingests uploaded video files and
 runs the media-to-context pipeline: extracting audio and frames, transcribing
@@ -9,6 +9,37 @@ The worker polls the OpenContext API, processes jobs through resumable stages,
 and stores timestamped transcript, visual, and OCR evidence in the result
 payload. Text claims carry stable evidence IDs and certainty labels in both
 Markdown and JSON exports.
+
+## Install
+
+```bash
+pip install opencontext-video
+```
+
+For local speech recognition:
+
+```bash
+pip install "opencontext-video[local]"
+```
+
+## CLI
+
+Analyze a local video without running the web app or database:
+
+```bash
+opencontext analyze video.mp4 --out context.md --json context.json
+```
+
+Use `--offline` to run the full extraction and export path with clearly labeled
+fixture transcription and vision output:
+
+```bash
+opencontext analyze video.mp4 --offline --out context.md --json context.json
+```
+
+The CLI accepts `LOW`, `MEDIUM`, or `HIGH` via `--detail-level`, and provider
+overrides via `--transcription-provider`, `--vision-provider`, and
+`--text-provider`.
 
 When configuring `TRANSCRIPTION_PROVIDER=faster_whisper` as in `.env.example`,
 install the `local` extra alongside `dev`:

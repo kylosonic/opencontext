@@ -21,8 +21,8 @@ __pycache__
 .ruff_cache
 .venv
 venv
-workers/processor/src/oc_worker.egg-info
 *.egg-info
+workers/processor/build/
 
 # coverage
 coverage

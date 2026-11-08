@@ -6,7 +6,7 @@ import {
   SourceMetaSchema,
   StageNameSchema,
   StageStatesSchema,
-} from "./job";
+} from "./job.js";
 
 /**
  * Job list card payload (GET /api/jobs, jobs.md B8: filename, status badge,

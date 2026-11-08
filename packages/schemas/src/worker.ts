@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { FailureKindSchema, StageNameSchema, StageStatusSchema } from "./job";
-import { MediaKindSchema } from "./media";
+import { FailureKindSchema, StageNameSchema, StageStatusSchema } from "./job.js";
+import { MediaKindSchema } from "./media.js";
 
 /**
  * Worker API contract (ADR-0005). The Python worker mirrors these shapes
