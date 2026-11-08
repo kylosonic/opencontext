@@ -16,11 +16,11 @@ reports that no provider is configured without naming the invalid setting.
 
 ## Acceptance
 
-- [ ] Unknown provider names raise a configuration error naming the setting.
-- [ ] Supported OpenAI-compatible providers explain that the API key is
+- [x] Unknown provider names raise a configuration error naming the setting.
+- [x] Supported OpenAI-compatible providers explain that the API key is
       missing when relevant.
-- [ ] Explicit opt-out values still return `None`.
-- [ ] Error messages contain no secret values.
+- [x] Explicit opt-out values still return `None`.
+- [x] Error messages contain no secret values.
 
 ## Files
 

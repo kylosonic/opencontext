@@ -14,9 +14,9 @@ facing value stale.
 
 ## Acceptance
 
-- [ ] `opencontext --version` prints `opencontext <package version>`.
-- [ ] No second literal version is added to the CLI parser.
-- [ ] A test fails if the printed and package-level versions drift.
+- [x] `opencontext --version` prints `opencontext <package version>`.
+- [x] No second literal version is added to the CLI parser.
+- [x] A test fails if the printed and package-level versions drift.
 
 ## Files
 

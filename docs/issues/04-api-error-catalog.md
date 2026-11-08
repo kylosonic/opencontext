@@ -14,10 +14,10 @@ without documentation can silently create an undocumented contract.
 
 ## Acceptance
 
-- [ ] Every shared error code has a documented status and explanation.
-- [ ] A test fails when a code is added without a catalog entry.
-- [ ] The catalog matches `ERROR_STATUS`.
-- [ ] The document does not describe internal exceptions as public codes.
+- [x] Every shared error code has a documented status and explanation.
+- [x] A test fails when a code is added without a catalog entry.
+- [x] The catalog matches `ERROR_STATUS`.
+- [x] The document does not describe internal exceptions as public codes.
 
 ## Files
 

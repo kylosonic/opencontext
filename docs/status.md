@@ -46,7 +46,7 @@ about the current Vercel deployment or future releases.
   a generated upload completed all five stages at 100% and produced
   evidence-linked Markdown. The worker uses bundled FFmpeg, so the default
   image does not install Debian multimedia packages.
-- CI defines both a packaged-worker CLI smoke test and a full Compose login,
+- CI passes both a packaged-worker CLI smoke test and a full Compose login,
   upload, processing, Markdown export, and JSON export smoke test.
 
 ## Public deployment

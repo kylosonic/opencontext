@@ -15,11 +15,11 @@ terminal formatting.
 
 ## Acceptance
 
-- [ ] `opencontext doctor --offline --json` emits valid JSON and exits 0 when
+- [x] `opencontext doctor --offline --json` emits valid JSON and exits 0 when
       required dependencies are present.
-- [ ] Missing required dependencies produce `ok: false` and exit 1.
-- [ ] JSON contains check names, statuses, and details but no secret values.
-- [ ] Existing text-mode tests continue to pass.
+- [x] Missing required dependencies produce `ok: false` and exit 1.
+- [x] JSON contains check names, statuses, and details but no secret values.
+- [x] Existing text-mode tests continue to pass.
 
 ## Files
 
