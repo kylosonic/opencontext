@@ -76,6 +76,25 @@ Keep the bucket private. The worker reads source media through a short-lived
 presigned GET URL. Upload completion verifies size and content type before
 moving the object to its final key.
 
+For the real S3-compatible integration test, start the test-only MinIO profile
+and run the web suite with the matching environment:
+
+```bash
+docker compose --profile storage-test up -d minio
+export OPENCONTEXT_S3_E2E=1
+export STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+export STORAGE_S3_REGION=us-east-1
+export STORAGE_S3_BUCKET=opencontext-test
+export STORAGE_S3_ACCESS_KEY_ID=minioadmin
+export STORAGE_S3_SECRET_ACCESS_KEY=minioadmin
+npm test --workspace web
+```
+
+The opt-in test creates the bucket and a narrow CORS rule, generates a short
+video, performs a presigned upload, verifies the object, completes the job, and
+downloads the source through a presigned worker URL. It is skipped when
+`OPENCONTEXT_S3_E2E` is not `1`.
+
 ## Worker
 
 The worker needs FFmpeg, Python 3.13+, network access to the web API and any
