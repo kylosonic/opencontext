@@ -26,6 +26,15 @@ All notable changes are documented here. The project follows
 - Replaced the deprecated Next.js middleware convention with `proxy.ts`.
 - Made the default Compose stack runnable with Auth.js trusted-host handling
   and a bundled FFmpeg binary, and verified a completed local upload.
+- Upgraded Prisma to 7.10.1 with SQLite and PostgreSQL driver adapters, removing
+  the remaining high-severity npm advisory.
+- Added a single package-derived CLI version, machine-readable `doctor --json`,
+  actionable provider configuration errors, and consistent provider retry
+  classification.
+- Added a generated public API error catalog and owner-only Markdown/JSON export
+  endpoints.
+- Added opt-in real Ollama vision smoke coverage plus packaged-container and
+  full Compose upload-to-export CI jobs.
 
 ## 0.1.0 - 2026-11-03
 

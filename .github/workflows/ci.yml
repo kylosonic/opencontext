@@ -101,6 +101,48 @@ jobs:
       - name: Test
         run: pytest
 
+  worker-container:
+    name: Worker container — packaged CLI smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build worker image
+        run: docker build -f docker/worker.Dockerfile -t opencontext-worker:ci .
+
+      - name: Verify packaged CLI
+        run: docker run --rm opencontext-worker:ci opencontext --version
+
+      - name: Generate fixture with bundled FFmpeg
+        run: |
+          mkdir -p .artifacts/container-smoke
+          docker run --rm -v "$PWD/.artifacts:/data" opencontext-worker:ci \
+            python -c "import subprocess; from imageio_ffmpeg import get_ffmpeg_exe; subprocess.run([get_ffmpeg_exe(), '-y', '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=1:duration=2', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=16000:duration=2', '-shortest', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '/data/fixture.mp4'], check=True)"
+
+      - name: Analyze fixture with packaged CLI
+        run: |
+          docker run --name opencontext-worker-smoke \
+            -v "$PWD/.artifacts:/data" \
+            opencontext-worker:ci opencontext analyze /data/fixture.mp4 \
+            --offline --out /data/container-smoke/context.md \
+            --json /data/container-smoke/context.json
+
+      - name: Validate evidence-bearing outputs
+        run: |
+          test -s .artifacts/container-smoke/context.md
+          test -s .artifacts/container-smoke/context.json
+          grep -q "E0001" .artifacts/container-smoke/context.md
+          node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync('.artifacts/container-smoke/context.json','utf8'));if(!Array.isArray(p.evidence)||p.evidence.length===0)throw new Error('container analysis produced no evidence')"
+
+      - name: Print container logs
+        if: failure()
+        run: docker logs opencontext-worker-smoke || true
+
+      - name: Remove smoke container
+        if: always()
+        run: docker rm -f opencontext-worker-smoke || true
+
   postgres:
     name: PostgreSQL migrations
     runs-on: ubuntu-latest
@@ -140,11 +182,66 @@ jobs:
         run: git diff --exit-code -- apps/web/prisma/postgres/schema.prisma
 
       - name: Apply migrations to a fresh database
-        run: npx prisma migrate deploy --schema apps/web/prisma/postgres/schema.prisma
+        run: npm run prisma:migrate:deploy:postgres --workspace web
 
       - name: Check for schema drift
+        working-directory: apps/web
         run: >-
           npx prisma migrate diff
-          --from-url "$DATABASE_URL"
-          --to-schema-datamodel apps/web/prisma/postgres/schema.prisma
+          --config prisma.postgres.config.ts
+          --from-config-datasource
+          --to-schema prisma/postgres/schema.prisma
           --exit-code
+
+  compose:
+    name: Compose — upload through exports
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install fixture tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Build and start Compose stack
+        run: docker compose up -d --build db web worker
+
+      - name: Wait for web health
+        run: |
+          for attempt in {1..60}; do
+            status="$(docker inspect --format '{{.State.Health.Status}}' opencontext-web 2>/dev/null || true)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose ps
+          docker compose logs --no-color
+          exit 1
+
+      - name: Generate fixture
+        run: npm run fixture
+
+      - name: Sign in, upload, process, and export
+        run: node scripts/compose-smoke.mjs
+
+      - name: Validate Compose exports
+        run: |
+          test -s .artifacts/compose-smoke/context.md
+          test -s .artifacts/compose-smoke/context.json
+          grep -q "E0001" .artifacts/compose-smoke/context.md
+          node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync('.artifacts/compose-smoke/context.json','utf8'));if(!Array.isArray(p.evidence)||p.evidence.length===0)throw new Error('Compose export produced no evidence')"
+
+      - name: Print Compose logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop Compose stack
+        if: always()
+        run: docker compose down -v --remove-orphans
