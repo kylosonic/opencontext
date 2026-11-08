@@ -10,7 +10,7 @@ about the current Vercel deployment or future releases.
 - Web lint, typecheck, and production build pass. The local suite reports 111
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
-- Worker Ruff passes with 124 tests; the real Tesseract smoke test is skipped
+- Worker Ruff passes with 126 tests; the real Tesseract smoke test is skipped
   locally because the binary is absent and runs successfully in CI.
 - A manual local smoke test produced a real Faster Whisper transcript from
   generated speech with no cloud credentials.
@@ -31,6 +31,10 @@ about the current Vercel deployment or future releases.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - No critical npm advisories remain after the Next.js, Zod, and Vitest updates.
 - Next.js uses the current `proxy.ts` request interception convention.
+- Docker Compose was verified locally with PostgreSQL, web, and worker images;
+  a generated upload completed all five stages at 100% and produced
+  evidence-linked Markdown. The worker uses bundled FFmpeg, so the default
+  image does not install Debian multimedia packages.
 
 ## Public deployment
 
@@ -47,8 +51,7 @@ service.
   been verified in this environment.
 - Faster Whisper output from one generated speech sample proves setup, not
   transcription quality.
-- Docker Compose configuration validates, but the full image stack has not been
-  verified end to end in the current environment.
+- The verified Compose flow is not yet repeated in CI.
 - Packages are not published.
 - The Prisma 6 CLI has a high-severity transitive `deepmerge-ts` advisory;
   additional moderate npm advisories affect development tooling only.

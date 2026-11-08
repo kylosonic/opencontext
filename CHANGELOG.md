@@ -24,6 +24,8 @@ All notable changes are documented here. The project follows
 - Added real S3-compatible storage integration coverage.
 - Added independent Tesseract OCR with fixture and vision-compatible modes.
 - Replaced the deprecated Next.js middleware convention with `proxy.ts`.
+- Made the default Compose stack runnable with Auth.js trusted-host handling
+  and a bundled FFmpeg binary, and verified a completed local upload.
 
 ## 0.1.0 - 2026-11-03
 
