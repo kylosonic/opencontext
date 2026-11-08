@@ -76,17 +76,17 @@ Keep the bucket private. The worker reads source media through a short-lived
 presigned GET URL. Upload completion verifies size and content type before
 moving the object to its final key.
 
-For the real S3-compatible integration test, start the test-only MinIO profile
+For the real S3-compatible integration test, start the test-only S3Mock profile
 and run the web suite with the matching environment:
 
 ```bash
-docker compose --profile storage-test up -d minio
+docker compose --profile storage-test up -d s3mock
 export OPENCONTEXT_S3_E2E=1
-export STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+export STORAGE_S3_ENDPOINT=http://127.0.0.1:9090
 export STORAGE_S3_REGION=us-east-1
 export STORAGE_S3_BUCKET=opencontext-test
-export STORAGE_S3_ACCESS_KEY_ID=minioadmin
-export STORAGE_S3_SECRET_ACCESS_KEY=minioadmin
+export STORAGE_S3_ACCESS_KEY_ID=test
+export STORAGE_S3_SECRET_ACCESS_KEY=test
 npm test --workspace web
 ```
 

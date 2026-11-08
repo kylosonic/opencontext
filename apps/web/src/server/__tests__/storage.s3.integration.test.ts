@@ -65,7 +65,7 @@ function generateFixture(output: string): void {
   );
 }
 
-describe.skipIf(!enabled)("S3/MinIO upload integration", () => {
+describe.skipIf(!enabled)("S3-compatible upload integration", () => {
   it("presigns, uploads, completes, and serves the source to the worker", async () => {
     const config = s3Config();
     const client = new S3Client({
