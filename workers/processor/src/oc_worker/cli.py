@@ -11,11 +11,16 @@ import argparse
 import json
 import logging
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import replace
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 from oc_worker import aggregation, context
 from oc_worker.config import Settings, load_local_env
@@ -57,6 +62,231 @@ def _output_base(output_dir: Path, source: Path, used: set[str]) -> Path:
         counter += 1
     used.add(candidate.casefold())
     return output_dir / candidate
+
+
+def _command_status(label: str, command: str, *, required: bool) -> dict[str, str]:
+    resolved = shutil.which(command)
+    if not resolved:
+        return {
+            "name": label,
+            "status": "missing" if required else "unverified",
+            "detail": f"{command} was not found on PATH",
+        }
+    try:
+        subprocess.run(
+            [resolved, "-version"],
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "name": label,
+            "status": "missing" if required else "unverified",
+            "detail": f"{command} could not be executed: {exc}",
+        }
+    return {"name": label, "status": "ok", "detail": resolved}
+
+
+def _configured(value: str) -> bool:
+    return bool(value and value != "change-me")
+
+
+def _remote_status(
+    name: str,
+    url: str,
+    *,
+    headers: dict[str, str] | None,
+    detail: str,
+) -> dict[str, str]:
+    try:
+        response = httpx.get(url, headers=headers or {}, timeout=3.0)
+    except httpx.HTTPError as exc:
+        return {"name": name, "status": "missing", "detail": f"{detail}; request failed: {exc}"}
+    if response.status_code >= 400:
+        return {
+            "name": name,
+            "status": "missing",
+            "detail": f"{detail}; endpoint returned HTTP {response.status_code}",
+        }
+    return {"name": name, "status": "ok", "detail": detail}
+
+
+def _provider_checks(
+    settings: Settings,
+    *,
+    offline: bool,
+    check_network: bool,
+) -> list[dict[str, str]]:
+    checks: list[dict[str, str]] = []
+    transcription = settings.transcription_provider.lower()
+    if transcription == "fixture":
+        checks.append(
+            {
+                "name": "transcription",
+                "status": "ok",
+                "detail": "fixture provider (no speech model)",
+            }
+        )
+    elif transcription == "faster_whisper":
+        available = find_spec("faster_whisper") is not None
+        checks.append(
+            {
+                "name": "transcription",
+                "status": "ok" if available else "missing",
+                "detail": (
+                    f"faster-whisper installed; model={settings.transcription_model}"
+                    if available
+                    else "faster-whisper is not installed; install the [local] extra"
+                ),
+            }
+        )
+    elif transcription == "openai_compatible":
+        configured = _configured(settings.openai_api_key)
+        checks.append(
+            {
+                "name": "transcription",
+                "status": "ok" if configured else "missing",
+                "detail": (
+                    f"OpenAI-compatible endpoint configured; model={settings.transcription_model}"
+                    if configured
+                    else "OPENAI_API_KEY is not set"
+                ),
+            }
+        )
+    else:
+        checks.append(
+            {
+                "name": "transcription",
+                "status": "unverified",
+                "detail": f"provider is {transcription or 'not configured'}",
+            }
+        )
+
+    vision = settings.vision_provider.lower()
+    if vision == "fixture":
+        checks.append(
+            {
+                "name": "vision",
+                "status": "ok",
+                "detail": "fixture provider (no vision model)",
+            }
+        )
+    elif vision == "ollama":
+        detail = f"Ollama configured at {settings.ollama_base_url}; model={settings.vision_model}"
+        if check_network and not offline:
+            checks.append(
+                _remote_status(
+                    "vision",
+                    f"{settings.ollama_base_url.rstrip('/')}/api/tags",
+                    headers=None,
+                    detail=detail,
+                )
+            )
+        else:
+            checks.append({"name": "vision", "status": "unverified", "detail": detail})
+    elif vision == "openai_compatible":
+        configured = _configured(settings.openai_api_key)
+        if not configured:
+            checks.append(
+                {
+                    "name": "vision",
+                    "status": "missing",
+                    "detail": "OPENAI_API_KEY is not set",
+                }
+            )
+        elif check_network and not offline:
+            checks.append(
+                _remote_status(
+                    "vision",
+                    f"{settings.openai_base_url.rstrip('/')}/models",
+                    headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                    detail=f"OpenAI-compatible endpoint configured; model={settings.vision_model}",
+                )
+            )
+        else:
+            checks.append(
+                {
+                    "name": "vision",
+                    "status": "ok",
+                    "detail": (
+                        "OpenAI-compatible endpoint configured; "
+                        f"model={settings.vision_model}"
+                    ),
+                }
+            )
+    else:
+        checks.append(
+            {
+                "name": "vision",
+                "status": "unverified",
+                "detail": f"provider is {vision or 'not configured'}",
+            }
+        )
+
+    text = settings.text_provider.lower()
+    if text in ("", "template"):
+        checks.append(
+            {"name": "text", "status": "ok", "detail": "deterministic template provider"}
+        )
+    elif text == "ollama":
+        detail = f"Ollama configured at {settings.ollama_base_url}; model={settings.text_model}"
+        if check_network and not offline:
+            checks.append(
+                _remote_status(
+                    "text",
+                    f"{settings.ollama_base_url.rstrip('/')}/api/tags",
+                    headers=None,
+                    detail=detail,
+                )
+            )
+        else:
+            checks.append({"name": "text", "status": "unverified", "detail": detail})
+    elif text == "openai_compatible":
+        configured = _configured(settings.openai_api_key)
+        checks.append(
+            {
+                "name": "text",
+                "status": "ok" if configured else "missing",
+                "detail": (
+                    f"OpenAI-compatible endpoint configured; model={settings.text_model}"
+                    if configured
+                    else "OPENAI_API_KEY is not set"
+                ),
+            }
+        )
+    else:
+        checks.append(
+            {
+                "name": "text",
+                "status": "unverified",
+                "detail": f"provider is {text or 'not configured'}",
+            }
+        )
+    return checks
+
+
+def run_doctor(
+    settings: Settings,
+    *,
+    offline: bool = False,
+    check_network: bool = False,
+) -> int:
+    """Print dependency readiness without exposing credentials."""
+    checks = [_command_status("ffmpeg", settings.ffmpeg_path, required=True)]
+    ffprobe = settings.ffprobe_path
+    if not ffprobe:
+        ffmpeg_path = shutil.which(settings.ffmpeg_path)
+        ffprobe = (
+            str(Path(ffmpeg_path).with_name("ffprobe"))
+            if ffmpeg_path and Path(ffmpeg_path).parent != Path(".")
+            else "ffprobe"
+        )
+    checks.append(_command_status("ffprobe", ffprobe, required=False))
+    checks.extend(_provider_checks(settings, offline=offline, check_network=check_network))
+    for check in checks:
+        print(f"{check['status'].upper():10} {check['name']}: {check['detail']}")
+    return 1 if any(check["status"] == "missing" for check in checks) else 0
 
 
 def analyze_file(
@@ -188,11 +418,34 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use deterministic fixture transcription and vision output.",
     )
+    doctor = commands.add_parser(
+        "doctor",
+        help="Check FFmpeg and configured provider readiness",
+    )
+    doctor_network = doctor.add_mutually_exclusive_group()
+    doctor_network.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip all network checks.",
+    )
+    doctor_network.add_argument(
+        "--check-network",
+        action="store_true",
+        help="Make bounded requests to configured local/remote endpoints.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    load_local_env()
+    base = Settings.from_env()
+    if args.command == "doctor":
+        return run_doctor(
+            base,
+            offline=args.offline,
+            check_network=args.check_network,
+        )
     if args.command != "analyze":
         return 2
 
@@ -209,8 +462,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    load_local_env()
-    base = Settings.from_env()
     transcription_provider = (
         "fixture" if args.offline else args.transcription_provider or base.transcription_provider
     )

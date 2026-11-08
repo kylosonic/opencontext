@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import httpx
 import pytest
 
 from oc_worker.cli import main
@@ -155,3 +156,53 @@ def test_batch_rejects_single_file_output_options(tmp_path: Path) -> None:
         ]
     )
     assert code == 2
+
+
+def test_doctor_offline_reports_ready_without_leaking_secrets(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", FFMPEG or "ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("VISION_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("TEXT_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("OPENAI_API_KEY", "doctor-secret-value")
+
+    code = main(["doctor", "--offline"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "OK" in output
+    assert "doctor-secret-value" not in output
+
+
+def test_doctor_fails_when_ffmpeg_is_missing(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", "opencontext-missing-ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "fixture")
+    monkeypatch.setenv("VISION_PROVIDER", "fixture")
+    monkeypatch.setenv("TEXT_PROVIDER", "template")
+
+    code = main(["doctor", "--offline"])
+
+    output = capsys.readouterr().out
+    assert code == 1
+    assert "MISSING" in output
+    assert "ffmpeg" in output
+
+
+def test_doctor_network_check_is_bounded_and_reports_ollama(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", FFMPEG or "ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "fixture")
+    monkeypatch.setenv("VISION_PROVIDER", "ollama")
+    monkeypatch.setenv("TEXT_PROVIDER", "template")
+    monkeypatch.setattr(
+        "oc_worker.cli.httpx.get",
+        lambda *_args, **_kwargs: httpx.Response(200),
+    )
+
+    code = main(["doctor", "--check-network"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "OK         vision: Ollama configured" in output

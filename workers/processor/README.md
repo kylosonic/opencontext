@@ -52,6 +52,16 @@ a JSON summary with success and failure counts. It continues after an invalid
 input, preserves outputs that already succeeded, and exits non-zero when any
 item fails. Use `--quiet` to suppress the summary.
 
+Check the local runtime and configured providers before submitting a job:
+
+```bash
+opencontext doctor --offline
+```
+
+The report labels each item `OK`, `MISSING`, or `UNVERIFIED` without printing
+API keys or tokens. Network checks are opt-in with `--check-network` and use a
+three-second timeout.
+
 When configuring `TRANSCRIPTION_PROVIDER=faster_whisper` as in `.env.example`,
 install the `local` extra alongside `dev`:
 
