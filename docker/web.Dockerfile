@@ -7,9 +7,14 @@ COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/schemas/package.json packages/schemas/package.json
 COPY apps/web/prisma apps/web/prisma
+COPY apps/web/prisma.config.ts apps/web/prisma.config.ts
+ENV CHECKPOINT_DISABLE=1 \
+    PRISMA_HIDE_UPDATE_MESSAGE=1 \
+    DATABASE_URL=file:./prisma/dev.db
 RUN npm ci
 
 FROM dependencies AS builder
+ENV DATABASE_URL=postgresql://opencontext:opencontext@db:5432/opencontext?schema=public
 COPY . .
 RUN npm run prisma:generate:postgres --workspace web
 RUN npm run build --workspace web
