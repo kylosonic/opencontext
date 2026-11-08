@@ -1,6 +1,6 @@
 # Jobs — lifecycle, progress, failure, retry
 
-Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
+Status: IMPLEMENTED — SEE docs/status.md FOR VERIFICATION SCOPE
 
 A job is the user's unit of work: one uploaded video and everything produced from it.
 

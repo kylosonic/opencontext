@@ -1,6 +1,6 @@
 # Context output — copy & download
 
-Status: IMPLEMENTED IN WORKING TREE — NOT YET RELEASE VERIFIED
+Status: IMPLEMENTED — SEE docs/status.md FOR VERIFICATION SCOPE
 
 The context document is the product's deliverable: one document, three access paths (copy, Markdown download, JSON download).
 

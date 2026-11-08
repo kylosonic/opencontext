@@ -1,6 +1,6 @@
 # Analysis modes (context detail levels)
 
-Status: IMPLEMENTED IN WORKING TREE — NOT RELEASE VERIFIED
+Status: IMPLEMENTED — SEE docs/status.md FOR VERIFICATION SCOPE
 
 One selector exists on the new-job page: the context detail level. It controls how much context is generated — not which stages run. Transcription, vision, and OCR all run at every level.
 
