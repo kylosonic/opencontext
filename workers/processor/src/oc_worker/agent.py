@@ -110,7 +110,7 @@ def detect_repository_profile(repository: str | Path | None) -> RepositoryProfil
                 "requirements.txt",
                 "schema.prisma",
             }:
-                manifests.add(str(path.relative_to(root)))
+                manifests.add(path.relative_to(root).as_posix())
         if scanned >= _MAX_SCAN_FILES:
             break
 

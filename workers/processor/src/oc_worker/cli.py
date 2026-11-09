@@ -31,6 +31,7 @@ from oc_worker.ffmpeg import extract_audio, extract_frames, probe
 from oc_worker.models import DetailLevel, OCRObservation, VisualObservation
 from oc_worker.pipeline import MAX_DURATION_SECONDS, NOT_A_VIDEO_MESSAGE, TOO_LONG_MESSAGE
 from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
+from oc_worker.replay import replay_context
 
 log = logging.getLogger("oc_worker.cli")
 
@@ -528,6 +529,23 @@ def _parser() -> argparse.ArgumentParser:
     )
     brief.add_argument("--task", help="Requested implementation task")
     brief.add_argument("--out", type=Path, help="Write the brief to this path")
+    replay = commands.add_parser(
+        "replay",
+        help="Validate captured context and regenerate its brief without source media",
+    )
+    replay.add_argument("context", type=Path)
+    replay.add_argument(
+        "--repo",
+        type=Path,
+        help="Target repository to inspect for language and technology signals",
+    )
+    replay.add_argument("--task", help="Requested implementation task")
+    replay.add_argument("--out", type=Path, help="Write the replayed brief to this path")
+    replay.add_argument(
+        "--report",
+        type=Path,
+        help="Write a machine-readable replay validation report",
+    )
     evaluate = commands.add_parser(
         "evaluate",
         help="Score a context JSON against a ground-truth evaluation item",
@@ -613,6 +631,37 @@ def main(argv: list[str] | None = None) -> int:
         if args.out:
             args.out.parent.mkdir(parents=True, exist_ok=True)
             args.out.write_text(rendered + "\n", encoding="utf-8")
+            log.info("Wrote %s", args.out)
+        else:
+            print(rendered)
+        return 0
+    if args.command == "replay":
+        report_path = args.report
+        try:
+            payload = load_context_payload(args.context)
+            report, rendered = replay_context(
+                payload,
+                repository=str(args.repo) if args.repo else None,
+                task=args.task,
+            )
+            report_text = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
+            if report_path:
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(report_text + "\n", encoding="utf-8")
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if not report["ok"]:
+            for error in report["errors"]:
+                print(
+                    f"{error['path']}: {error['message']} ({error['code']})",
+                    file=sys.stderr,
+                )
+            return 1
+        assert rendered is not None
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(rendered, encoding="utf-8")
             log.info("Wrote %s", args.out)
         else:
             print(rendered)
