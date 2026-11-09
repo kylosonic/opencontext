@@ -87,14 +87,14 @@ const HOW_IT_WORKS_STEPS = [
 
 const ROADMAP_ITEMS = [
   {
-    label: "Built in this branch",
+    label: "Working now",
     tone: "success" as const,
     items: ["GitHub sign-in, video uploads, job tracking, and results", "Python worker for extraction, transcription, vision, and context", "Markdown/JSON handoff with clickable evidence references"],
   },
   {
-    label: "Next gate",
+    label: "Next",
     tone: "warning" as const,
-    items: ["Fresh web and worker verification", "End-to-end integration and security review", "Production deployment and upload-path decision"],
+    items: ["Hosted long-running worker", "Broader evaluation fixtures", "Community issue triage"],
   },
   {
     label: "Research backlog",
@@ -409,9 +409,9 @@ export default function Home() {
             </ol>
           </Card>
           <p className="mt-4 text-sm leading-relaxed text-ink-faint">
-            The web app, queue, worker, and storage are implemented in the
-            current branch. Production hosting and end-to-end verification are
-            still pending; this diagram shows the intended deployment shape.
+            The web app, queue, worker, and storage run in production on
+            Vercel, Neon Postgres, and S3. The worker currently drains the
+            queue from a scheduled GitHub Actions job.
           </p>
         </Section>
 
