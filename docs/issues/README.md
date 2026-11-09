@@ -13,4 +13,5 @@ remain here until their required CI or real-model verification has passed.
 | [Provider configuration errors](06-provider-config-errors.md) | Providers | Complete |
 | [Compose full-stack CI](11-compose-e2e.md) | Deployment | Complete; CI passed |
 | [Production deployment smoke](12-production-smoke.md) | Operations | Open |
-| [Model-quality evaluation](13-quality-evaluation.md) | Evaluation | Harness complete; measured model run pending |
+| [Model-quality evaluation](13-quality-evaluation.md) | Evaluation | Complete; measured OpenCode Go run published |
+| [CI context replay](14-ci-context-replay.md) | Agent integration | Complete; CI verification added |

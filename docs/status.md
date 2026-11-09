@@ -10,7 +10,7 @@ about the current Vercel deployment or future releases.
 - Web lint, typecheck, and production build pass. The local suite reports 113
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
-- Worker Ruff passes with 210 tests; real Tesseract and OpenCode Go vision
+- Worker Ruff passes with 215 tests; real Tesseract and OpenCode Go vision
   smoke tests are skipped unless their binaries/credentials and opt-in flags
   are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
@@ -49,6 +49,10 @@ about the current Vercel deployment or future releases.
   `/api/jobs/[id]/export`.
 - `opencontext brief` turns context JSON into a repository-aware implementation
   prompt while preserving evidence IDs and separating uncertain claims.
+- `opencontext replay` validates a captured evidence ledger against its source
+  collections, timestamps, and timeline before regenerating an implementation
+  brief. CI replays the published 70-record OpenCode context without media,
+  provider credentials, or network access.
 - The `opencontext-mcp` stdio server exposes local video analysis, implementation
   brief generation, and bounded evidence lookup to coding agents.
 - `opencontext evaluate` computes transcript WER/CER, OCR precision/recall/F1,

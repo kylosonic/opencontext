@@ -46,6 +46,8 @@ All notable changes are documented here. The project follows
   OpenCode Go vision/OCR result with published context, score, and limits.
 - Added a multi-process PostgreSQL rate-limiter load test that verifies shared
   quotas and persisted counts under synchronized contention.
+- Added `opencontext replay` for credential-free validation and regeneration
+  of implementation briefs from committed video-context artifacts in CI.
 
 ## 0.1.0 - 2026-11-03
 

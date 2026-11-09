@@ -13,9 +13,9 @@ Research date: 2026-11-03
 OpenContext should lead with an evidence-linked developer handoff rather than a generic video chat. Preserve the existing Markdown and JSON exports, then attach a stable evidence ID, timestamp, and certainty to each atomic extracted claim. In the results viewer, citations and timeline ranges seek to the source video when playback is available. Keep interactions explicitly inferred.
 
 This is an additive improvement to the existing product contract. A local MCP
-server and repository-aware implementation briefs are implemented; hosted
-connections and CI replay still require separate auth, security, and deployment
-design.
+server, repository-aware implementation briefs, and credential-free captured
+context replay are implemented. Hosted connections still require separate
+authentication, security, and deployment design.
 
 ## Implemented
 
@@ -28,3 +28,5 @@ design.
   technology signals without uploading repository contents.
 - A local stdio MCP server exposes analysis, brief generation, and evidence
   lookup to coding agents.
+- `opencontext replay` validates a committed context artifact and regenerates
+  its implementation brief in CI without video, providers, or network access.

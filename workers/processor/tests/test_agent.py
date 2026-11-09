@@ -87,6 +87,7 @@ def test_detects_repository_technologies_without_scanning_dependencies(
     assert profile is not None
     assert profile.languages[0] == "TypeScript"
     assert "Python" not in profile.languages
+    assert all("\\" not in manifest for manifest in profile.manifests)
     assert set(profile.technologies) >= {
         "GitHub Actions",
         "Next.js",

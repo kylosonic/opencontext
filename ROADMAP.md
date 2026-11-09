@@ -14,7 +14,6 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Later
 
-- CI replay from captured video context.
 - Expand the measured evaluation beyond one synthetic visual flow to real
   recordings, spoken audio, dense UI, and degraded captures; publish per-item
   and aggregate results.

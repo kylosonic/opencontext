@@ -104,6 +104,24 @@ jobs:
       - name: Test
         run: pytest
 
+      - name: Replay captured video context
+        run: |
+          opencontext replay \
+            ../../docs/evaluation/opencode-go-measured-context.json \
+            --repo ../.. \
+            --task "Implement the observed three-state settings flow." \
+            --out ../../.artifacts/replayed-measured-brief.md \
+            --report ../../.artifacts/replayed-measured-report.json
+          python -c "import json; p=json.load(open('../../.artifacts/replayed-measured-report.json')); assert p['ok']; assert p['counts']['evidence'] == 70; assert len(p['contextSha256']) == 64; assert len(p['briefSha256']) == 64"
+          opencontext replay \
+            ../../docs/evaluation/opencode-go-measured-context.json \
+            --repo ../.. \
+            --task "Implement the observed three-state settings flow." \
+            --out ../../.artifacts/replayed-measured-brief-2.md \
+            --report ../../.artifacts/replayed-measured-report-2.json
+          cmp ../../.artifacts/replayed-measured-brief.md ../../.artifacts/replayed-measured-brief-2.md
+          cmp ../../.artifacts/replayed-measured-report.json ../../.artifacts/replayed-measured-report-2.json
+
   worker-container:
     name: Worker container — packaged CLI smoke
     runs-on: ubuntu-latest

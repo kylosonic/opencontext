@@ -55,6 +55,29 @@ media extraction.
 
 Returns a bounded evidence ledger for verification or follow-up questions.
 
+## CI replay
+
+Commit an OpenContext JSON result as a repository artifact, then validate and
+replay it without the original video or model providers:
+
+```bash
+opencontext replay captured-context.json \
+  --repo . \
+  --task "Implement the recorded settings flow." \
+  --out implementation-brief.md \
+  --report replay-report.json
+```
+
+Replay fails with a nonzero exit code when evidence IDs are duplicated or out
+of sequence, source indexes dangle, evidence text no longer matches its source
+collection, timestamps exceed the recording, or timeline/transcript bounds are
+invalid. `replay-report.json` records the validation result, collection counts,
+and SHA-256 digests of the canonical context and rendered brief.
+
+The repository runs this check against
+`docs/evaluation/opencode-go-measured-context.json` on every CI build. The same
+step works without FFmpeg, provider credentials, or network access.
+
 ## Trust boundary
 
 The MCP server runs locally and reads only paths supplied by the MCP client. It

@@ -83,7 +83,7 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Real S3-compatible presigned upload/download coverage in CI.
 - OpenCode Go hosted vision smoke and measured synthetic UI/OCR evidence with
   published context, scores, configuration, and limitations.
-- Standalone `opencontext analyze`, `brief`, `evaluate`, and `doctor` CLI
+- Standalone `opencontext analyze`, `brief`, `replay`, `evaluate`, and `doctor` CLI
   workflows with release-ready shared schemas.
 - Repository-aware implementation briefs and a local MCP server that expose
   evidence-linked video context directly to coding agents.
