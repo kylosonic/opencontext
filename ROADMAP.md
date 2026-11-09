@@ -10,15 +10,15 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Next
 
-- Run and publish a measured real-model evaluation using the implemented
-  reproducible harness and methodology.
 - Load-test the database-backed rate limiter across multiple web instances.
 - Verify production S3 CORS and multipart uploads against the selected provider.
 
 ## Later
 
 - CI replay from captured video context.
-- Hosted evaluation sets with published methodology and reproducible results.
+- Expand the measured evaluation beyond one synthetic visual flow to real
+  recordings, spoken audio, dense UI, and degraded captures; publish per-item
+  and aggregate results.
 
 ## Non-goals
 

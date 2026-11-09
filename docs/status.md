@@ -1,6 +1,6 @@
 # Project Status
 
-Last verified: 2026-11-08
+Last verified: 2026-11-09
 
 This page describes the repository and verification evidence, not a guarantee
 about the current Vercel deployment or future releases.
@@ -18,6 +18,10 @@ about the current Vercel deployment or future releases.
 - OpenCode Go `glm-5.3-flash` completed a real hosted-vision analysis of the
   generated fixture, producing 19 evidence records. The raw Markdown and JSON
   are published under `docs/evaluation/` and labeled as smoke evidence.
+- A measured OpenCode Go `glm-5.3-flash` run over a generated three-state UI
+  flow matched all four expected OCR lines and all seven visual keywords,
+  producing 70 evidence records. The input, configuration, raw context,
+  score, methodology, and limitations are published under `docs/evaluation/`.
 - Cross-language contract test validates Python payloads with the shared Zod
   schemas.
 - Generated-video test performs direct upload, queue claim, worker HTTP calls,
@@ -71,8 +75,9 @@ service.
 
 ## Known gaps
 
-- No real-model quality evaluation is published yet. The OpenCode Go vision
-  smoke test passed, but one synthetic video does not establish quality.
+- Published quality evidence covers one synthetic visual flow with large
+  high-contrast text and no audio. It does not establish broad vision accuracy,
+  speech quality, or performance on real application recordings.
 - Faster Whisper output from one generated speech sample proves setup, not
   transcription quality.
 - Packages are not published.

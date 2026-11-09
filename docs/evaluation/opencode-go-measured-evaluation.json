@@ -1,0 +1,40 @@
+{
+  "dataset": {
+    "id": "managed-ui-opencontext-v1",
+    "item": "managed-ui-three-state-flow",
+    "license": "CC0-1.0",
+    "provenance": "Synthetic six-second screen recording with three scripted UI states."
+  },
+  "evaluationVersion": 1,
+  "model": {
+    "measurementKind": "measured",
+    "name": "glm-5.3-flash",
+    "version": "opencode-go-2026-11-09"
+  },
+  "ocr": {
+    "expected": 4,
+    "f1": 1.0,
+    "matched": 4,
+    "precision": 1.0,
+    "predicted": 4,
+    "recall": 1.0
+  },
+  "transcript": {
+    "characterErrorRate": 0.0,
+    "hypothesis": "",
+    "reference": "",
+    "wordErrorRate": 0.0
+  },
+  "visual": {
+    "keywords": {
+      "Save Changes": true,
+      "Saved Successfully": true,
+      "Settings": true,
+      "Welcome to Dashboard": true,
+      "blue": true,
+      "button": true,
+      "green": true
+    },
+    "recall": 1.0
+  }
+}

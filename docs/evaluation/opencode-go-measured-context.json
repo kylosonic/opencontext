@@ -1,0 +1,1076 @@
+{
+  "evidence": [
+    {
+      "certainty": "OBSERVED",
+      "id": 1,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 0
+      },
+      "text": "Welcome to Dashboard splash screen",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 2,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 1
+      },
+      "text": "A solid blue full-screen background with centered white text reading 'Welcome to Dashboard'. No other UI elements are visible.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 3,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 2
+      },
+      "text": "Single centered text element on a full-bleed solid blue background; no navigation, headers, or controls visible.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 4,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 0
+      },
+      "text": "Centered welcome text",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 5,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 0
+      },
+      "text": "Welcome to Dashboard",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 6,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 0
+      },
+      "text": "background: Solid blue (#2563EB-like)",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 7,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 1
+      },
+      "text": "layout: Horizontally and vertically centered text",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 8,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 2
+      },
+      "text": "typography: Large white sans-serif heading",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 9,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 8
+      },
+      "text": "Welcome to Dashboard",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 10,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 3
+      },
+      "text": "Welcome to Dashboard splash screen",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 11,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 4
+      },
+      "text": "A solid blue full-screen background with centered white text reading 'Welcome to Dashboard'. No other UI elements are visible.",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 12,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 5
+      },
+      "text": "Single centered text element on a full-bleed blue background; no navigation, headers, or panels present.",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 13,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 1
+      },
+      "text": "Centered welcome text",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 14,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 1
+      },
+      "text": "Welcome to Dashboard",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 15,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 3
+      },
+      "text": "background: Solid blue (#2563EB-like)",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 16,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 4
+      },
+      "text": "layout: Horizontally and vertically centered text",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 17,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 5
+      },
+      "text": "typography: Large white sans-serif heading",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 18,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 9
+      },
+      "text": "Welcome to Dashboard",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 19,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 6
+      },
+      "text": "Settings page with Save Changes button",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 20,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 7
+      },
+      "text": "A minimal settings screen with a large dark 'Settings' heading centered near the top and a blue rectangular 'Save Changes' button centered below on a light gray background.",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 21,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 8
+      },
+      "text": "Vertically stacked, centered layout: heading at top, button in middle of the page with generous whitespace.",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 22,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 2
+      },
+      "text": "Settings heading",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 23,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 3
+      },
+      "text": "Save Changes button",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 24,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 2
+      },
+      "text": "Settings",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 25,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 3
+      },
+      "text": "Save Changes",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 26,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 6
+      },
+      "text": "background: Light gray/off-white",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 27,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 7
+      },
+      "text": "button: Solid blue rectangle with white text, no rounded corners",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 28,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 8
+      },
+      "text": "spacing: Large vertical gap between heading and button",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 29,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 9
+      },
+      "text": "typography: Large dark sans-serif heading",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 30,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 10
+      },
+      "text": "Settings",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 31,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 11
+      },
+      "text": "Save Changes",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 32,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 9
+      },
+      "text": "Settings page with Save Changes button",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 33,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 10
+      },
+      "text": "A minimal light gray page with a large dark 'Settings' heading centered near the top and a blue rectangular 'Save Changes' button centered below it.",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 34,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 11
+      },
+      "text": "Single-column centered layout: heading at top-center, button vertically centered below with generous whitespace.",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 35,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 4
+      },
+      "text": "Settings heading",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 36,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 5
+      },
+      "text": "Save Changes button",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 37,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 4
+      },
+      "text": "Settings",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 38,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 5
+      },
+      "text": "Save Changes",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 39,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 10
+      },
+      "text": "background: Light gray/off-white",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 40,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 11
+      },
+      "text": "button: Solid blue rectangle with white text, no rounded corners",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 41,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 12
+      },
+      "text": "style: Minimal, high whitespace",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 42,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 13
+      },
+      "text": "typography: Large dark sans-serif heading",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 43,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 12
+      },
+      "text": "Settings",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 44,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 13
+      },
+      "text": "Save Changes",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 45,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 12
+      },
+      "text": "Saved Successfully confirmation screen",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 46,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 13
+      },
+      "text": "A full-screen green confirmation overlay with a darker green square icon above centered white text reading 'Saved Successfully'.",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 47,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 14
+      },
+      "text": "Vertically centered composition: a square icon sits above a single line of large white text, both centered horizontally on a solid green background.",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 48,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 6
+      },
+      "text": "Green full-screen overlay",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 49,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 7
+      },
+      "text": "Darker green square icon",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 50,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 8
+      },
+      "text": "Centered success message text",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "INFERRED",
+      "id": 51,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "interactions",
+        "index": 0
+      },
+      "text": "No user interaction visible; the screen displays a save-success confirmation",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 52,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 6
+      },
+      "text": "Saved Successfully",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 53,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "stateTransitions",
+        "index": 0
+      },
+      "text": "Screen shows a save-success state, suggesting a prior save action completed",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 54,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 14
+      },
+      "text": "background: Solid green (#1a8a3c-like)",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 55,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 15
+      },
+      "text": "icon: Muted darker green square, likely a checkmark placeholder",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 56,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 16
+      },
+      "text": "style: Minimal full-screen success feedback",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 57,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 17
+      },
+      "text": "typography: Large white sans-serif text",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 58,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 14
+      },
+      "text": "Saved Successfully",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 59,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 15
+      },
+      "text": "Saved Successfully confirmation screen",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 60,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 16
+      },
+      "text": "A full-screen green confirmation overlay with a lighter green square icon above the white text 'Saved Successfully' centered on screen.",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 61,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 17
+      },
+      "text": "Centered vertical composition: square icon above a single line of large white text, both centered horizontally on a solid green background.",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 62,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 9
+      },
+      "text": "Green full-screen background",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 63,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 10
+      },
+      "text": "Lighter green square icon",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 64,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "uiHierarchy",
+        "index": 11
+      },
+      "text": "Success message text",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 65,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visibleText",
+        "index": 7
+      },
+      "text": "Saved Successfully",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 66,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "stateTransitions",
+        "index": 1
+      },
+      "text": "Screen displays a save-success confirmation state",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 67,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 18
+      },
+      "text": "colorScheme: Solid green background with lighter green accent and white text",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 68,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 19
+      },
+      "text": "layout: Centered single-column success screen",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 69,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "implementationObservations",
+        "index": 20
+      },
+      "text": "typography: Large sans-serif white text",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "id": 70,
+      "kind": "OCR",
+      "source": {
+        "collection": "visibleText",
+        "index": 15
+      },
+      "text": "Saved Successfully",
+      "timestampSec": 5.0
+    }
+  ],
+  "evidenceVersion": 1,
+  "formatVersion": 2,
+  "generatedAt": "2026-11-09T06:40:50+00:00",
+  "implementationObservations": [
+    {
+      "note": "background: Solid blue (#2563EB-like)",
+      "timestampSec": 0.0
+    },
+    {
+      "note": "layout: Horizontally and vertically centered text",
+      "timestampSec": 0.0
+    },
+    {
+      "note": "typography: Large white sans-serif heading",
+      "timestampSec": 0.0
+    },
+    {
+      "note": "background: Solid blue (#2563EB-like)",
+      "timestampSec": 1.0
+    },
+    {
+      "note": "layout: Horizontally and vertically centered text",
+      "timestampSec": 1.0
+    },
+    {
+      "note": "typography: Large white sans-serif heading",
+      "timestampSec": 1.0
+    },
+    {
+      "note": "background: Light gray/off-white",
+      "timestampSec": 2.0
+    },
+    {
+      "note": "button: Solid blue rectangle with white text, no rounded corners",
+      "timestampSec": 2.0
+    },
+    {
+      "note": "spacing: Large vertical gap between heading and button",
+      "timestampSec": 2.0
+    },
+    {
+      "note": "typography: Large dark sans-serif heading",
+      "timestampSec": 2.0
+    },
+    {
+      "note": "background: Light gray/off-white",
+      "timestampSec": 3.0
+    },
+    {
+      "note": "button: Solid blue rectangle with white text, no rounded corners",
+      "timestampSec": 3.0
+    },
+    {
+      "note": "style: Minimal, high whitespace",
+      "timestampSec": 3.0
+    },
+    {
+      "note": "typography: Large dark sans-serif heading",
+      "timestampSec": 3.0
+    },
+    {
+      "note": "background: Solid green (#1a8a3c-like)",
+      "timestampSec": 4.0
+    },
+    {
+      "note": "icon: Muted darker green square, likely a checkmark placeholder",
+      "timestampSec": 4.0
+    },
+    {
+      "note": "style: Minimal full-screen success feedback",
+      "timestampSec": 4.0
+    },
+    {
+      "note": "typography: Large white sans-serif text",
+      "timestampSec": 4.0
+    },
+    {
+      "note": "colorScheme: Solid green background with lighter green accent and white text",
+      "timestampSec": 5.0
+    },
+    {
+      "note": "layout: Centered single-column success screen",
+      "timestampSec": 5.0
+    },
+    {
+      "note": "typography: Large sans-serif white text",
+      "timestampSec": 5.0
+    }
+  ],
+  "interactions": [
+    "No user interaction visible; the screen displays a save-success confirmation"
+  ],
+  "source": {
+    "detailLevel": "HIGH",
+    "durationSec": 6.0,
+    "name": "opencontext-measured-eval-v1.mp4"
+  },
+  "stateTransitions": [
+    {
+      "change": "Screen shows a save-success state, suggesting a prior save action completed",
+      "timestampSec": 4.0
+    },
+    {
+      "change": "Screen displays a save-success confirmation state",
+      "timestampSec": 5.0
+    }
+  ],
+  "timeline": [
+    {
+      "end": 2.0,
+      "start": 0.0,
+      "summary": "A solid blue full-screen background with centered white text reading 'Welcome to Dashboard'. No other UI elements are visible.",
+      "title": "Welcome to Dashboard splash screen"
+    },
+    {
+      "end": 4.0,
+      "start": 2.0,
+      "summary": "A minimal settings screen with a large dark 'Settings' heading centered near the top and a blue rectangular 'Save Changes' button centered below on a light gray background.",
+      "title": "Settings page with Save Changes button"
+    },
+    {
+      "end": 6.0,
+      "start": 4.0,
+      "summary": "A full-screen green confirmation overlay with a darker green square icon above centered white text reading 'Saved Successfully'.; changes: Screen shows a save-success state, suggesting a prior save action completed; Screen displays a save-success confirmation state",
+      "title": "Saved Successfully confirmation screen"
+    }
+  ],
+  "transcript": [],
+  "uiHierarchy": [
+    "Centered welcome text",
+    "Centered welcome text",
+    "Settings heading",
+    "Save Changes button",
+    "Settings heading",
+    "Save Changes button",
+    "Green full-screen overlay",
+    "Darker green square icon",
+    "Centered success message text",
+    "Green full-screen background",
+    "Lighter green square icon",
+    "Success message text"
+  ],
+  "visibleText": [
+    "Welcome to Dashboard",
+    "Welcome to Dashboard",
+    "Settings",
+    "Save Changes",
+    "Settings",
+    "Save Changes",
+    "Saved Successfully",
+    "Saved Successfully",
+    {
+      "confidence": null,
+      "text": "Welcome to Dashboard",
+      "timestampSec": 0.0
+    },
+    {
+      "confidence": null,
+      "text": "Welcome to Dashboard",
+      "timestampSec": 1.0
+    },
+    {
+      "confidence": null,
+      "text": "Settings",
+      "timestampSec": 2.0
+    },
+    {
+      "confidence": null,
+      "text": "Save Changes",
+      "timestampSec": 2.0
+    },
+    {
+      "confidence": null,
+      "text": "Settings",
+      "timestampSec": 3.0
+    },
+    {
+      "confidence": null,
+      "text": "Save Changes",
+      "timestampSec": 3.0
+    },
+    {
+      "confidence": null,
+      "text": "Saved Successfully",
+      "timestampSec": 4.0
+    },
+    {
+      "confidence": null,
+      "text": "Saved Successfully",
+      "timestampSec": 5.0
+    }
+  ],
+  "visualFindings": [
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "Welcome to Dashboard splash screen",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A solid blue full-screen background with centered white text reading 'Welcome to Dashboard'. No other UI elements are visible.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Single centered text element on a full-bleed solid blue background; no navigation, headers, or controls visible.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "Welcome to Dashboard splash screen",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A solid blue full-screen background with centered white text reading 'Welcome to Dashboard'. No other UI elements are visible.",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Single centered text element on a full-bleed blue background; no navigation, headers, or panels present.",
+      "timestampSec": 1.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "Settings page with Save Changes button",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A minimal settings screen with a large dark 'Settings' heading centered near the top and a blue rectangular 'Save Changes' button centered below on a light gray background.",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Vertically stacked, centered layout: heading at top, button in middle of the page with generous whitespace.",
+      "timestampSec": 2.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "Settings page with Save Changes button",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A minimal light gray page with a large dark 'Settings' heading centered near the top and a blue rectangular 'Save Changes' button centered below it.",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Single-column centered layout: heading at top-center, button vertically centered below with generous whitespace.",
+      "timestampSec": 3.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "Saved Successfully confirmation screen",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A full-screen green confirmation overlay with a darker green square icon above centered white text reading 'Saved Successfully'.",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Vertically centered composition: a square icon sits above a single line of large white text, both centered horizontally on a solid green background.",
+      "timestampSec": 4.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "sceneTitle",
+      "text": "Saved Successfully confirmation screen",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "visualDescription",
+      "text": "A full-screen green confirmation overlay with a lighter green square icon above the white text 'Saved Successfully' centered on screen.",
+      "timestampSec": 5.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "field": "layoutDescription",
+      "text": "Centered vertical composition: square icon above a single line of large white text, both centered horizontally on a solid green background.",
+      "timestampSec": 5.0
+    }
+  ]
+}
