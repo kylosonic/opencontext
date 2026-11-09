@@ -30,7 +30,17 @@ function s3Config() {
   if (!endpoint || !region || !bucket || !accessKeyId || !secretAccessKey) {
     throw new Error("S3 integration environment is incomplete");
   }
-  return { endpoint, region, bucket, accessKeyId, secretAccessKey };
+  return {
+    endpoint,
+    region,
+    bucket,
+    forcePathStyle: true,
+    credentials: {
+      kind: "static" as const,
+      accessKeyId,
+      secretAccessKey,
+    },
+  };
 }
 
 function generateFixture(output: string): void {
@@ -72,8 +82,8 @@ describe.skipIf(!enabled)("S3-compatible upload integration", () => {
       endpoint: config.endpoint,
       forcePathStyle: true,
       credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
+        accessKeyId: config.credentials.accessKeyId,
+        secretAccessKey: config.credentials.secretAccessKey,
       },
     });
     try {

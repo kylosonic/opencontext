@@ -25,6 +25,20 @@ function productionEnv() {
   };
 }
 
+function withoutStaticS3Credentials(): Record<string, string> {
+  const env: Record<string, string> = { ...productionEnv() };
+  for (const key of [
+    "STORAGE_S3_ENDPOINT",
+    "STORAGE_S3_REGION",
+    "STORAGE_S3_BUCKET",
+    "STORAGE_S3_ACCESS_KEY_ID",
+    "STORAGE_S3_SECRET_ACCESS_KEY",
+  ]) {
+    delete env[key];
+  }
+  return env;
+}
+
 afterEach(() => {
   vi.unstubAllEnvs();
 });
@@ -36,6 +50,35 @@ describe("production readiness", () => {
     expect(report.ready).toBe(true);
     expect(report.environment).toBe("production");
     expect(report.checks.every((check) => check.ok)).toBe(true);
+  });
+
+  it("accepts Vercel OIDC storage without static S3 credentials", () => {
+    const report = evaluateReadiness(
+      {
+        ...withoutStaticS3Credentials(),
+        AWS_ROLE_ARN: "arn:aws:iam::123456789012:role/vercel-oidc-role",
+        AWS_REGION: "us-east-1",
+        S3_BUCKET_NAME: "opencontext",
+      },
+      "production",
+    );
+
+    expect(report.ready).toBe(true);
+    expect(report.checks.find((check) => check.id === "storage")?.ok).toBe(true);
+  });
+
+  it("rejects partial Vercel OIDC storage configuration", () => {
+    const report = evaluateReadiness(
+      {
+        ...withoutStaticS3Credentials(),
+        AWS_ROLE_ARN: "arn:aws:iam::123456789012:role/vercel-oidc-role",
+        AWS_REGION: "us-east-1",
+      },
+      "production",
+    );
+
+    expect(report.ready).toBe(false);
+    expect(report.checks.find((check) => check.id === "storage")?.ok).toBe(false);
   });
 
   it("reports every blocker without exposing secret values", () => {
