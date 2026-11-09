@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "prebuild": "npm --prefix ../../packages/schemas run build",
+    "prebuild": "node ../../scripts/prisma-generate.mjs && npm --prefix ../../packages/schemas run build",
     "build": "next build --webpack",
     "start": "next start",
-    "postinstall": "prisma generate",
+    "postinstall": "node ../../scripts/prisma-generate.mjs",
+    "prisma:generate": "prisma generate",
     "pretypecheck": "npm --prefix ../../packages/schemas run build",
     "prisma:generate:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma generate --config prisma.postgres.config.ts",
     "prisma:migrate:deploy:postgres": "node ../../scripts/prisma-schema.mjs postgresql && prisma migrate deploy --config prisma.postgres.config.ts",
