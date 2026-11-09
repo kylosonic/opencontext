@@ -7,7 +7,7 @@ about the current Vercel deployment or future releases.
 
 ## Verified in the repository
 
-- Web lint, typecheck, and production build pass. The local suite reports 120
+- Web lint, typecheck, and production build pass. The local suite reports 123
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
 - Worker Ruff passes with 234 tests; real Tesseract and OpenCode Go vision/audio
@@ -81,12 +81,21 @@ about the current Vercel deployment or future releases.
 
 ## Public deployment
 
-The Vercel preview at
-[opencontext-swart.vercel.app](https://opencontext-swart.vercel.app) serves the
-landing page, deterministic demo, docs, and sign-in screen. Production GitHub
-OAuth, a persistent database, object storage, and a worker are not fully
-configured, so the public deployment is not a complete upload-processing
-service.
+The deployment at
+[opencontext-swart.vercel.app](https://opencontext-swart.vercel.app) runs the
+full upload-to-export path: GitHub OAuth, Neon PostgreSQL, S3 through a
+Vercel-managed OIDC role, and a Python worker. `/api/health/ready` returned
+HTTP 200 with all six configuration checks on 2026-11-09.
+
+On 2026-11-09 job `cmw9naxem000108ic8u0nvfyr` completed all five stages at
+100% in production, producing evidence IDs, source timestamps, certainty
+labels, Markdown, and JSON. The fixture video has no audio track, so that run
+exercised vision, OCR, aggregation, and exports while transcription reported
+"no audio".
+
+The worker currently drains the queue from
+`.github/workflows/worker-schedule.yml` every five minutes. It is a real worker,
+not a simulation, but job start latency is up to one cron interval.
 
 ## Known gaps
 
@@ -99,8 +108,8 @@ service.
   toolchain; no high or critical advisories remain.
 - No sustained high-traffic test against the deployed HTTP service or
   independent penetration test exists.
-- Production OAuth, object storage, PostgreSQL, and worker deployment are not
-  configured or deployed as a complete public service.
+- The worker is scheduled rather than long-running, so queue latency and
+  GitHub Actions minute usage are higher than a dedicated worker host.
 
 Scoped work is tracked in [ROADMAP.md](../ROADMAP.md) and
 [docs/issues](issues/README.md).

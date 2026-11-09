@@ -5,6 +5,13 @@ All notable changes are documented here. The project follows
 
 ## Unreleased
 
+- Verified a production upload-to-export job on Vercel, Neon PostgreSQL, S3 via
+  Vercel OIDC, and the scheduled GitHub Actions worker.
+- Fixed S3 artifact uploads to use a Node readable stream and to calculate only
+  required checksums.
+- Fixed presigned worker downloads so API auth headers are not sent to S3.
+- Distinguished "no audio track" from "audio track contained no speech" in
+  context markdown and the transcript tab.
 - Credential-free local pipeline mode with explicitly labeled fixture providers.
 - Generated-video end-to-end coverage and cross-language contract validation.
 - Docker Compose stack for web, worker, and PostgreSQL.

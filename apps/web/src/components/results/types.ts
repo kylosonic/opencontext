@@ -63,6 +63,8 @@ export interface JobHeaderView {
   displayName: string;
   status: JobStatusView;
   detailLevel: "LOW" | "MEDIUM" | "HIGH";
+  /** False when the probed source had no audio stream. */
+  audioPresent?: boolean | null;
   /** ISO timestamp. */
   createdAt: string;
   /** ISO timestamp; hidden when unknown. */

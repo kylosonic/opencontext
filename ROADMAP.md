@@ -4,13 +4,15 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Now
 
-- Configure production GitHub OAuth, PostgreSQL, object storage, and a worker;
-  run one deployed upload-to-export smoke test.
 - Publish the first Python and npm packages through protected environments.
 
 ## Next
 
-- Verify production S3 CORS and multipart uploads against the selected provider.
+- Move the worker from a five-minute GitHub Actions schedule to a long-running
+  container host.
+- Add an audio-backed end-to-end fixture that exercises real speech
+  transcription in CI.
+- Add CORS for any custom production domain.
 
 ## Later
 

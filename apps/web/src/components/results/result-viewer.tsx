@@ -109,7 +109,10 @@ export function ResultViewer({
 
           <div className="px-5 pb-5">
             <TabPanel id="transcript">
-              <TranscriptPanel segments={result.transcript} />
+              <TranscriptPanel
+                segments={result.transcript}
+                audioPresent={job.audioPresent}
+              />
             </TabPanel>
             <TabPanel id="visual">
               <VisualPanel
