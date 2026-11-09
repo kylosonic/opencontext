@@ -13,6 +13,9 @@ from oc_worker.providers.text.openai_compatible import OpenAICompatibleTextProvi
 from oc_worker.providers.text.template import TemplateTextProvider
 from oc_worker.providers.transcription.base import TranscriptionProvider
 from oc_worker.providers.transcription.fixture import FixtureTranscriptionProvider
+from oc_worker.providers.transcription.openai_audio import (
+    OpenAIAudioChatTranscriptionProvider,
+)
 from oc_worker.providers.transcription.openai_compatible import (
     OpenAICompatibleTranscriptionProvider,
 )
@@ -47,9 +50,20 @@ def build_transcription(settings: Settings) -> TranscriptionProvider | None:
             model=settings.transcription_model,
             session_id=settings.opencode_session_id,
         )
+    if provider == "openai_audio":
+        if not settings.openai_api_key:
+            raise ProviderConfigurationError(
+                "OPENAI_API_KEY is required when TRANSCRIPTION_PROVIDER=openai_audio"
+            )
+        return OpenAIAudioChatTranscriptionProvider(
+            base_url=settings.openai_base_url,
+            api_key=settings.openai_api_key,
+            model=settings.transcription_model,
+            session_id=settings.opencode_session_id,
+        )
     raise ProviderConfigurationError(
         f"Unknown TRANSCRIPTION_PROVIDER={settings.transcription_provider!r}; "
-        "expected fixture, faster_whisper, openai_compatible, none, or off"
+        "expected fixture, faster_whisper, openai_compatible, openai_audio, none, or off"
     )
 
 

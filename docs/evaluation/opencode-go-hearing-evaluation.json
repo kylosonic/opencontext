@@ -1,0 +1,32 @@
+{
+  "dataset": {
+    "id": "open-speech-repository-harvard-v1",
+    "item": "harvard-osr-us-10",
+    "license": "Open Speech Repository terms: freely usable and publishable with source attribution",
+    "provenance": "Ten Harvard sentences recorded in Open Speech Repository OSR_us_000_0010_8k.wav."
+  },
+  "evaluationVersion": 1,
+  "model": {
+    "measurementKind": "measured",
+    "name": "mimo-v2.6-pro",
+    "version": "opencode-go-2026-11-09"
+  },
+  "ocr": {
+    "expected": 0,
+    "f1": 1.0,
+    "matched": 0,
+    "precision": 1.0,
+    "predicted": 0,
+    "recall": 1.0
+  },
+  "transcript": {
+    "characterErrorRate": 0.0031,
+    "hypothesis": "The birch canoe slid on the smooth planks. Glue the sheet to the dark blue background. It is easy to tell the depth of a well. These days a chicken leg is a rare dish. Rice is often served in round bowls. The juice of lemons makes fine punch. The box was thrown beside the parked truck. The hogs were fed chopped corn and garbage. Four hours of steady work faced us. A large size in stockings is hard to sell.",
+    "reference": "The birch canoe slid on the smooth planks. Glue the sheet to the dark blue background. It's easy to tell the depth of a well. These days a chicken leg is a rare dish. Rice is often served in round bowls. The juice of lemons makes fine punch. The box was thrown beside the parked truck. The hogs were fed chopped corn and garbage. Four hours of steady work faced us. A large size in stockings is hard to sell.",
+    "wordErrorRate": 0.0123
+  },
+  "visual": {
+    "keywords": {},
+    "recall": 1.0
+  }
+}

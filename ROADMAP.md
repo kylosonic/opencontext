@@ -14,9 +14,9 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Later
 
-- Expand the measured evaluation beyond one synthetic visual flow to real
-  recordings, spoken audio, dense UI, and degraded captures; publish per-item
-  and aggregate results.
+- Expand the measured evaluation beyond one synthetic visual flow and one clean
+  speech sample to multiple speakers, noisy audio, dense UI, and degraded
+  captures; publish per-item and aggregate results.
 
 ## Non-goals
 

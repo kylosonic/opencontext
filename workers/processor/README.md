@@ -118,6 +118,9 @@ the worker. Provider settings are read from the worker process environment.
 
 - `TRANSCRIPTION_PROVIDER=faster_whisper` runs speech recognition locally;
   install the `local` extra and allow the first model download.
+- `TRANSCRIPTION_PROVIDER=openai_audio` sends extracted WAV audio to an
+  audio-capable OpenAI-compatible chat model through the same `OPENAI_BASE_URL`
+  and API-key settings used for hosted vision.
 - `VISION_PROVIDER=ollama` remains available for a local Ollama server.
 - `VISION_PROVIDER=openai_compatible` can call OpenCode Go with
   `OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1`,
@@ -148,6 +151,18 @@ OPENCONTEXT_OPENCODE_E2E=1 pytest tests/test_opencode_vision_smoke.py -q
 The test verifies the model catalog accepts image input, generates a synthetic
 frame, and checks the normalized visual response. It is a setup smoke test, not
 evidence of model quality.
+
+## Real OpenCode Go audio smoke test
+
+```bash
+export OPENCODE_API_KEY=...
+export OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1
+export TRANSCRIPTION_MODEL=mimo-v2.6-pro
+OPENCONTEXT_OPENCODE_AUDIO_E2E=1 pytest tests/test_opencode_audio_smoke.py -q
+```
+
+This checks model-catalog audio support and transcribes the attributed Harvard
+sentence recording committed under `docs/evaluation/`.
 
 ## MCP server
 

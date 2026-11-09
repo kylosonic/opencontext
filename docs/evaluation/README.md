@@ -7,11 +7,14 @@ quality.
 - **Smoke test:** one real model response proves connectivity and parsing.
 - **Measured quality:** a versioned model is scored against ground truth.
 
-The datasets are licensed CC0-1.0 and generated entirely in this repository.
-`synthetic-opencontext-fixture-v1` validates the fixture and scoring pipeline;
-its result must be labeled `fixture-baseline`. `managed-ui-opencontext-v1`
-contains three controlled UI states and is used for the published measured
-OpenCode Go run.
+The synthetic datasets are licensed CC0-1.0 and generated entirely in this
+repository. `synthetic-opencontext-fixture-v1` validates the fixture and
+scoring pipeline; its result must be labeled `fixture-baseline`.
+`managed-ui-opencontext-v1` contains three controlled UI states and is used for
+the published measured OpenCode Go vision run.
+`open-speech-repository-harvard-v1` contains an attributed public speech
+recording with ten known Harvard sentences for hearing measurement. Its source
+URL, terms, and SHA-256 are recorded in the dataset manifest.
 
 ## Metrics
 
@@ -51,6 +54,7 @@ The measured video is also reproducible:
 
 ```bash
 npm run evaluation:video
+npm run evaluation:hearing-video
 ```
 
 See the [OpenCode Go measured report](opencode-go-measured.md) for the run
@@ -77,6 +81,22 @@ broad model ranking.
 
 This is a real measured model run, but it covers one simple synthetic visual
 flow and no speech. It does not establish broad real-world accuracy.
+
+## OpenCode Go hearing result
+
+- Date: 2026-11-09
+- Endpoint: `https://opencode.ai/inference/go/openai/v1/chat/completions`
+- Model: `mimo-v2.6-pro`
+- Input: ten public Harvard sentences from the Open Speech Repository
+- Result: 1.23% WER and 0.31% CER
+- Raw context: [Markdown](opencode-go-hearing-context.md) and
+  [JSON](opencode-go-hearing-context.json)
+- Score: [JSON](opencode-go-hearing-evaluation.json)
+- Method and limits: [hearing report](opencode-go-hearing-measured.md)
+
+This run measures audio input through a multimodal chat model. It covers one
+clean English recording and does not establish speech quality across speakers
+or noisy real-world audio.
 
 ## OpenCode Go smoke result
 

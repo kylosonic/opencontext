@@ -137,6 +137,12 @@ export TEXT_PROVIDER='template'
 .venv/bin/python -m oc_worker.main
 ```
 
+Use `TRANSCRIPTION_PROVIDER=openai_audio` with an audio-capable
+OpenAI-compatible chat model when provider-side audio understanding is
+preferred. This mode sends the extracted WAV in one chat request and is best
+suited to bounded recordings. The default local Faster Whisper provider remains
+appropriate for long media.
+
 Use a process supervisor or container restart policy. Run one worker with
 `--once` for cron-style execution or long-running workers with
 `WORKER_CONCURRENCY` set to the host capacity.

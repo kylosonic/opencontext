@@ -48,6 +48,8 @@ All notable changes are documented here. The project follows
   quotas and persisted counts under synchronized contention.
 - Added `opencontext replay` for credential-free validation and regeneration
   of implementation briefs from committed video-context artifacts in CI.
+- Added an audio-chat transcription provider and a reproducible attributed
+  Open Speech Repository hearing measurement with published WER/CER evidence.
 
 ## 0.1.0 - 2026-11-03
 

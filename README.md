@@ -74,8 +74,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Memory or shared database rate limiting for single or multi-instance web
   deployments, with multi-process PostgreSQL contention coverage.
 - Database-backed queue and resumable worker stages.
-- Faster Whisper, OpenAI-compatible, Ollama, and deterministic fixture
-  providers.
+- Faster Whisper, OpenAI-compatible transcription, multimodal audio-chat,
+  OpenAI-compatible vision, Ollama, and deterministic fixture providers.
 - Independently selectable Tesseract OCR or vision-derived OCR compatibility.
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
@@ -94,13 +94,14 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - The public Vercel deployment is a landing/demo/sign-in preview, not a complete
   upload-processing service. GitHub OAuth, persistent PostgreSQL, object
   storage, and a production worker still need configuration.
-- Published measured quality covers one simple synthetic visual flow with no
-  audio. It does not establish broad real-world vision or speech accuracy.
+- Published measured quality covers one simple synthetic visual flow and one
+  clean attributed speech recording. It does not establish broad real-world vision
+  or speech accuracy.
 - Docker Compose is verified through a real upload and completed
   PostgreSQL-backed web/worker job in CI.
 - Python and npm packages have not been published.
-- A broader real-world evaluation set with spoken audio and dense UI remains
-  pending.
+- A broader real-world evaluation set with conversational speech, noisy
+  recordings, and dense UI remains pending.
 - A deployed production worker still needs an end-to-end run.
 - No independent penetration test has been performed.
 
