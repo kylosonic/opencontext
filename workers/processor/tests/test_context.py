@@ -290,6 +290,7 @@ def test_empty_inputs_produce_placeholder_sections() -> None:
         observations=[],
         ocr=[],
         timeline=[],
+        audio_present=False,
     )
     assert payload["transcript"] == []
     assert payload["timeline"] == []
@@ -304,6 +305,20 @@ def test_empty_inputs_produce_placeholder_sections() -> None:
         "_No implementation observations._",
     ):
         assert placeholder in markdown
+
+
+def test_audio_without_speech_says_no_speech_not_no_track() -> None:
+    markdown, payload = _build(
+        segments=[],
+        observations=[],
+        ocr=[],
+        timeline=[],
+        audio_present=True,
+    )
+
+    assert payload["audioPresent"] is True
+    assert "_Audio track contained no speech._" in markdown
+    assert "No audio track detected" not in markdown
 
 
 def test_no_text_provider_returns_template_baseline() -> None:

@@ -110,6 +110,7 @@ def _build_json_payload(
     ocr: list[OCRObservation],
     timeline: list[dict[str, Any]],
     generated_at: str,
+    audio_present: bool | None = None,
 ) -> dict[str, Any]:
     ui_hierarchy: list[str] = []
     interactions: list[str] = []
@@ -273,7 +274,7 @@ def _build_json_payload(
         entry = {key: value for key, value in draft.items() if key != "_order"}
         entry["id"] = evidence_id
         evidence.append(entry)
-    return {
+    payload: dict[str, Any] = {
         "formatVersion": FORMAT_VERSION,
         "evidenceVersion": 1,
         "source": {
@@ -292,6 +293,9 @@ def _build_json_payload(
         "visualFindings": visual_findings,
         "evidence": evidence,
     }
+    if audio_present is not None:
+        payload["audioPresent"] = audio_present
+    return payload
 
 
 def template_markdown(payload: dict[str, Any]) -> str:
@@ -343,7 +347,10 @@ def template_markdown(payload: dict[str, Any]) -> str:
     lines.extend(["", "## Transcript", ""])
     transcript = payload.get("transcript") or []
     if not transcript:
-        lines.append("_No audio track detected — transcription was skipped._")
+        if payload.get("audioPresent") is False:
+            lines.append("_No audio track detected — transcription was skipped._")
+        else:
+            lines.append("_Audio track contained no speech._")
     for index, segment in enumerate(transcript):
         start = format_timestamp(segment.get("start") or 0)
         end = format_timestamp(segment.get("end") or segment.get("start") or 0)
@@ -446,6 +453,7 @@ def build_context(
     observations: list[VisualObservation],
     ocr: list[OCRObservation],
     timeline: list[dict[str, Any]],
+    audio_present: bool | None = None,
     text_provider: TextProvider | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Build the developer context; returns (markdown, json payload)."""
@@ -460,6 +468,7 @@ def build_context(
         ocr=ocr,
         timeline=timeline,
         generated_at=generated_at,
+        audio_present=audio_present,
     )
     markdown = template_markdown(payload)
     if text_provider is not None:

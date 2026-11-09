@@ -102,6 +102,7 @@ export function jobHeaderView(detail: JobDetail): JobHeaderView {
     displayName: detail.displayName,
     status: detail.status as JobStatusView,
     detailLevel: detail.detailLevel as DetailLevel as JobHeaderView["detailLevel"],
+    audioPresent: detail.source?.audioPresent,
     createdAt: detail.createdAt,
     expiresAt: detail.expiresAt,
     retentionNote: detail.retentionNote,

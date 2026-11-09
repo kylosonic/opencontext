@@ -4,15 +4,25 @@ import { EmptyState } from "./empty-state";
 
 export interface TranscriptPanelProps {
   segments: TranscriptSegmentView[];
+  /** False when the probed source had no audio stream. */
+  audioPresent?: boolean | null;
 }
 
-/** Transcript tab. Empty (no audio track) → the results.md B4 notice. */
-export function TranscriptPanel({ segments }: TranscriptPanelProps) {
+/** Transcript tab. Empty output distinguishes "no track" from "no speech". */
+export function TranscriptPanel({ segments, audioPresent }: TranscriptPanelProps) {
   if (segments.length === 0) {
+    if (audioPresent === false) {
+      return (
+        <EmptyState
+          title="No audio track detected — transcription was skipped"
+          body="The source video has no audio track, so there was nothing to transcribe. This is not an error."
+        />
+      );
+    }
     return (
       <EmptyState
-        title="No audio track detected — transcription was skipped"
-        body="The source video has no audio track, so there was nothing to transcribe. This is not an error."
+        title="Audio track contained no speech"
+        body="The audio track was analyzed, but no speech was detected. This is not an error."
       />
     );
   }

@@ -410,6 +410,7 @@ class Pipeline:
             observations=observations,
             ocr=ocr_items,
             timeline=timeline,
+            audio_present=bool(probe_data.get("audioPresent")),
             text_provider=self.text_provider,
         )
         self.api.stage_result(
