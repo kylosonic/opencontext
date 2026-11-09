@@ -374,12 +374,11 @@ npm run build        # production build`}
             </Card>
             <Card>
               <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Badge tone="success" mono>Built in current branch</Badge> Live job pipeline
+                <Badge tone="success" mono>Production</Badge> Live job pipeline
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                 Authentication, uploads, queue, storage, job pages, and the
-                Python worker are implemented; verification and deployment
-                remain.
+                Python worker run end to end in production.
               </p>
             </Card>
             <Card>
