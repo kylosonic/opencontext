@@ -91,9 +91,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 
 ## What is not ready
 
-- The public Vercel deployment is a landing/demo/sign-in preview, not a complete
-  upload-processing service. GitHub OAuth, persistent PostgreSQL, object
-  storage, and a production worker still need configuration.
+- The public worker drains the queue from a five-minute GitHub Actions schedule,
+  so job start latency is up to one interval. A long-running container host is
+  the recommended next step for sustained traffic.
 - Published measured quality covers one simple synthetic visual flow and one
   clean attributed speech recording. It does not establish broad real-world vision
   or speech accuracy.
@@ -102,7 +102,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Python and npm packages have not been published.
 - A broader real-world evaluation set with conversational speech, noisy
   recordings, and dense UI remains pending.
-- A deployed production worker still needs an end-to-end run.
+- The default demo fixture has no audio track, so the production smoke job
+  exercised vision, OCR, aggregation, and exports; use a speech recording to
+  exercise transcription.
 - No independent penetration test has been performed.
 
 Current verification and remaining work:

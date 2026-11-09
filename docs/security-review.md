@@ -50,10 +50,12 @@ work. It is not a penetration-test report.
 
 ## Remaining deployment work
 
-- Configure the S3 bucket with least-privilege credentials and CORS limited to
-  the production web origin.
 - Tune database connection pools and add platform/WAF controls based on
   sustained production traffic.
 - Add provider-specific Postgres migrations before making schema changes in a
   long-lived production database.
 - Run an independent penetration test before claiming production security.
+
+The production bucket now uses a Vercel-managed OIDC role instead of long-lived
+AWS keys, and its CORS policy allows only the production web origin for
+`GET`, `PUT`, and `HEAD`.
