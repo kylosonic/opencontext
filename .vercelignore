@@ -3,3 +3,11 @@
 **/.next/
 apps/web/storage/
 workers/processor/.venv/
+.git
+.tmp
+.artifacts
+.vercel
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/*.db
