@@ -8,6 +8,7 @@ COPY packages/config/package.json packages/config/package.json
 COPY packages/schemas/package.json packages/schemas/package.json
 COPY apps/web/prisma apps/web/prisma
 COPY apps/web/prisma.config.ts apps/web/prisma.config.ts
+COPY scripts/prisma-generate.mjs scripts/prisma-schema.mjs scripts/
 ENV CHECKPOINT_DISABLE=1 \
     PRISMA_HIDE_UPDATE_MESSAGE=1 \
     DATABASE_URL=file:./prisma/dev.db
