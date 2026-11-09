@@ -10,7 +10,7 @@ about the current Vercel deployment or future releases.
 - Web lint, typecheck, and production build pass. The local suite reports 113
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
-- Worker Ruff passes with 215 tests; real Tesseract and OpenCode Go vision
+- Worker Ruff passes with 231 tests; real Tesseract and OpenCode Go vision/audio
   smoke tests are skipped unless their binaries/credentials and opt-in flags
   are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
@@ -22,6 +22,11 @@ about the current Vercel deployment or future releases.
   flow matched all four expected OCR lines and all seven visual keywords,
   producing 70 evidence records. The input, configuration, raw context,
   score, methodology, and limitations are published under `docs/evaluation/`.
+- An OpenCode Go `mimo-v2.6-pro` hearing run transcribed ten Harvard sentences
+  from a 33.6-second Open Speech Repository recording with 1.23% WER and
+  0.31% CER.
+  The source audio, generated video script, context, score, attribution, and
+  limits are published under `docs/evaluation/`.
 - Cross-language contract test validates Python payloads with the shared Zod
   schemas.
 - Generated-video test performs direct upload, queue claim, worker HTTP calls,
@@ -83,11 +88,10 @@ service.
 
 ## Known gaps
 
-- Published quality evidence covers one synthetic visual flow with large
-  high-contrast text and no audio. It does not establish broad vision accuracy,
-  speech quality, or performance on real application recordings.
-- Faster Whisper output from one generated speech sample proves setup, not
-  transcription quality.
+- Published quality evidence covers one synthetic visual flow and one clean
+  English read-speech sample. It does not establish broad vision or speech
+  accuracy, noisy audio performance, or behavior on real application
+  recordings.
 - Packages are not published.
 - Eight moderate npm advisories remain in the TypeScript ESLint development
   toolchain; no high or critical advisories remain.
