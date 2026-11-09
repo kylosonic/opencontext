@@ -1,3 +1,5 @@
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
@@ -26,6 +28,10 @@ export class S3Storage implements Storage {
       region: config.region,
       ...(config.endpoint ? { endpoint: config.endpoint } : {}),
       forcePathStyle: config.forcePathStyle,
+      // Streaming artifact bodies cannot be re-read for optional CRC
+      // checksums; S3 does not require them, so only calculate when required.
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
       credentials:
         config.credentials.kind === "vercel-oidc"
           ? awsCredentialsProvider({
@@ -44,7 +50,9 @@ export class S3Storage implements Storage {
       new PutObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
-        Body: body,
+        // The SDK's Node HTTP handler only accepts Node streams/buffers, not
+        // the web ReadableStream produced by request.formData().
+        Body: Readable.fromWeb(body as unknown as NodeReadableStream<Uint8Array>),
         ContentType: options.contentType,
         ContentLength: options.sizeBytes,
       }),
