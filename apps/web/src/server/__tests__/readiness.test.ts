@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/health/ready/route";
-import { evaluateReadiness, isProductionEnv } from "@/server/readiness";
+import { deploymentEnvironment, evaluateReadiness } from "@/server/readiness";
 
 const SECRET_VALUES = {
   AUTH_SECRET: "a-production-secret-that-must-not-leak",
@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe("production readiness", () => {
   it("passes when every required integration is configured", () => {
-    const report = evaluateReadiness(productionEnv(), true);
+    const report = evaluateReadiness(productionEnv(), "production");
 
     expect(report.ready).toBe(true);
     expect(report.environment).toBe("production");
@@ -38,7 +38,10 @@ describe("production readiness", () => {
   });
 
   it("reports every blocker without exposing secret values", () => {
-    const report = evaluateReadiness({ AUTH_SECRET: SECRET_VALUES.AUTH_SECRET }, true);
+    const report = evaluateReadiness(
+      { AUTH_SECRET: SECRET_VALUES.AUTH_SECRET },
+      "production",
+    );
     const serialized = JSON.stringify(report);
 
     expect(report.ready).toBe(false);
@@ -62,7 +65,7 @@ describe("production readiness", () => {
         DEV_AUTH_ENABLED: "true",
         WORKER_API_TOKEN: "local-worker-token",
       },
-      false,
+      "development",
     );
 
     expect(report.ready).toBe(true);
@@ -89,9 +92,17 @@ describe("readiness route", () => {
     expect(body.checks).toHaveLength(6);
   });
 
-  it("detects Vercel as production", () => {
-    expect(isProductionEnv({ VERCEL: "1", NODE_ENV: "test" })).toBe(true);
-    expect(isProductionEnv({ NODE_ENV: "production" })).toBe(true);
-    expect(isProductionEnv({ NODE_ENV: "test" })).toBe(false);
+  it("distinguishes Vercel preview from production", () => {
+    expect(
+      deploymentEnvironment({ VERCEL: "1", VERCEL_ENV: "preview", NODE_ENV: "test" }),
+    ).toBe("preview");
+    expect(
+      deploymentEnvironment({
+        VERCEL: "1",
+        VERCEL_ENV: "production",
+        NODE_ENV: "production",
+      }),
+    ).toBe("production");
+    expect(deploymentEnvironment({ NODE_ENV: "test" })).toBe("development");
   });
 });

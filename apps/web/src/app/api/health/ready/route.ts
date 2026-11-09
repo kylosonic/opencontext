@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { evaluateReadiness, isProductionEnv } from "@/server/readiness";
+import { deploymentEnvironment, evaluateReadiness } from "@/server/readiness";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
-  const production = isProductionEnv(process.env);
-  const report = evaluateReadiness(process.env, production);
+  const environment = deploymentEnvironment(process.env);
+  const report = evaluateReadiness(process.env, environment);
   return NextResponse.json(
     {
       ...report,
