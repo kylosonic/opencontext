@@ -48,7 +48,9 @@ jobs:
         run: npm ci
 
       - name: Verify measured evaluation video generator
-        run: npm run evaluation:video
+        run: |
+          npm run evaluation:video
+          npm run evaluation:hearing-video
 
       - name: Install worker for contract and end-to-end tests
         run: python -m pip install -e "workers/processor[dev]"

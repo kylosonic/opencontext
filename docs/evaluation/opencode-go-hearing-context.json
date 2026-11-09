@@ -1,0 +1,182 @@
+{
+  "evidence": [
+    {
+      "certainty": "OBSERVED",
+      "endSec": 33.664,
+      "id": 1,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 0
+      },
+      "text": "The birch canoe slid on the smooth planks. Glue the sheet to the dark blue background. It is easy to tell the depth of a well. These days a chicken leg is a rare dish. Rice is often served in round bowls. The juice of lemons makes fine punch. The box was thrown beside the parked truck. The hogs were fed chopped corn and garbage. Four hours of steady work faced us. A large size in stockings is hard to sell.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 2,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 0
+      },
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 3,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 1
+      },
+      "text": "Deterministic fixture observation at 0.0s (no vision model used).",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 4,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 2
+      },
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 10.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 5,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 3
+      },
+      "text": "Deterministic fixture observation at 10.0s (no vision model used).",
+      "timestampSec": 10.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 6,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 4
+      },
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 20.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 7,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 5
+      },
+      "text": "Deterministic fixture observation at 20.0s (no vision model used).",
+      "timestampSec": 20.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 8,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 6
+      },
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 30.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 9,
+      "kind": "VISUAL",
+      "source": {
+        "collection": "visualFindings",
+        "index": 7
+      },
+      "text": "Deterministic fixture observation at 30.0s (no vision model used).",
+      "timestampSec": 30.0
+    }
+  ],
+  "evidenceVersion": 1,
+  "formatVersion": 2,
+  "generatedAt": "2026-11-09T07:55:38+00:00",
+  "implementationObservations": [],
+  "interactions": [],
+  "source": {
+    "detailLevel": "LOW",
+    "durationSec": 33.62,
+    "name": "opencontext-hearing-eval-v1.mp4"
+  },
+  "stateTransitions": [],
+  "timeline": [
+    {
+      "end": 33.62,
+      "start": 0.0,
+      "summary": "Deterministic fixture observation at 0.0s (no vision model used). (inferred)",
+      "title": "Hearing evaluation fixture"
+    }
+  ],
+  "transcript": [
+    {
+      "end": 33.664,
+      "start": 0.0,
+      "text": "The birch canoe slid on the smooth planks. Glue the sheet to the dark blue background. It is easy to tell the depth of a well. These days a chicken leg is a rare dish. Rice is often served in round bowls. The juice of lemons makes fine punch. The box was thrown beside the parked truck. The hogs were fed chopped corn and garbage. Four hours of steady work faced us. A large size in stockings is hard to sell."
+    }
+  ],
+  "uiHierarchy": [],
+  "visibleText": [],
+  "visualFindings": [
+    {
+      "certainty": "UNCERTAIN",
+      "field": "sceneTitle",
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "visualDescription",
+      "text": "Deterministic fixture observation at 0.0s (no vision model used).",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "sceneTitle",
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 10.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "visualDescription",
+      "text": "Deterministic fixture observation at 10.0s (no vision model used).",
+      "timestampSec": 10.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "sceneTitle",
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 20.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "visualDescription",
+      "text": "Deterministic fixture observation at 20.0s (no vision model used).",
+      "timestampSec": 20.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "sceneTitle",
+      "text": "Hearing evaluation fixture",
+      "timestampSec": 30.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "visualDescription",
+      "text": "Deterministic fixture observation at 30.0s (no vision model used).",
+      "timestampSec": 30.0
+    }
+  ]
+}

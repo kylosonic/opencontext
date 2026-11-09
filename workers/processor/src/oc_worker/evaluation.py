@@ -76,7 +76,7 @@ def _set_metrics(expected: list[str], predicted: list[str]) -> dict[str, float |
     expected_set = {normalize_text(item) for item in expected if normalize_text(item)}
     predicted_set = {normalize_text(item) for item in predicted if normalize_text(item)}
     true_positive = len(expected_set & predicted_set)
-    precision = true_positive / len(predicted_set) if predicted_set else 0.0
+    precision = true_positive / len(predicted_set) if predicted_set else 1.0
     recall = true_positive / len(expected_set) if expected_set else 1.0
     f1 = (
         2 * precision * recall / (precision + recall)

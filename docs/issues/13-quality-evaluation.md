@@ -18,6 +18,7 @@ there is no reproducible evaluation of transcript, visual, or OCR accuracy.
 - [x] Evaluation is rerunnable from a clean checkout.
 - [x] Results distinguish fixture, smoke-test, and measured-quality claims.
 - [x] Limitations and model versions are recorded.
+- [x] At least one public speech recording measures transcript WER and CER.
 
 ## Files
 

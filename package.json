@@ -11,6 +11,7 @@
     "dev": "npm run build --workspace @opencontext/schemas && npm run dev --workspace web",
     "fixture": "node scripts/generate-fixture.mjs",
     "evaluation:video": "node scripts/generate-measured-evaluation-video.mjs",
+    "evaluation:hearing-video": "node scripts/generate-hearing-evaluation-video.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test:contracts && npm run test --workspaces --if-present",

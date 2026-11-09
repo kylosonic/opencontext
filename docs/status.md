@@ -10,7 +10,7 @@ about the current Vercel deployment or future releases.
 - Web lint, typecheck, and production build pass. The local suite reports 113
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
-- Worker Ruff passes with 231 tests; real Tesseract and OpenCode Go vision/audio
+- Worker Ruff passes with 234 tests; real Tesseract and OpenCode Go vision/audio
   smoke tests are skipped unless their binaries/credentials and opt-in flags
   are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
