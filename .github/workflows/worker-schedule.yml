@@ -1,0 +1,56 @@
+name: Worker schedule
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: opencontext-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache transcription models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-${{ vars.TRANSCRIPTION_MODEL || 'base' }}
+
+      - name: Install worker
+        run: |
+          python -m pip install --upgrade pip
+          pip install "./workers/processor[local]"
+
+      - name: Drain queue
+        env:
+          OPENCONTEXT_SKIP_DOTENV: "1"
+          WORKER_API_URL: ${{ vars.WORKER_API_URL || 'https://opencontext-swart.vercel.app' }}
+          WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
+          WORKER_ID: gh-${{ github.run_id }}
+          TRANSCRIPTION_PROVIDER: faster_whisper
+          TRANSCRIPTION_MODEL: ${{ vars.TRANSCRIPTION_MODEL || 'base' }}
+          VISION_PROVIDER: openai_compatible
+          VISION_MODEL: ${{ vars.VISION_MODEL || 'glm-5.3-flash' }}
+          OCR_PROVIDER: vision
+          TEXT_PROVIDER: template
+          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://opencode.ai/inference/go/openai/v1' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          deadline=$((SECONDS + 1200))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            python -m oc_worker.main --once || echo "worker iteration failed"
+            sleep 5
+          done
