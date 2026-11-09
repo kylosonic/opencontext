@@ -65,6 +65,21 @@ def _run_once(settings: Settings) -> int:
     return 0
 
 
+def _drain(api: ApiClient, pipeline: Pipeline, seconds: float) -> None:
+    """Keep one Pipeline alive so model loading is not repeated per claim."""
+    deadline = time.monotonic() + max(0.0, seconds)
+    while True:
+        try:
+            outcome = _process_once(api, pipeline)
+        except (PermanentFailure, TransientFailure) as exc:
+            log.error("worker=%s status=claim_error error=%s", api.worker_id, exc)
+            outcome = "error"
+        if time.monotonic() >= deadline:
+            return
+        if outcome == "idle":
+            time.sleep(IDLE_POLL_SECONDS)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the OpenContext worker.")
     parser.add_argument(
@@ -72,12 +87,34 @@ def main() -> None:
         action="store_true",
         help="Claim and process at most one job, then exit.",
     )
+    parser.add_argument(
+        "--drain-seconds",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="Keep one worker process alive for this many seconds, then exit.",
+    )
     args = parser.parse_args()
     load_local_env()
     settings = Settings.from_env()
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     if args.once:
         raise SystemExit(_run_once(settings))
+    if args.drain_seconds is not None:
+        api = ApiClient(
+            base_url=settings.worker_api_url,
+            token=settings.worker_api_token,
+            worker_id=settings.worker_id,
+        )
+        pipeline = Pipeline(api, settings)
+        log.info(
+            "worker=%s draining api=%s seconds=%.0f",
+            settings.worker_id,
+            settings.worker_api_url,
+            args.drain_seconds,
+        )
+        _drain(api, pipeline, args.drain_seconds)
+        raise SystemExit(0)
     concurrency = max(1, settings.worker_concurrency)
     threads = [
         threading.Thread(target=_worker_loop, args=(settings, index), daemon=True)

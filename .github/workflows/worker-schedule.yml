@@ -49,8 +49,4 @@ jobs:
           OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://opencode.ai/inference/go/openai/v1' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          deadline=$((SECONDS + 1200))
-          while [ "$SECONDS" -lt "$deadline" ]; do
-            python -m oc_worker.main --once || echo "worker iteration failed"
-            sleep 5
-          done
+          python -m oc_worker.main --drain-seconds 1200
