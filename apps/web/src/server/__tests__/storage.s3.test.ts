@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { Readable } from "node:stream";
 
 /**
  * S3 provider against mocked AWS SDK commands — asserts the exact
@@ -15,7 +16,8 @@ interface CommandRecord {
 const state = vi.hoisted(() => {
   const commands: CommandRecord[] = [];
   const sendMock = vi.fn();
-  return { commands, sendMock };
+  const clientConfigs: Record<string, unknown>[] = [];
+  return { commands, sendMock, clientConfigs };
 });
 
 vi.mock("@aws-sdk/client-s3", () => {
@@ -26,6 +28,9 @@ vi.mock("@aws-sdk/client-s3", () => {
       }
     };
   class FakeS3Client {
+    constructor(config: Record<string, unknown>) {
+      state.clientConfigs.push(config);
+    }
     send = (command: unknown) => state.sendMock(command);
   }
   return {
@@ -65,6 +70,7 @@ const config = {
 
 beforeEach(() => {
   state.commands.length = 0;
+  state.clientConfigs.length = 0;
   state.sendMock.mockReset();
   credentialsProviderMock.mockClear();
 });
@@ -78,6 +84,15 @@ function lastCommand(name: string): Record<string, unknown> {
 }
 
 describe("S3Storage (mocked AWS SDK)", () => {
+  it("disables optional checksums so streaming artifact uploads work", () => {
+    new S3Storage(config);
+
+    expect(state.clientConfigs.at(-1)).toMatchObject({
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
+    });
+  });
+
   it("uses Vercel OIDC credentials without a custom endpoint", () => {
     new S3Storage({
       region: "us-east-1",
@@ -108,6 +123,7 @@ describe("S3Storage (mocked AWS SDK)", () => {
     expect(input.Key).toBe("jobs/j1/source.mp4");
     expect(input.ContentLength).toBe(TEST_BYTES.length);
     expect(input.ContentType).toBe("video/mp4");
+    expect(input.Body).toBeInstanceOf(Readable);
   });
 
   it("get returns the object bytes", async () => {
