@@ -94,7 +94,11 @@ describe("readiness route", () => {
 
   it("distinguishes Vercel preview from production", () => {
     expect(
-      deploymentEnvironment({ VERCEL: "1", VERCEL_ENV: "preview", NODE_ENV: "test" }),
+      deploymentEnvironment({
+        VERCEL: "1",
+        VERCEL_ENV: "preview",
+        NODE_ENV: "production",
+      }),
     ).toBe("preview");
     expect(
       deploymentEnvironment({
@@ -103,6 +107,9 @@ describe("readiness route", () => {
         NODE_ENV: "production",
       }),
     ).toBe("production");
+    expect(
+      deploymentEnvironment({ VERCEL: "1", NODE_ENV: "production" }),
+    ).toBe("preview");
     expect(deploymentEnvironment({ NODE_ENV: "test" })).toBe("development");
   });
 });

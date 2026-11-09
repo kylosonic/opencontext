@@ -138,11 +138,14 @@ export function evaluateReadiness(
 }
 
 export function deploymentEnvironment(env: Env): DeploymentEnvironment {
-  if (env.VERCEL_ENV === "production" || env.NODE_ENV === "production") {
+  if (env.VERCEL_ENV === "production") {
     return "production";
   }
   if (env.VERCEL_ENV === "preview" || env.VERCEL === "1") {
     return "preview";
+  }
+  if (env.NODE_ENV === "production") {
+    return "production";
   }
   return "development";
 }
