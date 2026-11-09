@@ -166,8 +166,12 @@ class ApiClient:
             info = self.get_source(job_id)
             uri = str(info["uri"])
             url = uri if uri.startswith(("http://", "https://")) else f"{self.base_url}{uri}"
+            # Presigned object-storage URLs carry their own signature; sending
+            # the worker Bearer token makes S3 reject the request with 400.
+            same_origin = url.startswith(self.base_url)
+            headers = self._headers() if same_origin else None
             try:
-                with self._client.stream("GET", url, headers=self._headers()) as response:
+                with self._client.stream("GET", url, headers=headers) as response:
                     if response.status_code == 429 or response.status_code >= 500:
                         raise TransientFailure(f"source download returned {response.status_code}")
                     if response.status_code >= 400:

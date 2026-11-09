@@ -283,6 +283,25 @@ def test_download_source_writes_bytes(tmp_path) -> None:
     assert dest.read_bytes() == b"media-bytes"
 
 
+def test_download_source_omits_worker_auth_for_external_presigned_url(tmp_path) -> None:
+    media_headers: list[httpx.Headers] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/worker/jobs/j1/source":
+            return httpx.Response(
+                200, json={"uri": "https://bucket.s3.amazonaws.com/video.mp4?X-Amz-Signature=abc"}
+            )
+        media_headers.append(request.headers)
+        return httpx.Response(200, content=b"media-bytes")
+
+    api = _make_client(handler)
+    dest = tmp_path / "source.bin"
+    api.download_source("j1", dest)
+    assert dest.read_bytes() == b"media-bytes"
+    assert "authorization" not in media_headers[0]
+    assert "x-worker-id" not in media_headers[0]
+
+
 def test_download_source_relative_uri_resolves_against_base(tmp_path) -> None:
     paths: list[str] = []
 
