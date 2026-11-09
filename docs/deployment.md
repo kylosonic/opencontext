@@ -173,6 +173,26 @@ Use a process supervisor or container restart policy. Run one worker with
 `--once` for cron-style execution or long-running workers with
 `WORKER_CONCURRENCY` set to the host capacity.
 
+### Hosted worker options
+
+A long-running background worker on Render, Railway, Fly.io, or a container
+platform is the recommended production setup because it claims jobs
+immediately. The repository ships `docker/worker.Dockerfile` for that purpose.
+
+If you do not have a long-running host yet, `.github/workflows/worker-schedule.yml`
+drains the queue from GitHub Actions every five minutes. It is a real worker,
+not a simulation, but job start latency is up to one cron interval. Set these
+repository secrets and variables before enabling it:
+
+```bash
+gh secret set WORKER_API_TOKEN --body "$WORKER_API_TOKEN"
+gh secret set OPENAI_API_KEY --body "$OPENAI_API_KEY"
+gh variable set WORKER_API_URL --body "https://your-app.example"
+```
+
+The workflow installs Faster Whisper and caches the model between runs. It uses
+`TEXT_PROVIDER=template`, so context generation needs no extra provider.
+
 ## Compose
 
 `docker compose up --build` provides a local PostgreSQL-backed web app, worker,
