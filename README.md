@@ -81,7 +81,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   human-review metadata.
 - Generated-video end-to-end test from upload through worker output.
 - Real S3-compatible presigned upload/download coverage in CI.
-- OpenCode Go hosted vision smoke coverage with raw Markdown/JSON evidence.
+- OpenCode Go hosted vision smoke and measured synthetic UI/OCR evidence with
+  published context, scores, configuration, and limitations.
 - Standalone `opencontext analyze`, `brief`, `evaluate`, and `doctor` CLI
   workflows with release-ready shared schemas.
 - Repository-aware implementation briefs and a local MCP server that expose
@@ -93,14 +94,13 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - The public Vercel deployment is a landing/demo/sign-in preview, not a complete
   upload-processing service. GitHub OAuth, persistent PostgreSQL, object
   storage, and a production worker still need configuration.
-- No real-model quality evaluation is published. Fixture-provider tests prove
-  plumbing only.
-- Docker Compose has been verified locally through a real upload and completed
-  PostgreSQL-backed web/worker job; adding that flow to CI remains on the
-  roadmap.
+- Published measured quality covers one simple synthetic visual flow with no
+  audio. It does not establish broad real-world vision or speech accuracy.
+- Docker Compose is verified through a real upload and completed
+  PostgreSQL-backed web/worker job in CI.
 - Python and npm packages have not been published.
-- OpenCode Go vision passed a real synthetic-video smoke test; measured quality
-  across a real-world evaluation set remains pending.
+- A broader real-world evaluation set with spoken audio and dense UI remains
+  pending.
 - A deployed production worker still needs an end-to-end run.
 - No independent penetration test has been performed.
 

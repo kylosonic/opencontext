@@ -7,10 +7,11 @@ quality.
 - **Smoke test:** one real model response proves connectivity and parsing.
 - **Measured quality:** a versioned model is scored against ground truth.
 
-The first dataset is the synthetic `synthetic-opencontext-fixture-v1`, licensed
-CC0-1.0 and generated entirely in this repository. It exists to validate the
-scoring pipeline. Its fixture-provider result must be labeled
-`fixture-baseline`, not presented as model quality.
+The datasets are licensed CC0-1.0 and generated entirely in this repository.
+`synthetic-opencontext-fixture-v1` validates the fixture and scoring pipeline;
+its result must be labeled `fixture-baseline`. `managed-ui-opencontext-v1`
+contains three controlled UI states and is used for the published measured
+OpenCode Go run.
 
 ## Metrics
 
@@ -46,12 +47,36 @@ opencontext evaluate .artifacts/fixture-context.json \
   --out .artifacts/fixture-evaluation.json
 ```
 
+The measured video is also reproducible:
+
+```bash
+npm run evaluation:video
+```
+
+See the [OpenCode Go measured report](opencode-go-measured.md) for the run
+configuration, result, published artifacts, and limitations.
+
 ## Limitations
 
 The synthetic set does not establish real-world speech, OCR, or visual quality.
 A measured claim requires at least one documented real model run and published
 raw outputs. Small datasets have high variance and must not be presented as a
 broad model ranking.
+
+## OpenCode Go measured result
+
+- Date: 2026-11-09
+- Endpoint: `https://opencode.ai/inference/go/openai/v1`
+- Model: `glm-5.3-flash`
+- Input: generated `opencontext-measured-eval-v1.mp4`
+- Result: 4/4 OCR lines matched and 7/7 visual keywords recalled
+- Raw context: [Markdown](opencode-go-measured-context.md) and
+  [JSON](opencode-go-measured-context.json)
+- Score: [JSON](opencode-go-measured-evaluation.json)
+- Method and limits: [measured report](opencode-go-measured.md)
+
+This is a real measured model run, but it covers one simple synthetic visual
+flow and no speech. It does not establish broad real-world accuracy.
 
 ## OpenCode Go smoke result
 

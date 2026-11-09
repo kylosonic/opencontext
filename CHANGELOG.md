@@ -42,6 +42,8 @@ All notable changes are documented here. The project follows
   OCR, visual recall, provenance, licensing, and measurement-kind reporting.
 - Added OpenCode Go API-key and session-header support and verified
   `glm-5.3-flash` on a generated video with normalized evidence output.
+- Added a reproducible three-state evaluation video, CC0 manifest, and measured
+  OpenCode Go vision/OCR result with published context, score, and limits.
 
 ## 0.1.0 - 2026-11-03
 
