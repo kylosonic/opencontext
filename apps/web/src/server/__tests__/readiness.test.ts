@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ReadinessResponseSchema } from "@opencontext/schemas";
 import { GET } from "@/app/api/health/ready/route";
 import { deploymentEnvironment, evaluateReadiness } from "@/server/readiness";
 
@@ -58,6 +59,21 @@ describe("production readiness", () => {
     }
   });
 
+  it("rejects weak production authentication secrets", () => {
+    const report = evaluateReadiness(
+      {
+        ...productionEnv(),
+        AUTH_SECRET: "too-short",
+      },
+      "production",
+    );
+
+    expect(report.checks.find((check) => check.id === "auth")).toMatchObject({
+      ok: false,
+      detail: "AUTH_SECRET is missing, too short, or still a placeholder",
+    });
+  });
+
   it("allows local development defaults", () => {
     const report = evaluateReadiness(
       {
@@ -69,6 +85,22 @@ describe("production readiness", () => {
     );
 
     expect(report.ready).toBe(true);
+  });
+
+  it("rejects unsupported database and storage values in development", () => {
+    const report = evaluateReadiness(
+      {
+        AUTH_SECRET: "local-secret",
+        DATABASE_URL: "mysql://database.example/opencontext",
+        DEV_AUTH_ENABLED: "true",
+        STORAGE_PROVIDER: "gcs",
+        WORKER_API_TOKEN: "local-worker-token",
+      },
+      "development",
+    );
+
+    expect(report.checks.find((check) => check.id === "database")?.ok).toBe(false);
+    expect(report.checks.find((check) => check.id === "storage")?.ok).toBe(false);
   });
 });
 
@@ -90,6 +122,7 @@ describe("readiness route", () => {
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(body.ready).toBe(false);
     expect(body.checks).toHaveLength(6);
+    expect(() => ReadinessResponseSchema.parse(body)).not.toThrow();
   });
 
   it("distinguishes Vercel preview from production", () => {

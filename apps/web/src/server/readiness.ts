@@ -1,39 +1,28 @@
-export interface ReadinessCheck {
-  id:
-    | "database"
-    | "auth"
-    | "storage"
-    | "worker"
-    | "publicUrl"
-    | "rateLimit";
-  ok: boolean;
-  detail: string;
-}
+import {
+  databaseConnectionKind,
+  isConfiguredValue,
+  isStrongSecret,
+  s3ConfigFromEnv,
+  storageProviderKind,
+  type EnvRecord,
+} from "@opencontext/config";
+import type {
+  DeploymentEnvironment,
+  ReadinessCheck,
+  ReadinessResponse,
+} from "@opencontext/schemas";
 
-export interface ReadinessReport {
-  ready: boolean;
-  environment: DeploymentEnvironment;
-  checks: ReadinessCheck[];
-}
+export { deploymentEnvironment } from "@opencontext/config";
 
-type Env = Record<string, string | undefined>;
-export type DeploymentEnvironment = "production" | "preview" | "development";
+export type ReadinessReport = Pick<
+  ReadinessResponse,
+  "ready" | "environment" | "checks"
+>;
 
-const S3_KEYS = [
-  "STORAGE_S3_ENDPOINT",
-  "STORAGE_S3_REGION",
-  "STORAGE_S3_BUCKET",
-  "STORAGE_S3_ACCESS_KEY_ID",
-  "STORAGE_S3_SECRET_ACCESS_KEY",
-] as const;
+type Env = EnvRecord;
 
 function present(env: Env, key: string): boolean {
-  const value = env[key]?.trim();
-  return Boolean(value && value !== "change-me");
-}
-
-function completeS3(env: Env): boolean {
-  return S3_KEYS.every((key) => present(env, key));
+  return isConfiguredValue(env[key]);
 }
 
 function httpsUrl(env: Env): boolean {
@@ -58,17 +47,22 @@ export function evaluateReadiness(
   environment: DeploymentEnvironment,
 ): ReadinessReport {
   const strict = environment !== "development";
-  const databaseUrl = env.DATABASE_URL?.trim() ?? "";
-  const postgres = /^postgres(?:ql)?:\/\//.test(databaseUrl);
-  const databaseOk = strict ? postgres : true;
+  const databaseKind = databaseConnectionKind(env);
+  const databaseOk =
+    strict ? databaseKind === "postgres" : databaseKind !== "invalid";
 
-  const authSecret = present(env, "AUTH_SECRET");
+  const authSecret =
+    present(env, "AUTH_SECRET") &&
+    (!strict || isStrongSecret(env.AUTH_SECRET, 32));
   const github = present(env, "AUTH_GITHUB_ID") && present(env, "AUTH_GITHUB_SECRET");
   const devAuth = !strict && env.DEV_AUTH_ENABLED?.toLowerCase() === "true";
   const authOk = authSecret && (github || devAuth);
 
-  const provider = env.STORAGE_PROVIDER?.trim().toLowerCase();
-  const storageOk = strict ? provider === "s3" && completeS3(env) : provider !== "s3" || completeS3(env);
+  const provider = storageProviderKind(env);
+  const storageOk = strict
+    ? provider === "s3" && s3ConfigFromEnv(env) !== undefined
+    : provider === "local" ||
+      (provider === "s3" && s3ConfigFromEnv(env) !== undefined);
   const publicUrlOk = strict ? httpsUrl(env) : true;
   const workerToken = env.WORKER_API_TOKEN?.trim() ?? "";
   const workerOk = workerToken.length >= 16 && workerToken !== "change-me";
@@ -89,7 +83,7 @@ export function evaluateReadiness(
       id: "auth",
       ok: authOk,
       detail: !authSecret
-        ? "AUTH_SECRET is missing or still a placeholder"
+        ? "AUTH_SECRET is missing, too short, or still a placeholder"
         : !github && !devAuth
           ? "GitHub OAuth credentials are not configured"
           : "Session authentication configured",
@@ -135,17 +129,4 @@ export function evaluateReadiness(
     environment,
     checks,
   };
-}
-
-export function deploymentEnvironment(env: Env): DeploymentEnvironment {
-  if (env.VERCEL_ENV === "production") {
-    return "production";
-  }
-  if (env.VERCEL_ENV === "preview" || env.VERCEL === "1") {
-    return "preview";
-  }
-  if (env.NODE_ENV === "production") {
-    return "production";
-  }
-  return "development";
 }

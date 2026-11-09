@@ -27,7 +27,8 @@ const request = WorkerStageResultRequestSchema.parse({
 
 The package covers:
 
-- job statuses, stage names, progress, upload limits, and error codes;
+- job statuses, stage names, progress, upload limits, error codes, and
+  deployment-readiness reports;
 - source, transcript, visual observation, OCR, and timeline shapes;
 - evidence records with source links, certainty, timestamps, and reviews;
 - worker API request schemas and generated context payloads.

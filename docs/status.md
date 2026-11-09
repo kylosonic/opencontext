@@ -7,7 +7,7 @@ about the current Vercel deployment or future releases.
 
 ## Verified in the repository
 
-- Web lint, typecheck, and production build pass. The local suite reports 118
+- Web lint, typecheck, and production build pass. The local suite reports 120
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
 - Worker Ruff passes with 215 tests; real Tesseract and OpenCode Go vision
