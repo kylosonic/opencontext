@@ -18,6 +18,7 @@ but not configured as a complete deployed service.
 - [ ] A non-owner receives 403/404 on job and evidence routes.
 - [ ] Markdown and JSON exports contain stable evidence IDs.
 - [ ] Retention and worker-token configuration are verified.
+- [ ] `/api/health/ready` returns HTTP 200 without exposing secret values.
 
 ## Files
 

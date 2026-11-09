@@ -8,6 +8,7 @@
  */
 
 export * from "./errors.js";
+export * from "./health.js";
 export * from "./job.js";
 export * from "./media.js";
 export * from "./observation.js";

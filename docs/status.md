@@ -7,7 +7,7 @@ about the current Vercel deployment or future releases.
 
 ## Verified in the repository
 
-- Web lint, typecheck, and production build pass. The local suite reports 113
+- Web lint, typecheck, and production build pass. The local suite reports 120
   passed plus one opt-in S3 integration skip; CI runs that integration and
   passes all web tests.
 - Worker Ruff passes with 234 tests; real Tesseract and OpenCode Go vision/audio
@@ -76,6 +76,8 @@ about the current Vercel deployment or future releases.
   image does not install Debian multimedia packages.
 - CI passes both a packaged-worker CLI smoke test and a full Compose login,
   upload, processing, Markdown export, and JSON export smoke test.
+- `/api/health/ready` reports production configuration blockers without exposing
+  secret values; it returns 503 until every required integration is configured.
 
 ## Public deployment
 

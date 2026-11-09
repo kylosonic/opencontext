@@ -25,6 +25,17 @@ Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
 same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
 during a limiter outage is safer for your deployment than allowing it.
 
+After deploying, verify the secret-safe readiness report:
+
+```bash
+curl -fsS https://your-app.example/api/health/ready
+```
+
+The endpoint returns HTTP 200 only when PostgreSQL, authentication, S3 storage,
+the worker token, the public HTTPS URL, and shared rate limiting are configured.
+It returns HTTP 503 with fixed blocker descriptions and never returns secret
+values. This is a configuration check, not a remote connectivity test.
+
 The repository includes a multi-process PostgreSQL contention test. Against a
 disposable database:
 

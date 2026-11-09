@@ -4,6 +4,19 @@
  * storage selection is env-driven; nothing here touches the network.
  */
 
+export type EnvRecord = Record<string, string | undefined>;
+export type StorageProviderKind = "local" | "s3" | "invalid";
+export type DatabaseConnectionKind = "postgres" | "sqlite" | "invalid";
+
+export function isConfiguredValue(value: string | undefined): boolean {
+  const normalized = value?.trim();
+  return Boolean(normalized && normalized !== "change-me");
+}
+
+export function isStrongSecret(value: string | undefined, minimumLength: number): boolean {
+  return isConfiguredValue(value) && value!.trim().length >= minimumLength;
+}
+
 /** Read a string environment variable with an optional fallback. */
 export function getEnv(key: string, fallback?: string): string | undefined {
   const value = process.env[key];
@@ -42,14 +55,43 @@ export function getEnvBoolean(key: string, fallback: boolean): boolean {
 }
 
 /** Storage backend selection: "local" filesystem or "s3"-compatible object storage. */
+export function storageProviderKind(
+  env: EnvRecord = process.env,
+): StorageProviderKind {
+  const value = env.STORAGE_PROVIDER?.trim().toLowerCase();
+  if (!value || value === "local") {
+    return "local";
+  }
+  if (value === "s3") {
+    return "s3";
+  }
+  return "invalid";
+}
+
 export function storageProvider(): "local" | "s3" {
-  const value = getEnv("STORAGE_PROVIDER", "local")?.toLowerCase();
-  return value === "s3" ? "s3" : "local";
+  const kind = storageProviderKind();
+  return kind === "s3" ? "s3" : "local";
 }
 
 /** Database connection string. Dev default is a local SQLite file. */
 export function databaseUrl(): string {
   return getEnv("DATABASE_URL", "file:./dev.db") ?? "file:./dev.db";
+}
+
+export function databaseConnectionKind(
+  env: EnvRecord = process.env,
+): DatabaseConnectionKind {
+  const value = env.DATABASE_URL?.trim();
+  if (!value) {
+    return "sqlite";
+  }
+  if (/^postgres(?:ql)?:\/\//.test(value)) {
+    return "postgres";
+  }
+  if (value.startsWith("file:")) {
+    return "sqlite";
+  }
+  return "invalid";
 }
 
 /** Local-disk storage root directory (STORAGE_PROVIDER=local). */
@@ -68,24 +110,31 @@ export interface S3Config {
   publicBaseUrl?: string;
 }
 
+export const S3_REQUIRED_KEYS = [
+  "STORAGE_S3_ENDPOINT",
+  "STORAGE_S3_REGION",
+  "STORAGE_S3_BUCKET",
+  "STORAGE_S3_ACCESS_KEY_ID",
+  "STORAGE_S3_SECRET_ACCESS_KEY",
+] as const;
+
+export function s3ConfigFromEnv(env: EnvRecord = process.env): S3Config | undefined {
+  if (!S3_REQUIRED_KEYS.every((key) => isConfiguredValue(env[key]))) {
+    return undefined;
+  }
+  return {
+    endpoint: env.STORAGE_S3_ENDPOINT!.trim(),
+    region: env.STORAGE_S3_REGION!.trim(),
+    bucket: env.STORAGE_S3_BUCKET!.trim(),
+    accessKeyId: env.STORAGE_S3_ACCESS_KEY_ID!.trim(),
+    secretAccessKey: env.STORAGE_S3_SECRET_ACCESS_KEY!.trim(),
+    publicBaseUrl: env.STORAGE_S3_PUBLIC_BASE_URL?.trim() || undefined,
+  };
+}
+
 /** S3 configuration. Throws only when STORAGE_PROVIDER=s3 and config is missing. */
 export function s3Config(): S3Config | undefined {
-  const endpoint = getEnv("STORAGE_S3_ENDPOINT");
-  const region = getEnv("STORAGE_S3_REGION");
-  const bucket = getEnv("STORAGE_S3_BUCKET");
-  const accessKeyId = getEnv("STORAGE_S3_ACCESS_KEY_ID");
-  const secretAccessKey = getEnv("STORAGE_S3_SECRET_ACCESS_KEY");
-  if (endpoint && region && bucket && accessKeyId && secretAccessKey) {
-    return {
-      endpoint,
-      region,
-      bucket,
-      accessKeyId,
-      secretAccessKey,
-      publicBaseUrl: getEnv("STORAGE_S3_PUBLIC_BASE_URL"),
-    };
-  }
-  return undefined;
+  return s3ConfigFromEnv();
 }
 
 /**
@@ -213,4 +262,19 @@ export function textProvider(): HttpProviderConfig {
 /** Public base URL of this deployment (used to build worker media URIs). */
 export function appBaseUrl(): string {
   return getEnv("APP_BASE_URL", "") ?? "";
+}
+
+export function deploymentEnvironment(
+  env: EnvRecord = process.env,
+): "production" | "preview" | "development" {
+  if (env.VERCEL_ENV === "production") {
+    return "production";
+  }
+  if (env.VERCEL_ENV === "preview" || env.VERCEL === "1") {
+    return "preview";
+  }
+  if (env.NODE_ENV === "production") {
+    return "production";
+  }
+  return "development";
 }
