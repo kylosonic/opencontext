@@ -22,9 +22,13 @@ docker compose up --build
 
 Choose **Continue as local user** and upload
 `.artifacts/opencontext-fixture.mp4`. The Compose worker uses local Faster
-Whisper speech recognition and a deterministic fixture provider for visual
-observations. The fixture provider is labeled as fixture output; it does not
-perform computer vision.
+Whisper and a deterministic fixture provider for visual observations. The
+default fixture is a three-second test pattern with a 440 Hz tone, so speech
+recognition runs but correctly reports that no speech was found. The fixture
+provider is labeled as fixture output; it does not perform computer vision.
+
+To exercise speech transcription, record a short clip or build a video from the
+attributed Harvard recording with `node scripts/generate-hearing-evaluation-video.mjs`.
 
 For native Node/Python setup, use [CONTRIBUTING.md](CONTRIBUTING.md).
 
