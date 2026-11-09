@@ -165,6 +165,20 @@ def _provider_checks(
                 ),
             }
         )
+    elif transcription == "openai_audio":
+        configured = _configured(settings.openai_api_key)
+        checks.append(
+            {
+                "name": "transcription",
+                "status": "ok" if configured else "missing",
+                "detail": (
+                    f"OpenAI-compatible audio chat endpoint configured; "
+                    f"model={settings.transcription_model}"
+                    if configured
+                    else "OPENAI_API_KEY is not set"
+                ),
+            }
+        )
     else:
         checks.append(
             {
@@ -172,7 +186,8 @@ def _provider_checks(
                 "status": "missing",
                 "detail": (
                     f"unknown TRANSCRIPTION_PROVIDER={settings.transcription_provider!r}; "
-                    "expected fixture, faster_whisper, openai_compatible, none, or off"
+                    "expected fixture, faster_whisper, openai_compatible, "
+                    "openai_audio, none, or off"
                 ),
             }
         )

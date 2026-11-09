@@ -12,6 +12,9 @@ from oc_worker.providers import (
     build_transcription,
     build_vision,
 )
+from oc_worker.providers.transcription.openai_audio import (
+    OpenAIAudioChatTranscriptionProvider,
+)
 
 
 @pytest.mark.parametrize("provider", ["", "none", "off"])
@@ -81,3 +84,17 @@ def test_provider_error_does_not_include_secret_values() -> None:
     assert build_transcription(settings) is not None
     assert build_vision(settings) is not None
     assert build_text(settings) is not None
+
+
+def test_openai_audio_builder_uses_chat_provider() -> None:
+    settings = Settings(
+        transcription_provider="openai_audio",
+        transcription_model="mimo-v2.6-pro",
+        openai_api_key="opencode-test-key",
+        openai_base_url="https://opencode.ai/inference/go/openai/v1",
+    )
+
+    provider = build_transcription(settings)
+
+    assert isinstance(provider, OpenAIAudioChatTranscriptionProvider)
+    assert provider.model == "mimo-v2.6-pro"
