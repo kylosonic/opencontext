@@ -21,6 +21,21 @@ export RATE_LIMIT_BACKEND='database'
 export RATE_LIMIT_FAILURE_MODE='open'
 ```
 
+For any S3-compatible endpoint (Cloudflare R2, MinIO, S3Mock) use the static
+credential variables above. On Vercel, an AWS Marketplace integration can
+assume an IAM role through Vercel OIDC instead, which avoids long-lived AWS
+keys. Install the AWS integration from the Vercel Marketplace, then set:
+
+```bash
+export AWS_ROLE_ARN='arn:aws:iam::123456789012:role/your-vercel-oidc-role'
+export AWS_REGION='us-east-1'
+export S3_BUCKET_NAME='opencontext-media'
+```
+
+Leave the five `STORAGE_S3_*` variables unset when using OIDC. The web app
+selects OIDC automatically when static variables are absent and these three
+are present. OIDC is Vercel-only; other hosts need static credentials.
+
 Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
 same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
 during a limiter outage is safer for your deployment than allowing it.

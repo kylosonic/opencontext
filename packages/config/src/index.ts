@@ -101,11 +101,20 @@ export function storagePath(): string {
 
 /** S3-compatible storage configuration. */
 export interface S3Config {
-  endpoint: string;
+  endpoint?: string;
   region: string;
   bucket: string;
-  accessKeyId: string;
-  secretAccessKey: string;
+  credentials:
+    | {
+        kind: "static";
+        accessKeyId: string;
+        secretAccessKey: string;
+      }
+    | {
+        kind: "vercel-oidc";
+        roleArn: string;
+      };
+  forcePathStyle: boolean;
   /** Optional public base URL for serving objects directly. */
   publicBaseUrl?: string;
 }
@@ -120,14 +129,30 @@ export const S3_REQUIRED_KEYS = [
 
 export function s3ConfigFromEnv(env: EnvRecord = process.env): S3Config | undefined {
   if (!S3_REQUIRED_KEYS.every((key) => isConfiguredValue(env[key]))) {
-    return undefined;
+    const roleArn = env.AWS_ROLE_ARN?.trim();
+    const region = env.AWS_REGION?.trim();
+    const bucket = env.S3_BUCKET_NAME?.trim();
+    if (!roleArn || !region || !bucket) {
+      return undefined;
+    }
+    return {
+      region,
+      bucket,
+      credentials: { kind: "vercel-oidc", roleArn },
+      forcePathStyle: false,
+      publicBaseUrl: env.STORAGE_S3_PUBLIC_BASE_URL?.trim() || undefined,
+    };
   }
   return {
     endpoint: env.STORAGE_S3_ENDPOINT!.trim(),
     region: env.STORAGE_S3_REGION!.trim(),
     bucket: env.STORAGE_S3_BUCKET!.trim(),
-    accessKeyId: env.STORAGE_S3_ACCESS_KEY_ID!.trim(),
-    secretAccessKey: env.STORAGE_S3_SECRET_ACCESS_KEY!.trim(),
+    credentials: {
+      kind: "static",
+      accessKeyId: env.STORAGE_S3_ACCESS_KEY_ID!.trim(),
+      secretAccessKey: env.STORAGE_S3_SECRET_ACCESS_KEY!.trim(),
+    },
+    forcePathStyle: true,
     publicBaseUrl: env.STORAGE_S3_PUBLIC_BASE_URL?.trim() || undefined,
   };
 }

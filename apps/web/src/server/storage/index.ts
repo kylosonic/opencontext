@@ -24,7 +24,7 @@ export function getStorage(): Storage {
     const config = s3Config();
     if (!config) {
       throw new Error(
-        "STORAGE_PROVIDER=s3 requires STORAGE_S3_ENDPOINT, STORAGE_S3_REGION, STORAGE_S3_BUCKET, STORAGE_S3_ACCESS_KEY_ID and STORAGE_S3_SECRET_ACCESS_KEY",
+        "STORAGE_PROVIDER=s3 requires either STORAGE_S3_ENDPOINT, STORAGE_S3_REGION, STORAGE_S3_BUCKET, STORAGE_S3_ACCESS_KEY_ID and STORAGE_S3_SECRET_ACCESS_KEY, or AWS_ROLE_ARN, AWS_REGION and S3_BUCKET_NAME for Vercel OIDC",
       );
     }
     instance = new S3Storage(config);

@@ -43,6 +43,11 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: vi.fn(async () => "https://signed.example/oc-media/key?token=abc"),
 }));
 
+const credentialsProviderMock = vi.hoisted(() => vi.fn(() => "oidc-provider"));
+vi.mock("@vercel/oidc-aws-credentials-provider", () => ({
+  awsCredentialsProvider: credentialsProviderMock,
+}));
+
 import { S3Storage } from "@/server/storage";
 import { TEST_BYTES, testStream } from "./helpers";
 
@@ -50,13 +55,18 @@ const config = {
   endpoint: "https://s3.example.com",
   region: "auto",
   bucket: "oc-media",
-  accessKeyId: "key-id",
-  secretAccessKey: "secret",
+  credentials: {
+    kind: "static" as const,
+    accessKeyId: "key-id",
+    secretAccessKey: "secret",
+  },
+  forcePathStyle: true,
 };
 
 beforeEach(() => {
   state.commands.length = 0;
   state.sendMock.mockReset();
+  credentialsProviderMock.mockClear();
 });
 
 function lastCommand(name: string): Record<string, unknown> {
@@ -68,6 +78,23 @@ function lastCommand(name: string): Record<string, unknown> {
 }
 
 describe("S3Storage (mocked AWS SDK)", () => {
+  it("uses Vercel OIDC credentials without a custom endpoint", () => {
+    new S3Storage({
+      region: "us-east-1",
+      bucket: "aws-bucket",
+      forcePathStyle: false,
+      credentials: {
+        kind: "vercel-oidc",
+        roleArn: "arn:aws:iam::123456789012:role/OpenContext",
+      },
+    });
+
+    expect(credentialsProviderMock).toHaveBeenCalledWith({
+      roleArn: "arn:aws:iam::123456789012:role/OpenContext",
+      clientConfig: { region: "us-east-1" },
+    });
+  });
+
   it("put sends PutObjectCommand with bucket, key, length and content type", async () => {
     const storage = new S3Storage(config);
     state.sendMock.mockResolvedValue({});

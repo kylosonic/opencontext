@@ -8,6 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { awsCredentialsProvider } from "@vercel/oidc-aws-credentials-provider";
 import type { S3Config } from "@opencontext/config";
 import type { Storage, PutOptions } from "./types";
 
@@ -23,12 +24,18 @@ export class S3Storage implements Storage {
   constructor(private readonly config: S3Config) {
     this.client = new S3Client({
       region: config.region,
-      endpoint: config.endpoint,
-      forcePathStyle: true,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
+      ...(config.endpoint ? { endpoint: config.endpoint } : {}),
+      forcePathStyle: config.forcePathStyle,
+      credentials:
+        config.credentials.kind === "vercel-oidc"
+          ? awsCredentialsProvider({
+              roleArn: config.credentials.roleArn,
+              clientConfig: { region: config.region },
+            })
+          : {
+              accessKeyId: config.credentials.accessKeyId,
+              secretAccessKey: config.credentials.secretAccessKey,
+            },
     });
   }
 
