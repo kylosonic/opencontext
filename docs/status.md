@@ -35,6 +35,10 @@ about the current Vercel deployment or future releases.
 - Upload cancellation, batch CLI analysis, provider diagnostics, shared
   database rate limiting, PostgreSQL migrations, and keyboard accessibility
   have focused tests.
+- A PostgreSQL load test with six independent processes and 150 synchronized
+  requests per round allowed exactly 37 requests on each fresh key and
+  persisted exactly 37 slots across four rounds. The raw result and limits are
+  published under `docs/performance/`.
 - `opencontext --version` reads installed package metadata, `doctor --json`
   emits ordered readiness checks without credential values, and provider
   factories name invalid settings and missing credentials explicitly.
@@ -83,7 +87,8 @@ service.
 - Packages are not published.
 - Eight moderate npm advisories remain in the TypeScript ESLint development
   toolchain; no high or critical advisories remain.
-- No independent penetration test or high-traffic load test exists.
+- No sustained high-traffic test against the deployed HTTP service or
+  independent penetration test exists.
 - Production OAuth, object storage, PostgreSQL, and worker deployment are not
   configured or deployed as a complete public service.
 
