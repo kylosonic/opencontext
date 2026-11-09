@@ -14,6 +14,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test:contracts && npm run test --workspaces --if-present",
+    "test:rate-limit-load": "node scripts/rate-limit-load-test.mjs",
     "test:contracts": "node --test scripts/error-catalog.test.mjs",
     "build": "npm run build --workspace @opencontext/schemas && npm run build --workspace web"
   }

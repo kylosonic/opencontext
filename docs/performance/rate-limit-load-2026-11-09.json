@@ -1,0 +1,373 @@
+{
+  "generatedAt": "2026-11-09T07:19:05.311Z",
+  "database": {
+    "dialect": "postgresql",
+    "connectionLimitPerProcess": 2
+  },
+  "configuration": {
+    "independentProcesses": 6,
+    "requestsPerProcess": 25,
+    "limit": 37,
+    "windowMs": 60000,
+    "rounds": 4
+  },
+  "totals": {
+    "attempts": 600,
+    "allowed": 148,
+    "blocked": 452,
+    "durationMs": 8888.95,
+    "throughputPerSec": 67.5
+  },
+  "rounds": [
+    {
+      "id": "round-1",
+      "key": "load:1794208796422:1",
+      "attempted": 150,
+      "allowed": 37,
+      "blocked": 113,
+      "maxWorkerLatencyMs": 3837.4,
+      "workers": [
+        {
+          "type": "result",
+          "batchId": "round-1",
+          "workerId": "instance-1",
+          "attempted": 25,
+          "allowed": 25,
+          "blocked": 0,
+          "remainingMin": 12,
+          "retryAfterSecs": [],
+          "elapsedMs": 1812.16
+        },
+        {
+          "type": "result",
+          "batchId": "round-1",
+          "workerId": "instance-2",
+          "attempted": 25,
+          "allowed": 10,
+          "blocked": 15,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 3641.33
+        },
+        {
+          "type": "result",
+          "batchId": "round-1",
+          "workerId": "instance-3",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 3837.4
+        },
+        {
+          "type": "result",
+          "batchId": "round-1",
+          "workerId": "instance-4",
+          "attempted": 25,
+          "allowed": 2,
+          "blocked": 23,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 3638.66
+        },
+        {
+          "type": "result",
+          "batchId": "round-1",
+          "workerId": "instance-5",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 3769.34
+        },
+        {
+          "type": "result",
+          "batchId": "round-1",
+          "workerId": "instance-6",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 3786.45
+        }
+      ]
+    },
+    {
+      "id": "round-2",
+      "key": "load:1794208796422:2",
+      "attempted": 150,
+      "allowed": 37,
+      "blocked": 113,
+      "maxWorkerLatencyMs": 1638.83,
+      "workers": [
+        {
+          "type": "result",
+          "batchId": "round-2",
+          "workerId": "instance-1",
+          "attempted": 25,
+          "allowed": 19,
+          "blocked": 6,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1565.24
+        },
+        {
+          "type": "result",
+          "batchId": "round-2",
+          "workerId": "instance-2",
+          "attempted": 25,
+          "allowed": 16,
+          "blocked": 9,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1555.92
+        },
+        {
+          "type": "result",
+          "batchId": "round-2",
+          "workerId": "instance-3",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1635.77
+        },
+        {
+          "type": "result",
+          "batchId": "round-2",
+          "workerId": "instance-4",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1634.39
+        },
+        {
+          "type": "result",
+          "batchId": "round-2",
+          "workerId": "instance-5",
+          "attempted": 25,
+          "allowed": 2,
+          "blocked": 23,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1612.57
+        },
+        {
+          "type": "result",
+          "batchId": "round-2",
+          "workerId": "instance-6",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1638.83
+        }
+      ]
+    },
+    {
+      "id": "round-3",
+      "key": "load:1794208796422:3",
+      "attempted": 150,
+      "allowed": 37,
+      "blocked": 113,
+      "maxWorkerLatencyMs": 1565.24,
+      "workers": [
+        {
+          "type": "result",
+          "batchId": "round-3",
+          "workerId": "instance-1",
+          "attempted": 25,
+          "allowed": 9,
+          "blocked": 16,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1545.95
+        },
+        {
+          "type": "result",
+          "batchId": "round-3",
+          "workerId": "instance-2",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1565.24
+        },
+        {
+          "type": "result",
+          "batchId": "round-3",
+          "workerId": "instance-3",
+          "attempted": 25,
+          "allowed": 15,
+          "blocked": 10,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1511.04
+        },
+        {
+          "type": "result",
+          "batchId": "round-3",
+          "workerId": "instance-4",
+          "attempted": 25,
+          "allowed": 6,
+          "blocked": 19,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1550.71
+        },
+        {
+          "type": "result",
+          "batchId": "round-3",
+          "workerId": "instance-5",
+          "attempted": 25,
+          "allowed": 4,
+          "blocked": 21,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1559.9
+        },
+        {
+          "type": "result",
+          "batchId": "round-3",
+          "workerId": "instance-6",
+          "attempted": 25,
+          "allowed": 3,
+          "blocked": 22,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1562.55
+        }
+      ]
+    },
+    {
+      "id": "round-4",
+      "key": "load:1794208796422:4",
+      "attempted": 150,
+      "allowed": 37,
+      "blocked": 113,
+      "maxWorkerLatencyMs": 1827.58,
+      "workers": [
+        {
+          "type": "result",
+          "batchId": "round-4",
+          "workerId": "instance-1",
+          "attempted": 25,
+          "allowed": 3,
+          "blocked": 22,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1817.94
+        },
+        {
+          "type": "result",
+          "batchId": "round-4",
+          "workerId": "instance-2",
+          "attempted": 25,
+          "allowed": 19,
+          "blocked": 6,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1817.73
+        },
+        {
+          "type": "result",
+          "batchId": "round-4",
+          "workerId": "instance-3",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1813.26
+        },
+        {
+          "type": "result",
+          "batchId": "round-4",
+          "workerId": "instance-4",
+          "attempted": 25,
+          "allowed": 0,
+          "blocked": 25,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1820.32
+        },
+        {
+          "type": "result",
+          "batchId": "round-4",
+          "workerId": "instance-5",
+          "attempted": 25,
+          "allowed": 1,
+          "blocked": 24,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1827.58
+        },
+        {
+          "type": "result",
+          "batchId": "round-4",
+          "workerId": "instance-6",
+          "attempted": 25,
+          "allowed": 14,
+          "blocked": 11,
+          "remainingMin": 0,
+          "retryAfterSecs": [
+            60
+          ],
+          "elapsedMs": 1776
+        }
+      ]
+    }
+  ]
+}

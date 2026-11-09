@@ -25,6 +25,23 @@ Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
 same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
 during a limiter outage is safer for your deployment than allowing it.
 
+The repository includes a multi-process PostgreSQL contention test. Against a
+disposable database:
+
+```bash
+export DATABASE_URL='postgresql://opencontext:opencontext@localhost:5432/opencontext?schema=public'
+export RATE_LIMIT_LOAD_ALLOW_RESET=1
+npm run prisma:generate:postgres --workspace web
+npm run prisma:migrate:deploy:postgres --workspace web
+npm run test:rate-limit-load -- --out .artifacts/rate-limit-load.json
+npm run postinstall --workspace web
+```
+
+See [docs/performance/rate-limit-load.md](performance/rate-limit-load.md) for
+the published result, test design, and limitations. It verifies quota
+consistency; it is not a replacement for sustained load testing against the
+deployed service.
+
 Create the GitHub OAuth app with the callback URL:
 
 `https://your-app.example/api/auth/callback/github`

@@ -196,6 +196,13 @@ jobs:
           --to-schema prisma/postgres/schema.prisma
           --exit-code
 
+      - name: Load-test shared rate limiter across processes
+        env:
+          RATE_LIMIT_LOAD_ALLOW_RESET: "1"
+        run: >-
+          npm run test:rate-limit-load --
+          --out .artifacts/rate-limit-load.json
+
   compose:
     name: Compose — upload through exports
     runs-on: ubuntu-latest

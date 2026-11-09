@@ -72,7 +72,7 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   retention cleanup, and tested FFmpeg argument handling.
 - Upload cancellation with temporary-object cleanup and immediate retry.
 - Memory or shared database rate limiting for single or multi-instance web
-  deployments.
+  deployments, with multi-process PostgreSQL contention coverage.
 - Database-backed queue and resumable worker stages.
 - Faster Whisper, OpenAI-compatible, Ollama, and deterministic fixture
   providers.

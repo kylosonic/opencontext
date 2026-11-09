@@ -10,7 +10,6 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Next
 
-- Load-test the database-backed rate limiter across multiple web instances.
 - Verify production S3 CORS and multipart uploads against the selected provider.
 
 ## Later

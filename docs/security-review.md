@@ -1,6 +1,6 @@
 # Security Review
 
-Last reviewed: 2026-11-08
+Last reviewed: 2026-11-09
 
 This document records implementation-level controls and remaining deployment
 work. It is not a penetration-test report.
@@ -24,8 +24,10 @@ work. It is not a penetration-test report.
 - **Rate limiting:** upload intent creation, completion, cancellation, retries,
   and evidence review are rate limited per user. `memory` is the local
   single-instance default; `database` shares fixed-window quotas through the
-  application database for multi-instance deployments. Backend failure can be
-  configured fail-open or fail-closed, and platform/WAF limits remain useful.
+  application database for multi-instance deployments. A PostgreSQL test with
+  six independent processes verified that concurrent requests cannot exceed
+  the stored quota. Backend failure can be configured fail-open or fail-closed,
+  and platform/WAF limits remain useful.
 - **Temporary files:** worker jobs use isolated temporary directories and
   best-effort cleanup. Upload intents expire and are swept with their objects.
 - **Direct transfer:** production media bytes go directly to object storage;
@@ -42,7 +44,7 @@ work. It is not a penetration-test report.
   cross-user access;
 - job and evidence ownership;
 - worker token acceptance/rejection;
-- rate-limit windows and reset behavior;
+- rate-limit windows, reset behavior, and multi-process PostgreSQL contention;
 - S3 `HEAD` metadata and presigned `PUT` command wiring;
 - FFmpeg argument-list and option-like filename handling.
 
@@ -50,8 +52,8 @@ work. It is not a penetration-test report.
 
 - Configure the S3 bucket with least-privilege credentials and CORS limited to
   the production web origin.
-- Use a distributed rate limiter or platform WAF if traffic spans multiple
-  instances.
+- Tune database connection pools and add platform/WAF controls based on
+  sustained production traffic.
 - Add provider-specific Postgres migrations before making schema changes in a
   long-lived production database.
 - Run an independent penetration test before claiming production security.
