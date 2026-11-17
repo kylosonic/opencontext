@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 
+process.env.BROWSER = "true";
 const command =
   "npm publish --workspace @kylosonic/opencontext-schemas --access public --provenance";
 const child = spawn("script", ["-qefc", command, "/dev/null"], {
