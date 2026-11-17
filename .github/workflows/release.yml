@@ -66,6 +66,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
       - run: npm run build --workspace @kylosonic/opencontext-schemas
-      - run: npm publish --workspace @kylosonic/opencontext-schemas --access public --provenance
+      # npm 11 handles the registry's web OTP challenge in an interactive TTY.
+      - run: script -qec "npm publish --workspace @kylosonic/opencontext-schemas --access public --provenance" /dev/null
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
