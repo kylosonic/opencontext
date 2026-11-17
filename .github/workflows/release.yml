@@ -69,4 +69,4 @@ jobs:
       - run: npm publish --workspace @kylosonic/opencontext-schemas --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_OTP: ${{ secrets.NPM_OTP }}
+          NPM_CONFIG_OTP: ${{ secrets.NPM_OTP || '' }}
