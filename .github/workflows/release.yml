@@ -24,23 +24,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install --yes ffmpeg
       - run: npm ci
       - run: python -m pip install -e "workers/processor[dev]"
-      - run: |
-          if [ "$GITHUB_REF_TYPE" = "branch" ]; then
-            python - "$GITHUB_SHA" <<'PY'
-          import json
-          import subprocess
-          import sys
-          import tomllib
-          from pathlib import Path
-
-          root = Path.cwd()
-          python_version = tomllib.loads((root / "workers/processor/pyproject.toml").read_text())["project"]["version"]
-          npm_version = json.loads((root / "packages/schemas/package.json").read_text())["version"]
-          print(f"Workflow dispatch: Python {python_version}, npm {npm_version}, commit {sys.argv[1]}")
-          PY
-          else
-            python scripts/check-release-version.py
-          fi
+      - run: python scripts/check-release-version.py
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -111,9 +95,4 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.published.outputs.exists != 'true'
-        run: |
-          args=(--workspace @kylosonic/opencontext-schemas --access public)
-          if [[ "$GITHUB_REF_TYPE" == "branch" ]]; then
-            args+=(--tag trusted-publishing-check)
-          fi
-          npm publish "${args[@]}"
+        run: npm publish --workspace @kylosonic/opencontext-schemas --access public

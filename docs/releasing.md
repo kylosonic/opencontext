@@ -35,8 +35,9 @@ The release jobs skip a package version that is already present in its
 registry, so rerunning a tag remains safe and idempotent.
 
 The temporary npm publish and GitHub Actions tokens used during the first
-release are no longer required. Revoke them after confirming that the public
-versions install successfully.
+release have been revoked. A tokenless prerelease publish validated the npm
+trusted publisher and generated npm provenance. Both stable `0.1.0` versions
+install successfully, and `latest` still points to `0.1.0`.
 
 ## Release checklist
 
