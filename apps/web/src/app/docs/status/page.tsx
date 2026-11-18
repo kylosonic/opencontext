@@ -43,7 +43,7 @@ export default function StatusPage() {
             The hosted deployment has a recorded end-to-end job: all five stages reached 100%, with evidence IDs, source timestamps, certainty labels, and both exports verified. The readiness endpoint reported all six required configuration checks.
           </p>
           <p className="mt-3">
-            That job ran from the scheduled GitHub Actions worker. The repository now has a graceful long-running worker runtime and restart policy. A specific persistent host deployment needs its own worker process and runtime evidence before it can be called verified.
+            That job ran from the scheduled GitHub Actions worker. A persistent host deployment still needs its own live process, restart, and alerting evidence before it can be called verified.
           </p>
           <div className="mt-3 border-l-2 border-line-strong pl-4 text-ink-faint">
             The public site can lag the repository. Production worker status is separate from the published v0.1.0 packages.
