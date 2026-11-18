@@ -53,9 +53,13 @@ jobs:
         timeout-minutes: 23
 
       - name: Check operations alerts
-        continue-on-error: true
         env:
           OPENCONTEXT_BASE_URL: ${{ vars.WORKER_API_URL || 'https://opencontext-swart.vercel.app' }}
           OPS_API_TOKEN: ${{ secrets.OPS_API_TOKEN }}
           ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
-        run: node scripts/check-operations.mjs
+        run: |
+          if [ -z "$OPS_API_TOKEN" ]; then
+            echo "::warning::OPS_API_TOKEN is not set on the repository; operations checks were skipped."
+            exit 0
+          fi
+          node scripts/check-operations.mjs
