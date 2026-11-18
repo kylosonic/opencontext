@@ -4,7 +4,7 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Now
 
-- Publish the first Python and npm packages through protected environments.
+- Publish the next Python and npm versions through protected environments.
 
 ## Next
 

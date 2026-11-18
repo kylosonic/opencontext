@@ -1,16 +1,12 @@
 # Installable Packages
 
-The source tree is release-ready for two packages, but neither has been
-published yet. Do not assume the registry names are available until the first
-release succeeds.
+The `0.1.0` versions of both packages are published. Install them directly from
+their public registries.
 
 ## Python CLI
 
-Build and install from the repository:
-
 ```bash
-python -m build workers/processor
-python -m pip install workers/processor/dist/opencontext_video-0.1.0-py3-none-any.whl
+python -m pip install "opencontext-video[local]==0.1.0"
 opencontext analyze video.mp4 --out context.md --json context.json
 ```
 
@@ -20,7 +16,7 @@ transcription and vision output instead of claiming real inference.
 Install the optional agent integration:
 
 ```bash
-python -m pip install "workers/processor[agent]"
+python -m pip install "opencontext-video[agent]==0.1.0"
 opencontext-mcp
 ```
 
@@ -30,11 +26,8 @@ The MCP server exposes `analyze_media`, `analyze_video`, `analyze_image`,
 
 ## npm schemas
 
-Build and inspect the package locally:
-
 ```bash
-npm run build --workspace @kylosonic/opencontext-schemas
-npm pack --workspace @kylosonic/opencontext-schemas --dry-run
+npm install @kylosonic/opencontext-schemas@0.1.0
 ```
 
 The tarball includes compiled ESM JavaScript, declarations, source maps, the

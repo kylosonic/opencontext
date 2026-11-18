@@ -117,11 +117,9 @@ the non-root worker container and the Compose upload-to-export flow.
   English read-speech sample. It does not establish broad vision or speech
   accuracy, noisy audio performance, or behavior on real application
   recordings.
-- Packages are not published.
-- The first release still needs a PyPI pending Trusted Publisher, the
-  `NPM_TOKEN` repository secret, and approval in the protected `pypi` and `npm`
-  environments. Both packages build, pass registry-format checks, and install
-  from their local artifacts.
+- `opencontext-video==0.1.0` is published on PyPI and
+  `@kylosonic/opencontext-schemas@0.1.0` is published on npm. Both use Trusted
+  Publishing through their protected release workflows.
 - Eight moderate npm advisories remain in the TypeScript ESLint development
   toolchain; no high or critical advisories remain.
 - No sustained high-traffic test against the deployed HTTP service or

@@ -5,6 +5,10 @@ All notable changes are documented here. The project follows
 
 ## Unreleased
 
+- Published `opencontext-video==0.1.0` on PyPI and
+  `@kylosonic/opencontext-schemas@0.1.0` on npm. npm publishing now uses
+  GitHub OIDC Trusted Publishing, so release workflows no longer need a
+  long-lived publish token.
 - Added a worker lease heartbeat so long transcription and vision stages keep
   their queue claim, and made the worker container run as an unprivileged user.
 - Added PNG, JPEG, and WebP image inputs, including ordered sets of up to 10

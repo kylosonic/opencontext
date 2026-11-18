@@ -49,6 +49,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: workers/processor/dist/
+          skip-existing: true
 
   npm-package:
     needs: verify
@@ -66,6 +67,15 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
       - run: npm run build --workspace @kylosonic/opencontext-schemas
-      - run: node scripts/publish-npm-web-auth.mjs
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Check whether the npm version is already published
+        id: published
+        shell: bash
+        run: |
+          version="$(node -p "require('./packages/schemas/package.json').version")"
+          if npm view "@kylosonic/opencontext-schemas@$version" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.published.outputs.exists != 'true'
+        run: npm publish --workspace @kylosonic/opencontext-schemas --access public

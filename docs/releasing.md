@@ -16,18 +16,27 @@ Environments named `pypi` and `npm`. A pushed tag therefore builds and verifies
 the release without publishing until an environment is approved manually.
 
 - PyPI uses Trusted Publishing through GitHub OIDC; no PyPI token is stored.
-- npm requires an `NPM_TOKEN` repository secret and publishes with provenance.
+- npm uses Trusted Publishing through GitHub OIDC; no npm publish token is
+  stored.
 
-Before the first release:
+The `0.1.0` artifacts are published. Their trusted publishers are configured as
+follows:
 
-1. In PyPI, add a pending Trusted Publisher for `opencontext-video` with
+1. In PyPI, the Trusted Publisher for `opencontext-video` uses
    owner `kylosonic`, repository `opencontext`, workflow `release.yml`, and
    environment `pypi`.
-2. Create an npm granular access token that can publish
-   `@kylosonic/opencontext-schemas` under the `@kylosonic` scope. Store it as
-   the repository secret `NPM_TOKEN`.
+2. In npm package Settings, connect the trusted publisher
+   `kylosonic/opencontext`, workflow `release.yml`, environment `npm`. Allow
+   `npm publish` for direct releases; `npm dist-tag` remains disabled.
 3. In repository Settings → Environments, add required reviewers to `pypi` and
    `npm`. This is the human approval gate for publishing.
+
+The release jobs skip a package version that is already present in its
+registry, so rerunning a tag remains safe and idempotent.
+
+The temporary npm publish and GitHub Actions tokens used during the first
+release are no longer required. Revoke them after confirming that the public
+versions install successfully.
 
 ## Release checklist
 

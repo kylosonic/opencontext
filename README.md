@@ -147,14 +147,15 @@ Video/image/PDF → Upload intent → Object storage → Queue → FFmpeg/PDFium
 The worker includes a standalone CLI:
 
 ```bash
-python -m pip install "workers/processor[local]"
+python -m pip install "opencontext-video[local]==0.1.0"
 opencontext analyze video.mp4 --out context.md --json context.json
 opencontext analyze mockup.png --out image.md --json image.json
 opencontext analyze reference.pdf --out pdf.md --json pdf.json
 ```
 
-`@kylosonic/opencontext-schemas` builds to publishable ESM and declarations. Both artifacts
-are release-ready in the source tree but not published. See
+The Python package is published as `opencontext-video==0.1.0`. The TypeScript
+contracts are available as `@kylosonic/opencontext-schemas@0.1.0` with ESM and
+declarations. See
 [docs/installable-packages.md](docs/installable-packages.md) and
 [docs/releasing.md](docs/releasing.md).
 
