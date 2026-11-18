@@ -20,6 +20,10 @@ All notable changes are documented here. The project follows
   The web image starts migrations before serving and the deployment health
   check requires a successful result. The scheduled GitHub worker remains the
   live fallback until that stack is deployed.
+- Added authenticated aggregate operations alerts for idle-worker heartbeat,
+  queue age, long-running jobs, and recent failures. Workers now report their
+  runtime state explicitly on claim errors and preserve object-storage error
+  messages instead of masking them with an unread streaming response.
 - Published `opencontext-video==0.1.0` on PyPI and
   `@kylosonic/opencontext-schemas@0.1.0` on npm. npm publishing now uses
   GitHub OIDC Trusted Publishing, so release workflows no longer need a

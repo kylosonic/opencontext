@@ -34,6 +34,7 @@ services:
       STORAGE_PROVIDER: local
       STORAGE_PATH: /data/storage
       WORKER_API_TOKEN: local-compose-worker-token
+      OPS_API_TOKEN: local-compose-ops-token
       NEXT_PUBLIC_APP_URL: ${OPENCONTEXT_APP_URL:-http://localhost:3000}
     ports:
       - "${OPENCONTEXT_WEB_PORT:-3000}:3000"

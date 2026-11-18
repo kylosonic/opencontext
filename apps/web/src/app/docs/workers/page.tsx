@@ -70,6 +70,9 @@ HF_HOME=/models`}
           <p className="mt-3">
             A job that exceeds <code>WORKER_JOB_TIMEOUT_SECONDS</code> (900 seconds by default) is failed with a specific timeout. Set the container host&apos;s CPU and memory quotas to match the provider configuration; those quotas remain host policy.
           </p>
+          <p className="mt-3">
+            An idle worker reports a separate process heartbeat. The authenticated <code>/api/ops/alerts</code> check alerts when work is waiting without a recent worker, when the oldest queue entry or a running job crosses its threshold, and when a job recently ended as failed or partial. Set <code>OPS_API_TOKEN</code> on the web app and checker; the alert receiver gets aggregate state without media, prompts, or credentials.
+          </p>
         </section>
 
         <section aria-labelledby="resources-title">

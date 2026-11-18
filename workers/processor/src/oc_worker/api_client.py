@@ -81,6 +81,14 @@ def run_with_retry[T](
 
 
 def _error_from_response(response: httpx.Response, path: str) -> PermanentFailure:
+    # Streaming responses are not buffered until explicitly read. Without
+    # this, a 4xx from object storage raises ResponseNotRead and hides the
+    # actual failure from the worker supervisor.
+    if not response.is_closed or not response.is_stream_consumed:
+        try:
+            response.read()
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            raise TransientFailure(f"could not read error body for {path}: {exc}") from exc
     try:
         body = response.json()
         err = body.get("error", {}) if isinstance(body, dict) else {}
@@ -152,6 +160,10 @@ class ApiClient:
         return run_with_retry(call)
 
     # -- worker endpoints -------------------------------------------------
+
+    def heartbeat(self) -> None:
+        """Report process liveness so an idle worker is visibly alive."""
+        self._request("POST", "/api/worker/heartbeat", json={"workerId": self.worker_id})
 
     def claim(self) -> dict[str, Any] | None:
         """Claim the next queued job; None when the queue is idle (204)."""

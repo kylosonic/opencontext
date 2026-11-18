@@ -18,10 +18,43 @@ class _FakeApi:
 
     def __init__(self) -> None:
         self.claims = 0
+        self.heartbeats = 0
+
+    @property
+    def worker_api_url(self) -> str:
+        return "http://worker.test"
 
     def claim(self) -> None:
         self.claims += 1
         return None
+
+    def heartbeat(self) -> None:
+        self.heartbeats += 1
+
+
+def test_heartbeat_reports_idle_worker_and_stops_promptly() -> None:
+    api = _FakeApi()
+    stopper = worker_main.WorkerStopper()
+    started = threading.Event()
+
+    def stop_after_heartbeat() -> None:
+        while api.heartbeats == 0:
+            time.sleep(0.005)
+        stopper.request_stop()
+
+    threading.Thread(target=stop_after_heartbeat).start()
+    thread = threading.Thread(
+        target=worker_main._heartbeat_loop,
+        args=(api, Settings(worker_id="test-worker"), stopper, started),
+    )
+    thread.start()
+    while api.heartbeats == 0:
+        time.sleep(0.005)
+    stopper.request_stop()
+    thread.join(1)
+
+    assert started.is_set()
+    assert not thread.is_alive()
 
 
 class _FakePipeline:
@@ -62,12 +95,19 @@ class _TransientClaimApi(_FakeApi):
 
 
 def test_supervisor_retries_claim_errors_and_exits_on_stop(monkeypatch) -> None:
-    api = _TransientClaimApi()
+    class RecoveringClaimApi(_TransientClaimApi):
+        def claim(self) -> None:
+            self.claims += 1
+            if self.claims == 1:
+                raise TransientFailure("API unavailable")
+            return None
+
+    api = RecoveringClaimApi()
     stopper = worker_main.WorkerStopper()
     settings = Settings(
         worker_id="test-worker",
         worker_concurrency=1,
-        worker_error_backoff_seconds=1.0,
+        worker_error_backoff_seconds=0.2,
         worker_shutdown_grace_seconds=1.0,
     )
 
@@ -76,13 +116,13 @@ def test_supervisor_retries_claim_errors_and_exits_on_stop(monkeypatch) -> None:
     monkeypatch.setattr(worker_main, "WorkerStopper", lambda: stopper)
 
     def stop_after_retry() -> None:
-        while api.claims < 2:
-            time.sleep(0.005)
+        time.sleep(0.04)
         stopper.request_stop()
 
     threading.Thread(target=stop_after_retry).start()
-    assert worker_main._run_supervisor(settings) == 0
-    assert api.claims >= 2
+    result = worker_main._run_supervisor(settings)
+    assert result == 0
+    assert api.claims == 1
 
 
 def test_supervisor_waits_for_active_job_before_exit(monkeypatch) -> None:

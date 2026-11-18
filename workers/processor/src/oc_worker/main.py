@@ -20,6 +20,7 @@ from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.pipeline import Pipeline
 
 IDLE_POLL_SECONDS = 3
+HEARTBEAT_SECONDS = 30
 SHUTDOWN_POLL_SECONDS = 0.05
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
@@ -64,6 +65,21 @@ class WorkerStopper:
     def can_continue(self) -> bool:
         with self._lock:
             return not self.stop_event.is_set() and self._reporting == 0
+
+    def begin_cycle(self) -> bool:
+        with self._lock:
+            if self.stop_event.is_set():
+                return False
+            self._claiming += 1
+            return True
+
+    def finish_cycle(self) -> None:
+        with self._lock:
+            self._claiming = max(0, self._claiming - 1)
+
+    def active_cycles(self) -> int:
+        with self._lock:
+            return self._claiming
 
     def claim_in_flight(self) -> bool:
         with self._lock:
@@ -130,22 +146,29 @@ def _worker_loop(
 
     log.info("worker=%s started api=%s", settings.worker_id, settings.worker_api_url)
     stopped = False
+    consecutive_claim_errors = 0
     while stopper.can_continue():
         outcome = "stopped"
+        if not stopper.begin_cycle():
+            break
         try:
-            outcome = _guarded_claim(api, pipeline, stopper, report)
-        except (PermanentFailure, TransientFailure) as exc:
-            if not stopper.can_continue():
-                stopped = True
-                continue
-            stopper.begin_report()
             try:
+                outcome = _guarded_claim(api, pipeline, stopper, report)
+            except (PermanentFailure, TransientFailure) as exc:
+                if not stopper.can_continue():
+                    stopped = True
+                    continue
+                report("claim_error")
                 log.error("worker=%s status=claim_error error=%s", settings.worker_id, exc)
+                consecutive_claim_errors += 1
+                if isinstance(exc, PermanentFailure) or consecutive_claim_errors >= 3:
+                    stopped = True
+                    break
                 stopper.sleep(settings.worker_error_backoff_seconds)
-                stopped = True
-                continue
-            finally:
-                stopper.finish_report()
+            else:
+                consecutive_claim_errors = 0
+        finally:
+            stopper.finish_cycle()
         if stopped:
             break
         if outcome == "stopped":
@@ -163,6 +186,28 @@ def _tracked_worker_loop(
 ) -> None:
     cycle_started.set()
     _worker_loop(api, pipeline, settings, stopper)
+
+
+def _heartbeat_loop(
+    api: ApiClient,
+    settings: Settings,
+    stopper: WorkerStopper,
+    started: threading.Event,
+) -> None:
+    """Report idle-worker liveness without extending any job's claim lease."""
+    started.set()
+    while True:
+        try:
+            if stopper.stop_event.is_set():
+                return
+            api.heartbeat()
+        except (PermanentFailure, TransientFailure) as exc:
+            log.error("worker=%s status=heartbeat_error error=%s", settings.worker_id, exc)
+        except Exception:
+            log.exception("worker=%s status=heartbeat_error", settings.worker_id)
+            return
+        if not stopper.sleep(HEARTBEAT_SECONDS):
+            return
 
 
 def _run_once(settings: Settings) -> int:
@@ -211,6 +256,7 @@ def _run_supervisor(settings: Settings) -> int:
     )
     pipeline = Pipeline(api, settings)
     cycle_started = threading.Event()
+    heartbeat_started = threading.Event()
     threads = [
         threading.Thread(
             target=_tracked_worker_loop,
@@ -219,6 +265,13 @@ def _run_supervisor(settings: Settings) -> int:
         )
         for index in range(concurrency)
     ]
+    threads.append(
+        threading.Thread(
+            target=_heartbeat_loop,
+            args=(api, settings, stopper, heartbeat_started),
+            name=f"heartbeat-{settings.worker_id}",
+        )
+    )
     for thread in threads:
         thread.start()
     log.info(
@@ -239,9 +292,12 @@ def _run_supervisor(settings: Settings) -> int:
         settings.worker_id,
         grace,
     )
-    while not cycle_started.is_set() and time.monotonic() - stop_started < grace:
+    while (
+        (not cycle_started.is_set() or not heartbeat_started.is_set())
+        and time.monotonic() - stop_started < grace
+    ):
         time.sleep(SHUTDOWN_POLL_SECONDS)
-    while stopper.claim_in_flight() and time.monotonic() - stop_started < grace:
+    while stopper.active_cycles() and time.monotonic() - stop_started < grace:
         time.sleep(SHUTDOWN_POLL_SECONDS)
     deadline = stop_started + grace
     for thread in threads:

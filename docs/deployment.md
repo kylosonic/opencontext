@@ -198,6 +198,38 @@ The image forwards `SIGTERM` directly. Configure the host to restart the
 container on failure and set memory and CPU quotas appropriate for the selected
 providers.
 
+### Operations alerts
+
+Set `OPS_API_TOKEN` on the web app. The authenticated
+`GET /api/ops/alerts` endpoint returns aggregate job counts, worker heartbeat
+age, oldest queued-job age, and recent terminal failures without filenames,
+media, prompts, object URLs, or secrets. It returns HTTP 503 when waiting work
+has no recent worker heartbeat; queue-age and failed-job findings remain visible
+as warnings in the response.
+
+```bash
+export OPS_QUEUE_AGE_MINUTES='15'
+export OPS_WORKER_CLAIM_MINUTES='10'
+export OPS_JOB_RUNTIME_MINUTES='30'
+export OPS_FAILURE_LOOKBACK_MINUTES='60'
+```
+
+Run the alert checker from a scheduling service or server that can reach the web
+app. `ALERT_WEBHOOK_URL` is optional for a report-only check, but production
+alerting needs a receiver for the JSON event:
+
+```bash
+export OPENCONTEXT_BASE_URL='https://your-app.example'
+export OPS_API_TOKEN='a-separate-long-random-secret'
+export ALERT_WEBHOOK_URL='https://your-alert-receiver.example/opencontext'
+node scripts/check-operations.mjs
+```
+
+The scheduled GitHub worker runs the same check after its drain. Add
+`OPS_API_TOKEN` and, for an actual notification, `ALERT_WEBHOOK_URL` as GitHub
+Actions secrets. A missing receiver is reported; an alert is never silently
+treated as a successful notification.
+
 ### Hosted worker options
 
 A long-running background worker on Render, Railway, Fly.io, or a container

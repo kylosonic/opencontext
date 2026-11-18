@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { verifyWorkerToken } from "@/server/api-helpers";
+import { verifyOpsToken, verifyWorkerToken } from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
 import {
   consumeRateLimit,
@@ -37,6 +37,34 @@ describe("worker token authentication", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("operations token authentication", () => {
+  it("fails closed until a separate operations token is configured", () => {
+    const previous = process.env.OPS_API_TOKEN;
+    delete process.env.OPS_API_TOKEN;
+    try {
+      const request = new Request("http://test.local/api/ops/alerts", {
+        headers: { Authorization: "Bearer anything" },
+      });
+      expect(verifyOpsToken(request)).toBe(false);
+      process.env.OPS_API_TOKEN = "operations-test-token-at-least-16";
+      expect(verifyOpsToken(request)).toBe(false);
+      expect(
+        verifyOpsToken(
+          new Request("http://test.local/api/ops/alerts", {
+            headers: { Authorization: "Bearer operations-test-token-at-least-16" },
+          }),
+        ),
+      ).toBe(true);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.OPS_API_TOKEN;
+      } else {
+        process.env.OPS_API_TOKEN = previous;
+      }
+    }
   });
 });
 

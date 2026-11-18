@@ -40,6 +40,17 @@ export function verifyWorkerToken(request: Request): boolean {
   return safeEqual(match[1], expected);
 }
 
+/** Bearer-token check for the read-only operations alert endpoint. */
+export function verifyOpsToken(request: Request): boolean {
+  const expected = process.env.OPS_API_TOKEN?.trim() ?? "";
+  if (!expected) {
+    return false;
+  }
+  const header = request.headers.get("authorization") ?? "";
+  const match = /^Bearer (.+)$/i.exec(header.trim());
+  return match !== null && safeEqual(match[1], expected);
+}
+
 function safeEqual(candidate: string, expected: string): boolean {
   const a = Buffer.from(candidate, "utf8");
   const b = Buffer.from(expected, "utf8");
