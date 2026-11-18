@@ -1,0 +1,163 @@
+# Deployment-oriented Compose definition for a container host.
+# Web and worker claim jobs from the same PostgreSQL queue. The worker uses
+# OPENCONTEXT_WORKER_* variables; the web app uses the required production
+# variables documented in docs/deployment.md.
+services:
+  db:
+    image: postgres:17-alpine
+    profiles: ["compose-check"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opencontext}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opencontext}
+      POSTGRES_DB: ${POSTGRES_DB:-opencontext}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  s3mock:
+    image: adobe/s3mock:5
+    profiles: ["compose-check"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "wget -q -O /dev/null http://127.0.0.1:9090/ || exit 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  storage-init:
+    image: amazon/aws-cli:2.32.7
+    profiles: ["compose-check"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        for attempt in $$(seq 1 30); do
+        if aws --endpoint-url "$$STORAGE_S3_ENDPOINT" s3api head-bucket
+        --bucket "$$STORAGE_S3_BUCKET" >/tmp/head.out 2>/tmp/head.err; then
+        exit 0;
+        fi;
+        if grep -Eq "Not Found|NoSuchBucket" /tmp/head.err; then
+        aws --endpoint-url "$$STORAGE_S3_ENDPOINT" s3api create-bucket
+        --bucket "$$STORAGE_S3_BUCKET" || exit 1;
+        exit 0;
+        fi;
+        sleep 2;
+        done;
+        cat /tmp/head.err; exit 1
+    environment:
+      AWS_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:?set STORAGE_S3_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:?set STORAGE_S3_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${STORAGE_S3_REGION:-us-east-1}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:?set STORAGE_S3_ENDPOINT}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:?set STORAGE_S3_BUCKET}
+    depends_on:
+      s3mock:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "aws --endpoint-url \"$$STORAGE_S3_ENDPOINT\" s3api head-bucket --bucket \"$$STORAGE_S3_BUCKET\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: "no"
+
+  web:
+    profiles: ["compose-check"]
+    build:
+      context: ..
+      dockerfile: docker/web-hosted.Dockerfile
+    environment:
+      NODE_ENV: production
+      OPENCONTEXT_ENV: ${OPENCONTEXT_ENV:-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-opencontext}:${POSTGRES_PASSWORD:-opencontext}@db:5432/${POSTGRES_DB:-opencontext}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:?set AUTH_GITHUB_ID}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:?set AUTH_GITHUB_SECRET}
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-false}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-s3}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:?set STORAGE_S3_ENDPOINT}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:?set STORAGE_S3_BUCKET}
+      STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:?set STORAGE_S3_ACCESS_KEY_ID}
+      STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:?set STORAGE_S3_SECRET_ACCESS_KEY}
+      NEXT_PUBLIC_APP_URL: ${APP_BASE_URL:?set APP_BASE_URL}
+      WORKER_API_TOKEN: ${WORKER_API_TOKEN:?set WORKER_API_TOKEN}
+      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL}
+      RATE_LIMIT_BACKEND: database
+    ports:
+      - "${OPENCONTEXT_WEB_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  worker:
+    profiles: ["compose-check"]
+    build:
+      context: ..
+      dockerfile: docker/worker-hosted.Dockerfile
+    environment:
+      WORKER_API_URL: http://web:3000
+      WORKER_API_TOKEN: ${WORKER_API_TOKEN:?set WORKER_API_TOKEN}
+      WORKER_ID: ${WORKER_ID:-hosted-worker}
+      WORKER_SHUTDOWN_GRACE_SECONDS: ${WORKER_SHUTDOWN_GRACE_SECONDS:-120}
+      WORKER_JOB_TIMEOUT_SECONDS: ${WORKER_JOB_TIMEOUT_SECONDS:-900}
+      TRANSCRIPTION_PROVIDER: ${TRANSCRIPTION_PROVIDER:-faster_whisper}
+      TRANSCRIPTION_MODEL: ${TRANSCRIPTION_MODEL:-base}
+      VISION_PROVIDER: ${VISION_PROVIDER:-openai_compatible}
+      VISION_MODEL: ${VISION_MODEL:-glm-5.3-flash}
+      OCR_PROVIDER: ${OCR_PROVIDER:-vision}
+      OCR_LANGUAGE: ${OCR_LANGUAGE:-eng}
+      TEXT_PROVIDER: template
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://opencode.ai/inference/go/openai/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}
+      HF_HOME: /models
+    volumes:
+      - worker-models:/models
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://web:3000/api/health/ready', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 130s
+
+volumes:
+  postgres-data:
+  worker-models:

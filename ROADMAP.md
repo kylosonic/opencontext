@@ -4,13 +4,13 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Now
 
-- Deploy and monitor the graceful long-running worker on a persistent host.
+- Deploy the hosted container definition to a persistent worker host and
+  record its live restart, immediate claiming, and alerting evidence.
 - Publish the next Python and npm versions through protected environments.
 
 ## Next
 
-- Record live restart, immediate claiming, and alerting evidence on the
-  persistent worker host.
+- Add host-side runtime alerts for worker health, job failures, and queue age.
 - Add an audio-backed end-to-end fixture that exercises real speech
   transcription in CI.
 - Add CORS for any custom production domain.

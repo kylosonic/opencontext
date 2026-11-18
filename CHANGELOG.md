@@ -15,6 +15,11 @@ All notable changes are documented here. The project follows
 - Made the local Compose stack explicitly development-mode, added readiness and
   worker health checks, repaired ownership of its model cache, and verified
   audio-backed upload through evidence-linked exports.
+- Added a standalone PostgreSQL web image, a hosted worker image, and a
+  deployment-oriented Compose definition for a persistent container host.
+  The web image starts migrations before serving and the deployment health
+  check requires a successful result. The scheduled GitHub worker remains the
+  live fallback until that stack is deployed.
 - Published `opencontext-video==0.1.0` on PyPI and
   `@kylosonic/opencontext-schemas@0.1.0` on npm. npm publishing now uses
   GitHub OIDC Trusted Publishing, so release workflows no longer need a

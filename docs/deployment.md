@@ -202,7 +202,34 @@ providers.
 
 A long-running background worker on Render, Railway, Fly.io, or a container
 platform is the recommended production setup because it claims jobs
-immediately. The repository ships `docker/worker.Dockerfile` for that purpose.
+immediately. The repository ships `docker/worker-hosted.Dockerfile` for that
+purpose; see `docker/worker-hosted.env.example` for the environment contract.
+
+You can deploy the web app and worker together on a Docker-capable host with
+the deployment definition at `docker/compose.hosted.yml`. The bundle contains
+PostgreSQL, the web app, and the worker; S3-compatible object storage remains an
+external service. Run it from the repository root after configuring the
+required production variables:
+
+```bash
+docker compose -f docker/compose.hosted.yml up -d --build
+```
+
+That stack uses PostgreSQL for the queue and the public GitHub OAuth settings.
+Set `STORAGE_S3_*`, `APP_BASE_URL`, `AUTH_GITHUB_*`, `AUTH_SECRET`, and
+`WORKER_API_TOKEN` before starting it. The worker model cache is a named volume
+owned by UID 10001, and both containers receive `SIGTERM` and drain before
+stopping. `OPENCONTEXT_WEB_PORT` only changes the host publishing port; set
+`APP_BASE_URL` to the URL that users will actually visit.
+
+`docker/web-hosted.Dockerfile` produces the PostgreSQL-only web image. It runs
+pending migrations on start, drops unused SQLite support, excludes local env
+files, and exposes `/api/health/ready` for the host health check. Vercel's
+serverless project remains a valid public web deployment, but it does not itself
+supply a persistent queue worker.
+
+The GitHub Actions schedule remains the fallback when no always-on worker host
+is configured.
 
 If you do not have a long-running host yet, `.github/workflows/worker-schedule.yml`
 drains the queue from GitHub Actions every five minutes. It is a real worker,
