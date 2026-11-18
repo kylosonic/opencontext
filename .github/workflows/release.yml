@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -67,6 +68,22 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
       - run: npm run build --workspace @kylosonic/opencontext-schemas
+      - name: Verify npm OIDC credentials
+        run: |
+          node - <<'NODE'
+          const tokenUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+          const requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+          if (!tokenUrl || !requestToken) throw new Error("Missing GitHub OIDC request credentials");
+          const url = new URL(tokenUrl);
+          url.searchParams.set("audience", "npm:registry.npmjs.org");
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${requestToken}` },
+          });
+          if (!response.ok) throw new Error(`GitHub OIDC token request failed: ${response.status}`);
+          const payload = await response.json();
+          if (!payload.value) throw new Error("GitHub OIDC token response did not contain a token");
+          console.log("npm OIDC credentials are available");
+          NODE
       - name: Check whether the npm version is already published
         id: published
         shell: bash
