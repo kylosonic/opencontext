@@ -4,12 +4,13 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 ## Now
 
+- Deploy and monitor the graceful long-running worker on a persistent host.
 - Publish the next Python and npm versions through protected environments.
 
 ## Next
 
-- Move the worker from a five-minute GitHub Actions schedule to a long-running
-  container host.
+- Record live restart, immediate claiming, and alerting evidence on the
+  persistent worker host.
 - Add an audio-backed end-to-end fixture that exercises real speech
   transcription in CI.
 - Add CORS for any custom production domain.

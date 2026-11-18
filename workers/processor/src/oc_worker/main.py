@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import signal
 import threading
 import time
+from collections.abc import Callable
+from dataclasses import replace
 
 from oc_worker.api_client import ApiClient
 from oc_worker.config import Settings, load_local_env
@@ -17,9 +20,63 @@ from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.pipeline import Pipeline
 
 IDLE_POLL_SECONDS = 3
+SHUTDOWN_POLL_SECONDS = 0.05
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 log = logging.getLogger("oc_worker.main")
+
+
+class WorkerStopper:
+    """Coordinates graceful worker shutdown without interrupting an active job."""
+
+    def __init__(self) -> None:
+        self.stop_event = threading.Event()
+        self._lock = threading.Lock()
+        self._claiming = 0
+        self._reporting = 0
+
+    def request_stop(self) -> None:
+        self.stop_event.set()
+
+    def sleep(self, seconds: float) -> bool:
+        """Wait interruptibly. Returns False when shutdown was requested."""
+        return not self.stop_event.wait(max(0.0, seconds))
+
+    def begin_claim(self) -> bool:
+        with self._lock:
+            if self.stop_event.is_set():
+                return False
+            self._claiming += 1
+            return True
+
+    def finish_claim(self) -> None:
+        with self._lock:
+            self._claiming = max(0, self._claiming - 1)
+
+    def begin_report(self) -> None:
+        with self._lock:
+            self._reporting += 1
+
+    def finish_report(self) -> None:
+        with self._lock:
+            self._reporting = max(0, self._reporting - 1)
+
+    def can_continue(self) -> bool:
+        with self._lock:
+            return not self.stop_event.is_set() and self._reporting == 0
+
+    def claim_in_flight(self) -> bool:
+        with self._lock:
+            return self._claiming > 0
+
+def _install_signal_handlers(stopper: WorkerStopper) -> None:
+    def request_stop(_signum: int, _frame: object) -> None:
+        stopper.request_stop()
+
+    if threading.current_thread() is not threading.main_thread():
+        return
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, request_stop)
 
 
 def _process_once(api: ApiClient, pipeline: Pipeline) -> str:
@@ -35,22 +92,77 @@ def _process_once(api: ApiClient, pipeline: Pipeline) -> str:
     return status
 
 
-def _worker_loop(settings: Settings, worker_number: int) -> None:
-    api = ApiClient(
-        base_url=settings.worker_api_url,
-        token=settings.worker_api_token,
-        worker_id=settings.worker_id,
-    )
-    pipeline = Pipeline(api, settings)
-    log.info("worker=%s started api=%s", settings.worker_id, settings.worker_api_url)
-    while True:
+def _guarded_claim(
+    api: ApiClient,
+    pipeline: Pipeline,
+    stopper: WorkerStopper,
+    report: Callable[[str], str],
+) -> str:
+    """Claim before accepting shutdown, so a claimed job is never abandoned."""
+    stopped = False
+    while stopper.begin_claim():
         try:
             outcome = _process_once(api, pipeline)
+        finally:
+            stopper.finish_claim()
+        if outcome != "idle":
+            return outcome
+
+        stopper.begin_report()
+        try:
+            if stopped or not stopper.sleep(IDLE_POLL_SECONDS):
+                stopped = True
+                return report("stopped")
+        finally:
+            stopper.finish_report()
+    return report("stopped")
+
+
+def _worker_loop(
+    api: ApiClient,
+    pipeline: Pipeline,
+    settings: Settings,
+    stopper: WorkerStopper,
+) -> None:
+    def report(status: str) -> str:
+        log.info("worker=%s status=%s", settings.worker_id, status)
+        return status
+
+    log.info("worker=%s started api=%s", settings.worker_id, settings.worker_api_url)
+    stopped = False
+    while stopper.can_continue():
+        outcome = "stopped"
+        try:
+            outcome = _guarded_claim(api, pipeline, stopper, report)
         except (PermanentFailure, TransientFailure) as exc:
-            log.error("worker=%s status=claim_error error=%s", settings.worker_id, exc)
-            outcome = "error"
-        if outcome == "idle":
-            time.sleep(IDLE_POLL_SECONDS)
+            if not stopper.can_continue():
+                stopped = True
+                continue
+            stopper.begin_report()
+            try:
+                log.error("worker=%s status=claim_error error=%s", settings.worker_id, exc)
+                stopper.sleep(settings.worker_error_backoff_seconds)
+                stopped = True
+                continue
+            finally:
+                stopper.finish_report()
+        if stopped:
+            break
+        if outcome == "stopped":
+            break
+    if stopped or stopper.stop_event.is_set():
+        report("stopped")
+
+
+def _tracked_worker_loop(
+    api: ApiClient,
+    pipeline: Pipeline,
+    settings: Settings,
+    stopper: WorkerStopper,
+    cycle_started: threading.Event,
+) -> None:
+    cycle_started.set()
+    _worker_loop(api, pipeline, settings, stopper)
 
 
 def _run_once(settings: Settings) -> int:
@@ -65,10 +177,16 @@ def _run_once(settings: Settings) -> int:
     return 0
 
 
-def _drain(api: ApiClient, pipeline: Pipeline, seconds: float) -> None:
+def _drain(
+    api: ApiClient,
+    pipeline: Pipeline,
+    seconds: float,
+    stopper: WorkerStopper | None = None,
+) -> None:
     """Keep one Pipeline alive so model loading is not repeated per claim."""
+    stopper = stopper or WorkerStopper()
     deadline = time.monotonic() + max(0.0, seconds)
-    while True:
+    while not stopper.stop_event.is_set():
         try:
             outcome = _process_once(api, pipeline)
         except (PermanentFailure, TransientFailure) as exc:
@@ -77,7 +195,67 @@ def _drain(api: ApiClient, pipeline: Pipeline, seconds: float) -> None:
         if time.monotonic() >= deadline:
             return
         if outcome == "idle":
-            time.sleep(IDLE_POLL_SECONDS)
+            stopper.sleep(IDLE_POLL_SECONDS)
+        elif outcome == "error":
+            stopper.sleep(5.0)
+
+
+def _run_supervisor(settings: Settings) -> int:
+    stopper = WorkerStopper()
+    _install_signal_handlers(stopper)
+    concurrency = max(1, settings.worker_concurrency)
+    api = ApiClient(
+        base_url=settings.worker_api_url,
+        token=settings.worker_api_token,
+        worker_id=settings.worker_id,
+    )
+    pipeline = Pipeline(api, settings)
+    cycle_started = threading.Event()
+    threads = [
+        threading.Thread(
+            target=_tracked_worker_loop,
+            args=(api, pipeline, settings, stopper, cycle_started),
+            name=f"worker-{settings.worker_id}-{index + 1}",
+        )
+        for index in range(concurrency)
+    ]
+    for thread in threads:
+        thread.start()
+    log.info(
+        "worker=%s status=running concurrency=%d grace_seconds=%.0f",
+        settings.worker_id,
+        concurrency,
+        settings.worker_shutdown_grace_seconds,
+    )
+    while not stopper.stop_event.wait(0.5):
+        if not any(thread.is_alive() for thread in threads):
+            log.error("worker=%s status=all_threads_exited", settings.worker_id)
+            return 1
+
+    stop_started = time.monotonic()
+    grace = max(0.0, settings.worker_shutdown_grace_seconds)
+    log.info(
+        "worker=%s status=stopping active_work_wait_seconds=%.0f",
+        settings.worker_id,
+        grace,
+    )
+    while not cycle_started.is_set() and time.monotonic() - stop_started < grace:
+        time.sleep(SHUTDOWN_POLL_SECONDS)
+    while stopper.claim_in_flight() and time.monotonic() - stop_started < grace:
+        time.sleep(SHUTDOWN_POLL_SECONDS)
+    deadline = stop_started + grace
+    for thread in threads:
+        thread.join(max(0.0, deadline - time.monotonic()))
+    if any(thread.is_alive() for thread in threads):
+        log.error(
+            "worker=%s status=shutdown_timeout grace_seconds=%.0f "
+            "lease_will_expire_if_process_is_terminated",
+            settings.worker_id,
+            grace,
+        )
+        return 1
+    log.info("worker=%s status=shutdown_complete", settings.worker_id)
+    return 0
 
 
 def main() -> None:
@@ -94,9 +272,21 @@ def main() -> None:
         metavar="SECONDS",
         help="Keep one worker process alive for this many seconds, then exit.",
     )
+    parser.add_argument(
+        "--job-timeout-seconds",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="Maximum processing time before a claimed job is failed.",
+    )
     args = parser.parse_args()
     load_local_env()
     settings = Settings.from_env()
+    if args.job_timeout_seconds is not None:
+        settings = replace(
+            settings,
+            worker_job_timeout_seconds=max(0.0, args.job_timeout_seconds),
+        )
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     if args.once:
         raise SystemExit(_run_once(settings))
@@ -107,26 +297,17 @@ def main() -> None:
             worker_id=settings.worker_id,
         )
         pipeline = Pipeline(api, settings)
+        stopper = WorkerStopper()
+        _install_signal_handlers(stopper)
         log.info(
             "worker=%s draining api=%s seconds=%.0f",
             settings.worker_id,
             settings.worker_api_url,
             args.drain_seconds,
         )
-        _drain(api, pipeline, args.drain_seconds)
+        _drain(api, pipeline, args.drain_seconds, stopper)
         raise SystemExit(0)
-    concurrency = max(1, settings.worker_concurrency)
-    threads = [
-        threading.Thread(target=_worker_loop, args=(settings, index), daemon=True)
-        for index in range(concurrency)
-    ]
-    for thread in threads:
-        thread.start()
-    try:
-        for thread in threads:
-            thread.join()
-    except KeyboardInterrupt:
-        log.info("worker=%s shutting_down", settings.worker_id)
+    raise SystemExit(_run_supervisor(settings))
 
 
 if __name__ == "__main__":

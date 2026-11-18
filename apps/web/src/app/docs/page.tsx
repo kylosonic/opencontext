@@ -1,402 +1,126 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { DocsShell } from "@/components/docs-shell";
 import { CodeBlock } from "@/components/code-block";
-import { PipelineStrip } from "@/components/pipeline-strip";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Container } from "@/components/ui/container";
-import { Section } from "@/components/ui/section";
 
 export const metadata: Metadata = {
-  title: "Docs — OpenContext",
-  description:
-    "How OpenContext turns video and images into structured context for text-only AI agents.",
+  title: "Documentation - OpenContext",
+  description: "Install, call, and operate OpenContext for evidence-linked media context.",
 };
 
-const PIPELINE_STEPS = [
+const PATHS = [
   {
-    label: "Media",
-    detail: "Upload a recording, screen capture, or still image.",
+    href: "/docs/quickstart",
+    title: "Quickstart",
+    text: "Sign in, upload a supported file, and export the generated context.",
   },
   {
-    label: "Audio + Frames",
-    detail: "Extract audio and sample representative frames.",
+    href: "/docs/packages",
+    title: "CLI & packages",
+    text: "Analyze media locally or install the shared TypeScript schemas.",
   },
   {
-    label: "Transcription + Vision",
-    detail: "Transcribe speech; describe frames; capture visible text.",
+    href: "/docs/agents",
+    title: "Agent integration",
+    text: "Connect the local MCP server and build repository-aware implementation briefs.",
   },
-  {
-    label: "Structured Context",
-    detail: "Align everything to timestamps and aggregate.",
-  },
-  {
-    label: "Text-only AI",
-    detail: "Copy the context into your coding agent.",
-  },
-];
-
-const STAGES = [
-  {
-    stage: "Extracting",
-    what: "Probe the file, extract audio, sample frames (≈1/sec).",
-    note: "Invalid files fail here with a specific reason.",
-  },
-  {
-    stage: "Transcribing",
-    what: "Timestamped speech segments from the audio track.",
-    note: "Videos without audio skip this stage — not an error.",
-  },
-  {
-    stage: "Analyzing",
-    what: "Vision descriptions, UI inventories, OCR with timestamps.",
-    note: "Every observation carries a certainty: observed / inferred / uncertain.",
-  },
-  {
-    stage: "Aggregating",
-    what: "Merge transcript, observations, and OCR chronologically.",
-    note: "Adjacent duplicates are merged; timestamps are preserved.",
-  },
-  {
-    stage: "Generating context",
-    what: "Build the developer context document (Markdown + JSON).",
-    note: "Deterministic template baseline; optional provider refinement.",
-  },
-];
-
-const ENV_VARS = [
-  ["VISION_PROVIDER", "vision model provider", "openai_compatible | ollama"],
-  ["VISION_MODEL", "model name passed to the vision provider", "e.g. qwen2.5-vl"],
-  ["TRANSCRIPTION_PROVIDER", "speech-to-text provider", "openai_compatible | faster_whisper"],
-  ["TRANSCRIPTION_MODEL", "model name for transcription", "e.g. whisper-1"],
-  ["TEXT_PROVIDER", "developer-context refinement provider", "openai_compatible | (none → template)"],
-  ["TEXT_MODEL", "model name for text refinement", "e.g. deepseek-chat"],
 ] as const;
-
-const DEMO_PROGRESS_EXAMPLE = `GET /api/demo/progress?elapsed=4.0
-
-{
-  "stages": [
-    { "name": "Media extracted",              "status": "done" },
-    { "name": "Transcription + vision",       "status": "done" },
-    { "name": "Context aggregated",           "status": "running" },
-    { "name": "Developer context generated",  "status": "pending" }
-  ],
-  "completed": false,
-  "progress": 56
-}`;
-
-const TIMING_TABLE = `Stage                          completes at elapsed
-──────────────────────────────────────────────────
-Media extracted                            1.5s
-Transcription + vision                     3.5s
-Context aggregated                         5.5s
-Developer context generated                7.5s
-Job completed (progress 100)               8.0s
-
-Responses are a pure function of the ?elapsed= parameter.
-Invalid or negative values are treated as 0.`;
 
 export default function DocsPage() {
   return (
-    <>
-      <SiteHeader />
-      <main id="main">
-        <Container className="pb-16 pt-14">
-          <header className="max-w-3xl">
-            <p className="label-mono mb-3">Documentation</p>
-            <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Docs
-            </h1>
-            <p className="mt-4 text-base leading-relaxed text-ink-muted">
-              How OpenContext works, how to configure providers, and how to run
-              it locally. Items marked{" "}
-              <Badge tone="warning" mono>Planned</Badge> are designed but not
-              yet available — this documentation never claims otherwise.
-            </p>
-          </header>
-        </Container>
+    <DocsShell
+      kicker="Documentation"
+      title="How OpenContext works"
+      description="Turn videos, image sets, and PDFs into timestamped, evidence-linked context that a text-only model can read."
+      accessory={<Badge tone="success" mono>v0.1.0</Badge>}
+    >
+      <div className="space-y-10 text-sm leading-relaxed text-ink-muted">
+        <section aria-labelledby="context-title">
+          <h2 id="context-title" className="text-xl font-semibold text-ink">
+            What you get
+          </h2>
+          <p className="mt-3">
+            Each completed job returns Markdown, JSON, and a readable set of
+            transcript segments, visual observations, OCR text, and timeline
+            entries. Claims distinguish <strong className="text-ink">observed</strong>,{" "}
+            <strong className="text-ink">inferred</strong>, and{" "}
+            <strong className="text-ink">uncertain</strong> evidence.
+          </p>
+          <div className="mt-4">
+            <CodeBlock
+              wrap
+              label="Context document example"
+              code={`# Checkout flow
 
-        <Section
-          id="what"
-          kicker="Overview"
-          title="What OpenContext does"
-          description="OpenContext is an open-source context engine: videos, screen recordings, and images go in; an evidence-linked handoff comes out, readable by any text-only model."
-          flush
-        >
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <h3 className="text-sm font-semibold text-ink">The output</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                One document, three access paths: <strong>Copy Context</strong>{" "}
-                to the clipboard, <strong>Download Markdown</strong> (
-                <code className="text-[0.8rem]">opencontext-&lt;job-id&gt;.md</code>
-                ), and <strong>Download JSON</strong> for integrations. Owners
-                can also review evidence claims and include notes or suggested
-                corrections in both exports.
-              </p>
-            </Card>
-            <Card>
-              <h3 className="text-sm font-semibold text-ink">Honesty rules</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                Observed, inferred, and uncertain are always distinguished.
-                Functionality is never invented. Human reviews remain separate
-                from the original extracted claim, and demo output is always labeled{" "}
-                <Badge tone="accent" mono>Demo Analysis</Badge>.
-              </p>
-            </Card>
+## Sequence
+- [E-001] 00:12 - The cart shows three line items (observed)
+- [E-008] 00:31 - The primary button reads "Pay now" (observed)
+`}
+            />
           </div>
-        </Section>
+        </section>
 
-        <Section
-          id="demo-mode"
-          kicker="Try it now"
-          title="Demo mode"
-          description="The public deployment always demonstrates the product, with or without AI credentials configured. The demo uses pre-authored sample data and never processes an uploaded video."
-        >
-          <Card className="max-w-2xl">
-            <p className="text-sm leading-relaxed text-ink-muted">
-              Run the demo from the{" "}
-              <Link href="/" className="rounded-sm text-accent underline-offset-2 hover:underline">
-                landing page
-              </Link>{" "}
-              or go straight to{" "}
+        <section aria-labelledby="pipeline-title">
+          <h2 id="pipeline-title" className="text-xl font-semibold text-ink">
+            The processing pipeline
+          </h2>
+          <ol className="mt-4 divide-y divide-line border-y border-line">
+            {[
+              ["Extract", "Probe media, extract audio, sample frames, or render PDF pages."],
+              ["Transcribe", "Create timestamped speech segments. Sources without audio skip this stage."],
+              ["Analyze", "Describe visuals and capture visible text with timestamped evidence."],
+              ["Aggregate", "Order observations on a shared timeline and merge adjacent duplicates."],
+              ["Generate", "Produce developer context in Markdown with matching JSON."],
+            ].map(([stage, detail], index) => (
+              <li key={stage} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 py-4">
+                <span className="font-mono text-xs text-ink-faint">{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3 className="font-medium text-ink">{stage}</h3>
+                  <p className="mt-1">{detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section aria-labelledby="paths-title">
+          <h2 id="paths-title" className="text-xl font-semibold text-ink">
+            Choose a path
+          </h2>
+          <div className="mt-4 divide-y divide-line border-y border-line">
+            {PATHS.map((path) => (
               <Link
-                href="/demo"
-                className="rounded-sm font-mono text-[0.85rem] text-accent underline-offset-2 hover:underline"
+                key={path.href}
+                href={path.href}
+                className="group grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)_1rem] sm:items-center sm:gap-4"
               >
-                /demo
+                <span className="font-medium text-ink">{path.title}</span>
+                <span>{path.text}</span>
+                <ArrowRight aria-hidden="true" size={16} className="hidden text-ink-faint group-hover:text-ink sm:block" />
               </Link>
-              . The demo replays a scripted stage checklist over ~8 seconds,
-              then renders a complete sample analysis — a 12-minute mobile
-              banking app walkthrough — through the same results viewer a real
-              job uses. A <Badge tone="accent" mono>Demo Analysis</Badge> badge
-              stays visible throughout, and the exported document carries the
-              same marker in its header.
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="boundaries-title">
+          <h2 id="boundaries-title" className="text-xl font-semibold text-ink">
+            Operational boundaries
+          </h2>
+          <div className="mt-3 space-y-2 border-l-2 border-line-strong pl-4">
+            <p>Videos are limited to 500 MB and 30 minutes. Images are limited to 25 MB each, PDFs to 50 MB and 30 pages, and image-set jobs to 10 images.</p>
+            <p>Completed job data is retained for 14 days; unfinished jobs for 7 days.</p>
+            <p>
+              The production deployment is a working preview. Read{" "}
+              <Link href="/docs/status" className="text-accent hover:underline">
+                status and limits
+              </Link>{" "}
+              before relying on it for a critical workflow.
             </p>
-          </Card>
-        </Section>
-
-        <Section
-          id="how-it-works"
-          kicker="How it works"
-          title="The pipeline"
-          description="Five high-level steps, implemented as distinct stages with independent status reporting."
-        >
-          <PipelineStrip
-            steps={PIPELINE_STEPS}
-            caption="Authenticated uploads run through the job API and Python worker. The demo replays the same output format with pre-authored data."
-          />
-          <div className="mt-8 overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <caption className="sr-only">Processing stages in detail</caption>
-              <thead>
-                <tr className="border-b border-line-strong text-left">
-                  <th scope="col" className="py-2 pr-4 font-mono text-xs uppercase tracking-wider text-ink-faint">Stage</th>
-                  <th scope="col" className="py-2 pr-4 font-mono text-xs uppercase tracking-wider text-ink-faint">What happens</th>
-                  <th scope="col" className="py-2 font-mono text-xs uppercase tracking-wider text-ink-faint">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {STAGES.map((row) => (
-                  <tr key={row.stage} className="border-b border-line align-top">
-                    <th scope="row" className="py-3 pr-4 font-medium text-ink">{row.stage}</th>
-                    <td className="py-3 pr-4 text-ink-muted">{row.what}</td>
-                    <td className="py-3 text-ink-muted">{row.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <Card>
-              <h3 className="font-mono text-xs uppercase tracking-wider text-ink-faint">Detail levels</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                <strong className="text-ink">LOW</strong> — every 10th frame,
-                scene titles and changes. <strong className="text-ink">MEDIUM</strong>{" "}
-                (default) — every 3rd frame, standard fields.{" "}
-                <strong className="text-ink">HIGH</strong> — every frame, plus
-                design observations and an exhaustive UI inventory.
-              </p>
-            </Card>
-            <Card>
-              <h3 className="font-mono text-xs uppercase tracking-wider text-ink-faint">Certainty</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                <Badge tone="success" mono>Observed</Badge> directly visible or
-                audible. <Badge tone="accent" mono>Inferred</Badge> consistent
-                but not directly shown (all interactions are inferred by rule).{" "}
-                <Badge tone="warning" mono>Uncertain</Badge> could not be
-                confirmed.
-              </p>
-            </Card>
-            <Card>
-              <h3 className="font-mono text-xs uppercase tracking-wider text-ink-faint">Retention</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                Completed jobs keep media and results for 14 days; incomplete
-                jobs for 7 days. Removal is automatic and silent.
-              </p>
-            </Card>
-          </div>
-        </Section>
-
-        <Section
-          id="api"
-          kicker="API"
-          title="Live endpoints"
-          description="The demo endpoints are public. Job APIs require a signed-in owner, and worker endpoints require the service token."
-        >
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="flex flex-col gap-3">
-              <h3 className="font-mono text-sm font-semibold text-ink">
-                GET /api/demo/result
-              </h3>
-              <p className="text-sm leading-relaxed text-ink-muted">
-                Returns the complete pre-authored demo result verbatim:
-                metadata, transcript segments, visual observations with
-                certainty, OCR entries, timeline, and the full developer-context
-                Markdown and evidence ledger (with the <em>Demo Analysis</em>
-                header marker). Human review is available on owned job results;
-                the demo remains read-only.
-                Deterministic and cacheable; no database, environment, or
-                credentials involved.
-              </p>
-              <CodeBlock
-                wrap
-                code={'{"metadata":{"id":"demo","durationSec":720,"detailLevel":"MEDIUM","demo":true,...},"transcript":[...],"observations":[...],"ocr":[...],"timeline":[...],"markdown":"# OpenContext — Demo Analysis\\n..."}'}
-                label="Demo result response shape"
-              />
-            </Card>
-            <Card className="flex flex-col gap-3">
-              <h3 className="font-mono text-sm font-semibold text-ink">
-                GET /api/demo/progress?elapsed=&lt;seconds&gt;
-              </h3>
-              <p className="text-sm leading-relaxed text-ink-muted">
-                A scripted stage checklist computed as a pure function of the{" "}
-                <code className="text-[0.8rem]">elapsed</code> parameter — not
-                the server clock — so responses are fully deterministic.
-              </p>
-              <CodeBlock code={DEMO_PROGRESS_EXAMPLE} label="Demo progress response example" wrap />
-              <CodeBlock code={TIMING_TABLE} label="Demo progress timing table" wrap />
-            </Card>
-          </div>
-          <p className="mt-6 text-sm leading-relaxed text-ink-muted">
-            Every authenticated and worker endpoint uses the same error
-            envelope. See the{" "}
-            <Link
-              href="/docs/api-errors"
-              className="rounded-sm text-accent underline-offset-2 hover:underline"
-            >
-              public API error catalog
-            </Link>{" "}
-            for stable codes, HTTP statuses, and meanings.
-          </p>
-        </Section>
-
-        <Section
-          id="providers"
-          kicker="Configuration"
-          title="Provider configuration"
-          description="OpenContext never couples to one AI vendor. Providers are selected through environment variables in the processing backend."
-          accessory={<Badge tone="neutral" mono>Provider adapters implemented</Badge>}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <caption className="sr-only">Environment variables for provider configuration</caption>
-              <thead>
-                <tr className="border-b border-line-strong text-left">
-                  <th scope="col" className="py-2 pr-4 font-mono text-xs uppercase tracking-wider text-ink-faint">Variable</th>
-                  <th scope="col" className="py-2 pr-4 font-mono text-xs uppercase tracking-wider text-ink-faint">Purpose</th>
-                  <th scope="col" className="py-2 font-mono text-xs uppercase tracking-wider text-ink-faint">Values</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ENV_VARS.map(([name, purpose, values]) => (
-                  <tr key={name} className="border-b border-line align-top">
-                    <th scope="row" className="py-3 pr-4 font-mono text-[0.8rem] text-ink">{name}</th>
-                    <td className="py-3 pr-4 text-ink-muted">{purpose}</td>
-                    <td className="py-3 font-mono text-[0.8rem] text-ink-muted">{values}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        <Section
-          id="local-dev"
-          kicker="Local development"
-          title="Run it locally"
-          description="Run the web app and worker locally. The demo needs no credentials; authenticated processing needs GitHub OAuth and the configured database, storage, and model providers."
-        >
-          <CodeBlock
-            wrap
-            label="Local development commands"
-            code={`git clone https://github.com/kylosonic/opencontext
-cd opencontext
-npm install
-npm run dev          # web app at http://localhost:3000
-
-npm run lint         # eslint
-npm run typecheck    # tsc --noEmit
-npm run build        # production build`}
-          />
-          <p className="mt-4 text-sm leading-relaxed text-ink-faint">
-            The demo works with zero configuration — visit{" "}
-            <code className="text-[0.8rem]">/demo</code> after starting the dev
-            server. Real uploads require a configured GitHub OAuth app,
-            database, storage provider, and worker process.
-          </p>
-        </Section>
-
-        <Section
-          id="roadmap"
-          kicker="Status"
-          title="What exists today"
-          description="An honest snapshot. Anything not listed as shipped is not claimable as shipped."
-        >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Badge tone="success" mono>Shipped</Badge> Landing + docs
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                Public pages explaining the product, pipeline, and output
-                format.
-              </p>
-            </Card>
-            <Card>
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Badge tone="success" mono>Shipped</Badge> Demo mode
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                Pre-authored sample analysis with the scripted checklist and
-                the full results viewer.
-              </p>
-            </Card>
-            <Card>
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Badge tone="success" mono>Production</Badge> Live job pipeline
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                Authentication, uploads, queue, storage, job pages, and the
-                Python worker run end to end in production.
-              </p>
-            </Card>
-            <Card>
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Badge tone="neutral" mono>Research backlog</Badge> Agent connections
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                MCP tools, repository-aware implementation briefs, and video
-                regression workflows are candidates for future slices.
-              </p>
-            </Card>
-          </div>
-        </Section>
-      </main>
-      <SiteFooter />
-    </>
+        </section>
+      </div>
+    </DocsShell>
   );
 }

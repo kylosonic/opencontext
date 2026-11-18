@@ -34,7 +34,13 @@ from typing import Any
 from oc_worker import aggregation, context
 from oc_worker.api_client import ApiClient, run_with_retry
 from oc_worker.config import Settings
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import (
+    JobAbort,
+    PermanentFailure,
+    ProcessingCancelled,
+    TransientFailure,
+    bind_abort,
+)
 from oc_worker.ffmpeg import extract_audio, extract_frames, extract_image_frame, probe
 from oc_worker.models import (
     DetailLevel,
@@ -93,6 +99,7 @@ class Pipeline:
         extract_frames_fn: ExtractFramesFn | None = None,
         extract_image_fn: ExtractImageFn | None = None,
         extract_pdf_fn: ExtractPdfFn | None = None,
+        job_timeout_seconds: float | None = None,
     ) -> None:
         self.api = api
         self.settings = settings
@@ -142,9 +149,16 @@ class Pipeline:
                 source, output_dir, max_pages=MAX_PDF_PAGES
             )
         )
+        configured_timeout = (
+            job_timeout_seconds
+            if job_timeout_seconds is not None
+            else settings.worker_job_timeout_seconds
+        )
+        self.job_timeout_seconds = max(0.0, float(configured_timeout))
         self._current_stage = "EXTRACTING"
         self._heartbeat_stop: threading.Event | None = None
         self._heartbeat_thread: threading.Thread | None = None
+        self._cancel = JobAbort()
 
     # -- helpers ----------------------------------------------------------
 
@@ -196,6 +210,28 @@ class Pipeline:
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=5)
 
+    def _check_deadline(self) -> None:
+        self._cancel.check()
+
+    def _timed(self, function: Callable[[], Any]) -> Any:
+        self._check_deadline()
+        result = function()
+        self._check_deadline()
+        return result
+
+    def _start_deadline(self) -> None:
+        self._cancel = JobAbort(
+            f"Processing exceeded the {int(self.job_timeout_seconds)}-second job limit"
+        )
+        self._cancel.set_deadline(time.monotonic() + self.job_timeout_seconds)
+
+        def expire() -> None:
+            self._cancel.abort()
+
+        self._deadline_timer = threading.Timer(self.job_timeout_seconds, expire)
+        self._deadline_timer.daemon = True
+        self._deadline_timer.start()
+
     def _done(self, job: dict[str, Any], stage: str) -> bool:
         return self._stage_state(job, stage).get("status") in ("SUCCEEDED", "SKIPPED")
 
@@ -223,6 +259,7 @@ class Pipeline:
     ) -> tuple[dict[str, Any], Path | None, list[dict[str, Any]]]:
         self._current_stage = "EXTRACTING"
         job_id = job["id"]
+        self._check_deadline()
         source_kind = self._source_kind(job)
         sources = self.api.download_sources(job_id, workdir)
         if not sources:
@@ -271,7 +308,7 @@ class Pipeline:
                     message="Extracting audio",
                 )
             audio_path = workdir / "audio.wav"
-            self._extract_audio(str(src), str(audio_path))
+            self._timed(lambda: self._extract_audio(str(src), str(audio_path)))
             if not resume:
                 self.api.upload_artifact(job_id, kind="AUDIO", file_path=audio_path)
 
@@ -292,13 +329,11 @@ class Pipeline:
         if source_kind == "image":
             frames = []
             for index, asset in enumerate(sources):
-                frame = self._extract_image(
-                    str(asset["path"]),
-                    str(
-                        workdir
-                        / "frames"
-                        / f"image_{index + 1:03d}.jpg"
-                    ),
+                frame = self._timed(
+                    lambda asset=asset, index=index: self._extract_image(
+                        str(asset["path"]),
+                        str(workdir / "frames" / f"image_{index + 1:03d}.jpg"),
+                    )
                 )
                 frames.append(
                     {
@@ -311,7 +346,7 @@ class Pipeline:
                     }
                 )
         elif source_kind == "pdf":
-            pages = self._extract_pdf(str(src), str(workdir / "pages"))
+            pages = self._timed(lambda: self._extract_pdf(str(src), str(workdir / "pages")))
             if not pages:
                 raise PermanentFailure(NOT_A_PDF_MESSAGE)
             frames = [
@@ -328,7 +363,9 @@ class Pipeline:
                 for page in pages
             ]
         else:
-            frames = self._extract_frames(str(src), str(workdir / "frames"))
+            frames = self._timed(
+                lambda: self._extract_frames(str(src), str(workdir / "frames"))
+            )
             for frame in frames:
                 frame.update(
                     {
@@ -399,6 +436,7 @@ class Pipeline:
         self, job: dict[str, Any], audio_path: Path | None, resume: bool
     ) -> list[Segment]:
         self._current_stage = "TRANSCRIBING"
+        self._check_deadline()
         job_id = job["id"]
         if audio_path is None:
             if not resume:
@@ -420,8 +458,10 @@ class Pipeline:
                 job_id, stage="TRANSCRIBING", stage_status="RUNNING", progress=10,
                 message="Transcribing audio",
             )
-        segments = run_with_retry(
-            lambda: self.transcription_provider.transcribe(str(audio_path))
+        segments = self._timed(
+            lambda: run_with_retry(
+                lambda: self.transcription_provider.transcribe(str(audio_path))
+            )
         )
         if not resume:
             self.api.stage_result(
@@ -459,8 +499,10 @@ class Pipeline:
                 "sourceIndex": int(frame.get("sourceIndex") or 0),
                 "sourceName": frame.get("sourceName"),
             }
-            raw = run_with_retry(
-                lambda: self.vision_provider.analyze(frame_bytes, vision_context)
+            raw = self._timed(
+                lambda: run_with_retry(
+                    lambda: self.vision_provider.analyze(frame_bytes, vision_context)
+                )
             )
             raw = aggregation.mark_interaction_certainty(raw)
             raw["timestampSec"] = float(frame["timestamp"])
@@ -504,8 +546,10 @@ class Pipeline:
                         row["confidence"] = confidence
                     ocr.append(row)
             else:
-                recognized = run_with_retry(
-                    lambda: self.ocr_provider.extract(frame_bytes, vision_context)
+                recognized = self._timed(
+                    lambda: run_with_retry(
+                        lambda: self.ocr_provider.extract(frame_bytes, vision_context)
+                    )
                 )
                 for item in recognized:
                     if not isinstance(item, dict):
@@ -542,6 +586,7 @@ class Pipeline:
         resume: bool,
     ) -> tuple[list[VisualObservation], list[OCRObservation]]:
         self._current_stage = "ANALYZING"
+        self._check_deadline()
         job_id = job["id"]
         if self.vision_provider is None:
             raise TransientFailure(
@@ -581,6 +626,7 @@ class Pipeline:
         observations: list[VisualObservation],
     ) -> list[dict[str, Any]]:
         self._current_stage = "AGGREGATING"
+        self._check_deadline()
         job_id = job["id"]
         self.api.progress(
             job_id, stage="AGGREGATING", stage_status="RUNNING", progress=20,
@@ -645,6 +691,8 @@ class Pipeline:
         job_id = job["id"]
         detail_level = DetailLevel(str(job.get("detailLevel") or "MEDIUM").upper())
         started = time.monotonic()
+        self._start_deadline()
+        previous_abort = bind_abort(self._cancel)
         self._start_heartbeat(job_id)
         try:
             with tempfile.TemporaryDirectory(
@@ -667,6 +715,9 @@ class Pipeline:
                     job, probe_data, detail_level, segments, observations, ocr_items, timeline
                 )
                 self.api.complete(job_id)
+        except ProcessingCancelled as exc:
+            self._fail(job_id, str(exc), "PERMANENT", retryable=False)
+            return "failed"
         except PermanentFailure as exc:
             self._fail(job_id, str(exc), "PERMANENT", retryable=False)
             return "failed"
@@ -675,6 +726,8 @@ class Pipeline:
             return "failed"
         finally:
             self._stop_heartbeat()
+            self._deadline_timer.cancel()
+            bind_abort(previous_abort)
         elapsed = time.monotonic() - started
         log.info("job=%s status=completed duration=%.1fs", job_id, elapsed)
         return "completed"

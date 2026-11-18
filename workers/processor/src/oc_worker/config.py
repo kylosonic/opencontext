@@ -34,6 +34,16 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = _env(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 def load_local_env() -> None:
     """Load `.env` files for native CLI/worker runs without overriding real env."""
     if os.getenv("OPENCONTEXT_SKIP_DOTENV") == "1":
@@ -72,6 +82,15 @@ class Settings:
         default_factory=lambda: _env("WORKER_ID", "oc-worker-1") or "oc-worker-1"
     )
     worker_concurrency: int = field(default_factory=lambda: _env_int("WORKER_CONCURRENCY", 1))
+    worker_shutdown_grace_seconds: float = field(
+        default_factory=lambda: _env_float("WORKER_SHUTDOWN_GRACE_SECONDS", 120.0)
+    )
+    worker_error_backoff_seconds: float = field(
+        default_factory=lambda: _env_float("WORKER_ERROR_BACKOFF_SECONDS", 5.0)
+    )
+    worker_job_timeout_seconds: float = field(
+        default_factory=lambda: _env_float("WORKER_JOB_TIMEOUT_SECONDS", 900.0)
+    )
     transcription_provider: str = field(
         default_factory=lambda: _env("TRANSCRIPTION_PROVIDER", "openai_compatible")
         or "openai_compatible"

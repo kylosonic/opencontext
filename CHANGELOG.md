@@ -5,6 +5,16 @@ All notable changes are documented here. The project follows
 
 ## Unreleased
 
+- Added a graceful long-running worker supervisor, a configurable per-job
+  processing deadline, claim-error backoff, and bounded container shutdown.
+  The worker container now explicitly receives `SIGTERM`.
+- Rebuilt the public docs as a navigable reference with overview, quickstart,
+  jobs API, package and CLI, agent integration, worker deployment, status, and
+  error catalog pages. Replaced roadmap claims for already-shipped MCP and
+  repository brief features with verified usage guidance.
+- Made the local Compose stack explicitly development-mode, added readiness and
+  worker health checks, repaired ownership of its model cache, and verified
+  audio-backed upload through evidence-linked exports.
 - Published `opencontext-video==0.1.0` on PyPI and
   `@kylosonic/opencontext-schemas@0.1.0` on npm. npm publishing now uses
   GitHub OIDC Trusted Publishing, so release workflows no longer need a

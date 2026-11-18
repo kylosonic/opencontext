@@ -12,6 +12,7 @@
   },
   "scripts": {
     "lint": "eslint src",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

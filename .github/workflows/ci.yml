@@ -241,7 +241,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Build and start Compose stack
-        run: docker compose up -d --build db web worker
+        run: docker compose up -d --build db web worker-cache-init worker
+
+      - name: Check worker model cache permissions
+        run: >-
+          docker compose exec -T worker python -c
+          "import os; assert os.stat('/models').st_uid == 10001; open('/models/.write-test','w').close(); os.remove('/models/.write-test')"
 
       - name: Wait for web health
         run: |

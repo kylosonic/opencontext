@@ -89,17 +89,12 @@ const ROADMAP_ITEMS = [
   {
     label: "Working now",
     tone: "success" as const,
-    items: ["GitHub sign-in, video and image uploads, job tracking, and results", "Python worker for extraction, transcription, vision, and context", "Markdown/JSON handoff with clickable evidence references"],
+    items: ["Video, image, PDF, and image-set uploads", "Evidence-linked Markdown and JSON exports", "Local CLI, replay, briefs, and MCP agent tools"],
   },
   {
     label: "Next",
     tone: "warning" as const,
-    items: ["Hosted long-running worker", "Broader evaluation fixtures", "Community issue triage"],
-  },
-  {
-    label: "Research backlog",
-    tone: "neutral" as const,
-    items: ["MCP/agent connections", "Repository-aware implementation briefs", "Reusable video workflows and regression checks"],
+    items: ["Persistent worker host verification", "Broader evaluation fixtures", "Community issue triage"],
   },
 ];
 
@@ -415,28 +410,24 @@ export default function Home() {
           </p>
         </Section>
 
-        {/* ---------------------- MCP integration (future) ------------------- */}
+        {/* -------------------------- MCP integration ------------------------ */}
         <Section
           id="mcp"
           kicker="MCP integration"
-          title="MCP server — future roadmap"
-          description="A planned MCP server would let agents ask questions directly instead of pasting a document."
-          accessory={<Badge tone="warning" mono>Future · not built yet</Badge>}
+          title="Give coding agents direct access"
+          description="The local MCP server analyzes media, builds repository-aware briefs, and looks up evidence without uploading repository contents."
+          accessory={<Badge tone="success" mono>Implemented</Badge>}
         >
-          <Card className="border-dashed">
+          <Card>
             <p className="text-sm leading-relaxed text-ink-muted">
-              <span className="font-semibold text-ink">Planned, not implemented.</span>{" "}
-              The target experience: an agent asks{" "}
-              <em className="font-mono not-italic text-ink">
-                “What happens at 01:24?”
-              </em>{" "}
-              or{" "}
-              <em className="font-mono not-italic text-ink">
-                “Which UI elements are on the dashboard?”
-              </em>{" "}
-              and OpenContext answers from the structured result — no manual
-              copy and paste. This is tracked on the roadmap; follow the
-              repository for updates.
+              Install <code className="text-[0.8rem]">opencontext-video[agent]</code>{" "}
+              and launch <code className="text-[0.8rem]">opencontext-mcp</code>{" "}
+              from an MCP-capable coding client. Tools include local media
+              analysis, repository-aware implementation briefs, and bounded
+              evidence lookup.{" "}
+              <Link href="/docs/agents" className="text-accent hover:underline">
+                Read the integration guide
+              </Link>
             </p>
           </Card>
         </Section>

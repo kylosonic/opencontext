@@ -50,3 +50,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python -m oc_worker.main --drain-seconds 1200
+        timeout-minutes: 23

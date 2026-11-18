@@ -331,6 +331,7 @@ def _make_pipeline(
     extract_frames: Callable[[str, str], list[dict]] | None = None,
     extract_image: Callable[[str, str], dict] | None = None,
     extract_pdf: Callable[[str, str], list[dict]] | None = None,
+    job_timeout_seconds: float | None = None,
 ) -> Pipeline:
     return Pipeline(
         _api(handler),
@@ -344,6 +345,7 @@ def _make_pipeline(
         extract_frames_fn=extract_frames or _extract_frames_ok(),
         extract_image_fn=extract_image or _extract_image_ok(),
         extract_pdf_fn=extract_pdf or _extract_pdf_ok(),
+        job_timeout_seconds=job_timeout_seconds,
     )
 
 
@@ -883,6 +885,46 @@ def test_transient_failure_exhausted_reports_retryable_fail(monkeypatch) -> None
         body for path, body in handler.json_requests() if path.endswith("/stage-result")
     ]
     assert all(result["stage"] != "TRANSCRIBING" for result in stage_results)
+    assert "complete" not in handler.paths()
+
+
+def test_job_timeout_fails_processing_without_completion() -> None:
+    handler = _Handler()
+    real_timer = pipeline_module.threading.Timer
+
+    class ImmediateTimer:
+        def __init__(self, _seconds: float, function: Callable[[], None]) -> None:
+            self.function = function
+            self.daemon = False
+
+        def start(self) -> None:
+            self.function()
+
+        def cancel(self) -> None:
+            pass
+
+    pipeline = _make_pipeline(
+        handler,
+        probe=_probe_ok(),
+        job_timeout_seconds=0.02,
+    )
+    pipeline_module.threading.Timer = ImmediateTimer
+    try:
+        assert pipeline.run_job(_job()) == "failed"
+    finally:
+        pipeline_module.threading.Timer = real_timer
+
+    failures = [
+        body for path, body in handler.json_requests() if path.endswith("/fail")
+    ]
+    assert failures == [
+        {
+            "stage": "EXTRACTING",
+            "error": "Processing exceeded the 0-second job limit",
+            "failureKind": "PERMANENT",
+            "retryable": False,
+        }
+    ]
     assert "complete" not in handler.paths()
 
 

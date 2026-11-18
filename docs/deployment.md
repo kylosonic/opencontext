@@ -173,15 +173,30 @@ Use a process supervisor or container restart policy. Run one worker with
 `--once` for cron-style execution or long-running workers with
 `WORKER_CONCURRENCY` set to the host capacity.
 
+The worker entrypoint is a long-running supervisor. On `SIGTERM` or `SIGINT`,
+it stops claiming new work and waits for the active job before exiting.
+`WORKER_SHUTDOWN_GRACE_SECONDS` bounds that drain (default 120 seconds); the
+container host should allow a slightly longer stop period. Claim errors back
+off for `WORKER_ERROR_BACKOFF_SECONDS` (default 5 seconds).
+
+Every job has a `WORKER_JOB_TIMEOUT_SECONDS` processing deadline (default 900
+seconds, also configurable with `--job-timeout-seconds`). A timeout records a
+permanent worker failure instead of leaving the job processing indefinitely.
+The deadline complements provider request timeouts and host container limits.
+Heap memory and CPU quotas are host policy; they cannot be enforced portably
+inside the existing worker process.
+
 The worker renews each claimed job's lease every minute, independently of
 stage progress reports. If the API is temporarily unavailable, it retries the
 heartbeat on the next interval. A terminated worker stops renewing, so the job
-becomes claimable again after the five-minute lease expires.
+becomes claimable again after the five-minute lease expires. Completed stage
+results and artifacts remain resumable after a restart.
 
 The worker image runs as UID 10001 with `HF_HOME=/models`. Mount a persistent
 volume at `/models` to retain downloaded transcription models across restarts.
-Configure the host to restart the container on failure and allow at least two
-minutes for graceful shutdown so an in-flight job can finish.
+The image forwards `SIGTERM` directly. Configure the host to restart the
+container on failure and set memory and CPU quotas appropriate for the selected
+providers.
 
 ### Hosted worker options
 

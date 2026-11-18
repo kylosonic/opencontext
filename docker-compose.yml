@@ -26,6 +26,7 @@ services:
       dockerfile: docker/web.Dockerfile
     container_name: opencontext-web
     environment:
+      OPENCONTEXT_ENV: local
       DATABASE_URL: postgresql://opencontext:opencontext@db:5432/opencontext?schema=public
       AUTH_SECRET: local-compose-auth-secret-change-me
       DEV_AUTH_ENABLED: "true"
@@ -33,9 +34,9 @@ services:
       STORAGE_PROVIDER: local
       STORAGE_PATH: /data/storage
       WORKER_API_TOKEN: local-compose-worker-token
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: ${OPENCONTEXT_APP_URL:-http://localhost:3000}
     ports:
-      - "3000:3000"
+      - "${OPENCONTEXT_WEB_PORT:-3000}:3000"
     volumes:
       - media-data:/data
     depends_on:
@@ -62,6 +63,7 @@ services:
       WORKER_API_URL: http://web:3000
       WORKER_API_TOKEN: local-compose-worker-token
       WORKER_ID: compose-worker
+      WORKER_SHUTDOWN_GRACE_SECONDS: 90
       TRANSCRIPTION_PROVIDER: faster_whisper
       TRANSCRIPTION_MODEL: tiny.en
       VISION_PROVIDER: fixture
@@ -70,13 +72,45 @@ services:
       TEXT_PROVIDER: template
       FIXTURE_VISIBLE_TEXT: OpenContext local compose fixture
       HF_HOME: /models
+      USE_FASTER_WHISPER: ${USE_FASTER_WHISPER:-1}
     volumes:
       - whisper-models:/models
     restart: unless-stopped
-    stop_grace_period: 2m
+    stop_grace_period: 100s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://web:3000/api/health/ready', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     depends_on:
       web:
         condition: service_healthy
+      worker-cache-init:
+        condition: service_completed_successfully
+
+  worker-cache-init:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    image: opencontext-worker
+    user: "0:0"
+    platform: linux/amd64
+    entrypoint: ["sh", "-c"]
+    command:
+      [
+        "mkdir -p /models/hub && chown -R 10001:10001 /models && exec setpriv --reuid=10001 --regid=10001 --clear-groups python -c \"import os; assert os.stat('/models').st_uid == 10001; open('/models/.write-test', 'w').close(); os.remove('/models/.write-test')\"",
+      ]
+    volumes:
+      - whisper-models:/models
+    network_mode: none
+    restart: "no"
 
   s3mock:
     image: adobe/s3mock:5

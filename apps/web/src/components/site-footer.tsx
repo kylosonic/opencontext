@@ -49,10 +49,7 @@ export function SiteFooter() {
         </div>
         <div className="mt-8 flex flex-col gap-2 border-t border-line pt-6 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between">
           <p>Released under the MIT License.</p>
-          <p>
-            OpenContext is a working preview — some features are still in
-            development.
-          </p>
+          <p>OpenContext is a working preview with documented limits.</p>
         </div>
       </Container>
     </footer>

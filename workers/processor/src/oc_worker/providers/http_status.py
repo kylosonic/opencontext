@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import PermanentFailure, TransientFailure, check_abort
 
 
 def openai_compatible_headers(
@@ -21,6 +21,7 @@ def openai_compatible_headers(
 
 def raise_for_provider_status(provider: str, response: httpx.Response) -> None:
     """Raise a retryable or permanent failure for an unsuccessful response."""
+    check_abort()
     status = response.status_code
     if status < 400:
         return

@@ -1,6 +1,6 @@
 # Project Status
 
-Last verified: 2026-11-17
+Last verified: 2026-11-18
 
 This page describes the repository and verification evidence, not a guarantee
 about the current Vercel deployment or future releases.
@@ -8,9 +8,9 @@ about the current Vercel deployment or future releases.
 ## Verified in the repository
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
-  local suite reports 142 passed plus one opt-in S3 integration skip; CI runs
+  local suite reports 149 passed plus one opt-in S3 integration skip; CI runs
   that integration and passes all web tests.
-- Worker Ruff and all 249 local tests pass, with three environment-dependent
+- Worker Ruff and all 262 local tests pass, with three environment-dependent
   skips. Real Tesseract and OpenCode Go vision/audio smoke tests run when their
   binaries or stored credentials and opt-in flags are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
@@ -77,13 +77,22 @@ about the current Vercel deployment or future releases.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - Prisma 7.10.1 uses driver adapters for SQLite and PostgreSQL; the migration
   chain applies to fresh SQLite and PostgreSQL databases.
-- No high or critical npm advisories remain. Eight moderate findings are
-  confined to the TypeScript ESLint development toolchain.
+- The production npm audit reports no known vulnerabilities. The full audit,
+  including build and test tooling, still reports development-toolchain
+  findings.
 - Next.js uses the current `proxy.ts` request interception convention.
 - Docker Compose was verified locally with PostgreSQL, web, and worker images;
-  a generated upload completed all five stages at 100% and produced
-  evidence-linked Markdown. The worker uses bundled FFmpeg, so the default
-  image does not install Debian multimedia packages.
+  generated audio and video completed all five stages at 100%, producing
+  evidence-linked Markdown and JSON. An existing model cache was migrated to
+  the non-root worker and verified writable. The worker uses bundled FFmpeg, so
+  the default image does not install Debian multimedia packages.
+- The worker entrypoint has a long-running supervisor with signal-driven
+  graceful stop, bounded shutdown, retry backoff for API outages, and a
+  per-job processing deadline. Focused tests cover an in-flight claim, active
+  work, shutdown timeout, claim retries, and job expiry. A repeated race test
+  accepted an in-flight job and completed it on every one of 100 runs.
+- The website includes a persistent documentation shell with overview,
+  quickstart, jobs API, package/CLI, agent, worker, status, and error pages.
 - CI passes both a packaged-worker CLI smoke test and a full Compose login,
   upload, processing, Markdown export, and JSON export smoke test.
 - `/api/health/ready` reports production configuration blockers without exposing
@@ -120,12 +129,13 @@ the non-root worker container and the Compose upload-to-export flow.
 - `opencontext-video==0.1.0` is published on PyPI and
   `@kylosonic/opencontext-schemas@0.1.0` is published on npm. Both use Trusted
   Publishing through their protected release workflows.
-- Eight moderate npm advisories remain in the TypeScript ESLint development
-  toolchain; no high or critical advisories remain.
+- The full npm audit still reports development-toolchain findings; the
+  production dependency audit reports none.
 - No sustained high-traffic test against the deployed HTTP service or
   independent penetration test exists.
-- The worker is scheduled rather than long-running, so queue latency and
-  GitHub Actions minute usage are higher than a dedicated worker host.
+- A dedicated persistent worker deployment and runtime alerts have not been
+  verified against a live host. Until they are, the recorded production worker
+  remains the scheduled GitHub Actions drain.
 
 Scoped work is tracked in [ROADMAP.md](../ROADMAP.md) and
 [docs/issues](issues/README.md).

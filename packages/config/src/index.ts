@@ -298,6 +298,9 @@ export function deploymentEnvironment(
   if (env.VERCEL_ENV === "preview" || env.VERCEL === "1") {
     return "preview";
   }
+  if (env.OPENCONTEXT_ENV === "local") {
+    return "development";
+  }
   if (env.NODE_ENV === "production") {
     return "production";
   }
