@@ -25,19 +25,20 @@ export default function WorkersPage() {
             <li>Network access to the web API and every configured model provider.</li>
             <li>FFmpeg and Python 3.13+, or the included container image.</li>
             <li>The same <code>WORKER_API_TOKEN</code> used by the web app.</li>
+            <li>A host that keeps the container running and restarts it after failure.</li>
             <li>A persistent volume for downloaded transcription models.</li>
           </ul>
         </section>
 
         <section aria-labelledby="run-title">
           <h2 id="run-title" className="text-xl font-semibold text-ink">
-            Run the container
+            Build the worker image
           </h2>
           <div className="mt-3 space-y-3">
             <CodeBlock
               wrap
               label="Build the worker"
-              code={`docker build -f docker/worker.Dockerfile -t opencontext-worker .`}
+              code={`docker build -f docker/worker-hosted.Dockerfile -t opencontext-worker .`}
             />
             <CodeBlock
               wrap
@@ -52,7 +53,7 @@ HF_HOME=/models`}
             />
           </div>
           <p className="mt-4">
-            Mount a persistent volume at <code>/models</code>. Configure the host to restart the container on failure and give it at least 130 seconds to stop. The image runs as UID 10001 and receives <code>SIGTERM</code> directly.
+            Mount a persistent volume at <code>/models</code>. Configure the host to restart the container on failure and give it at least 130 seconds to stop. The hosted image runs as UID 10001 and receives <code>SIGTERM</code> directly.
           </p>
         </section>
 
