@@ -16,3 +16,4 @@ remain here until their required CI or real-model verification has passed.
 | [Model-quality evaluation](13-quality-evaluation.md) | Evaluation | Complete; measured OpenCode Go run published |
 | [CI context replay](14-ci-context-replay.md) | Agent integration | Complete; CI verification added |
 | [OpenCode Go hearing evaluation](15-opencode-hearing-eval.md) | Evaluation | Complete; measured transcript published |
+| [Real vision demo](16-real-vision-demo-plan.md) | Providers | Proposed; awaiting approval |
