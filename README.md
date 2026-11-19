@@ -30,6 +30,34 @@ provider is labeled as fixture output; it does not perform computer vision.
 To exercise speech transcription, record a short clip or build a video from the
 attributed Harvard recording with `node scripts/generate-hearing-evaluation-video.mjs`.
 
+### Optional real vision
+
+The default Compose demo sends no image to a vision service and labels every
+visual observation as fixture output. To inspect one real-model result, provide
+an image-capable model and an OpenAI-compatible endpoint through your local
+environment, then select real mode explicitly:
+
+```bash
+export OPENCONTEXT_DEMO_MODEL=your-image-capable-model
+export OPENAI_BASE_URL=https://your-provider.example/v1
+export OPENAI_API_KEY=...       # or OPENCODE_API_KEY
+npm run compose:demo -- real
+```
+
+Real mode uses that model for visual analysis and the text summary. Upload
+`docs/assets/real-vision-checkout.png` from the **Images** upload tab. It is a
+generated, non-sensitive checkout mockup without an account or real payment
+data. The image is sent to the configured service and may incur charges.
+Recognition of its visible terms is a demonstration of this request only, not
+evidence of general model accuracy.
+
+`npm run compose:demo` without a configured endpoint starts the fixture mode.
+On PowerShell, use `$env:OPENCONTEXT_DEMO_MODEL='your-model'` and the equivalent
+environment syntax for the other variables.
+An explicit real selection stops before use when a configuration variable is
+missing. The launcher accepts local values from the ignored `.env.local` file
+when present; it never prints credentials.
+
 For native Node/Python setup, use [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ![OpenContext result view with tabs, evidence IDs, timestamps, and review fields](docs/assets/demo-results.png)

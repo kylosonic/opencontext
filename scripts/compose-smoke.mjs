@@ -10,6 +10,9 @@ const baseUrl = (process.env.OPENCONTEXT_BASE_URL ?? "http://localhost:3000").re
 const videoPath = path.resolve(
   process.env.OPENCONTEXT_FIXTURE ?? ".artifacts/opencontext-fixture.mp4",
 );
+const stillImagePath = path.resolve(
+  process.env.OPENCONTEXT_IMAGE ?? ".artifacts/real-vision-checkout.png",
+);
 const outputDir = path.resolve(
   process.env.OPENCONTEXT_COMPOSE_OUTPUT ?? ".artifacts/compose-smoke",
 );
@@ -113,10 +116,7 @@ async function pollJob(jobId) {
   throw new Error(`Job did not complete before timeout; last status ${lastStatus}`);
 }
 
-async function main() {
-  const video = await readFile(videoPath);
-  const userId = await signIn();
-
+async function upload(source, mime) {
   const intentResponse = await expectOk(
     await request("/api/uploads", {
       method: "POST",
@@ -125,9 +125,9 @@ async function main() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        filename: path.basename(videoPath),
-        sizeBytes: video.byteLength,
-        mime: "video/mp4",
+        filename: path.basename(source),
+        sizeBytes: source.length,
+        mime,
         detailLevel: "MEDIUM",
       }),
     }),
@@ -139,7 +139,7 @@ async function main() {
     await request(intent.url, {
       method: intent.method,
       headers: intent.headers,
-      body: video,
+      body: source,
     }),
     "Upload body",
   );
@@ -152,8 +152,10 @@ async function main() {
     "Upload completion",
   );
   const summary = await completeResponse.json();
-  const job = await pollJob(summary.id);
+  return pollJob(summary.id);
+}
 
+async function saveContext(job, directory) {
   const markdownResponse = await expectOk(
     await request(`/api/jobs/${encodeURIComponent(job.id)}/export?format=markdown`),
     "Markdown export",
@@ -167,25 +169,57 @@ async function main() {
 
   assert.match(markdown, /E\d{4}/, "Markdown export contains no evidence IDs");
   assert.ok(Array.isArray(payload.evidence) && payload.evidence.length > 0);
-  await mkdir(outputDir, { recursive: true });
-  await writeFile(path.join(outputDir, "context.md"), markdown);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, "context.md"), markdown);
   await writeFile(
-    path.join(outputDir, "context.json"),
+    path.join(directory, "context.json"),
     `${JSON.stringify(payload, null, 2)}\n`,
+  );
+
+  const visibleText = payload.visibleText
+    .map((item) => (typeof item === "string" ? item : String(item.text ?? "")))
+    .join(" ");
+  return {
+    jobId: job.id,
+    status: job.status,
+    progress: job.progress,
+    evidenceCount: payload.evidence.length,
+    markdown: path.join(directory, "context.md"),
+    json: path.join(directory, "context.json"),
+  };
+}
+
+async function main() {
+  const image = await readFile(stillImagePath);
+  const userId = await signIn();
+  const mode = process.env.OPENCONTEXT_DEMO_VISION === "real" ? "real" : "fixture";
+  const imageResult = await saveContext(
+    await upload(image, "image/png"),
+    path.join(outputDir, "image"),
+  );
+  if (mode === "real") {
+    const expected = ["checkout", "1042", "42", "pay now", "4242"];
+    const imagePayload = JSON.parse(
+      await readFile(path.join(outputDir, "image", "context.json"), "utf8"),
+    );
+    const visibleText = imagePayload.visibleText
+      .map((item) => (typeof item === "string" ? item : String(item.text ?? "")))
+      .join(" ");
+    assert.ok(
+      expected.filter((term) =>
+        visibleText.toLowerCase().includes(term),
+      ).length >= 2,
+      `Real vision output did not contain enough reference terms: ${visibleText}`,
+    );
+  }
+  const videoResult = await saveContext(
+    await upload(await readFile(videoPath), "video/mp4"),
+    path.join(outputDir, "video"),
   );
 
   console.log(
     JSON.stringify(
-      {
-        ok: true,
-        userId,
-        jobId: job.id,
-        status: job.status,
-        progress: job.progress,
-        evidenceCount: payload.evidence.length,
-        markdown: path.join(outputDir, "context.md"),
-        json: path.join(outputDir, "context.json"),
-      },
+      { ok: true, userId, mode, video: videoResult, image: imageResult },
       null,
       2,
     ),

@@ -7,6 +7,7 @@ Concurrency is bounded by WORKER_CONCURRENCY (default 1).
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import signal
 import threading
@@ -16,8 +17,9 @@ from dataclasses import replace
 
 from oc_worker.api_client import ApiClient
 from oc_worker.config import Settings, load_local_env
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import PermanentFailure, ProviderConfigurationError, TransientFailure
 from oc_worker.pipeline import Pipeline
+from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
 
 IDLE_POLL_SECONDS = 3
 HEARTBEAT_SECONDS = 30
@@ -222,6 +224,14 @@ def _run_once(settings: Settings) -> int:
     return 0
 
 
+def _check_demo_vision(settings: Settings) -> None:
+    """Build every AI provider so configuration errors fail before any job."""
+    build_transcription(settings)
+    build_vision(settings)
+    build_ocr(settings)
+    build_text(settings)
+
+
 def _drain(
     api: ApiClient,
     pipeline: Pipeline,
@@ -335,6 +345,14 @@ def main() -> None:
         metavar="SECONDS",
         help="Maximum processing time before a claimed job is failed.",
     )
+    parser.add_argument(
+        "--check-demo-vision",
+        action="store_true",
+        help=(
+            "Validate demo AI settings without claiming a job or making a "
+            "provider request; print a JSON summary and exit."
+        ),
+    )
     args = parser.parse_args()
     load_local_env()
     settings = Settings.from_env()
@@ -344,6 +362,27 @@ def main() -> None:
             worker_job_timeout_seconds=max(0.0, args.job_timeout_seconds),
         )
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    if args.check_demo_vision:
+        try:
+            _check_demo_vision(settings)
+        except ProviderConfigurationError as exc:
+            log.error("demo vision configuration error: %s", exc)
+            raise SystemExit(2) from None
+        output: dict[str, object] = {
+            "mode": "real" if settings.demo_vision else "fixture",
+            "visionProvider": settings.vision_provider.lower(),
+        }
+        if settings.demo_vision:
+            output.update(
+                {
+                    "baseUrl": settings.openai_base_url,
+                    "visionModel": settings.vision_model,
+                }
+            )
+        else:
+            output["fixtureVisibleText"] = settings.fixture_visible_text
+        print(json.dumps(output, sort_keys=True))
+        raise SystemExit(0)
     if args.once:
         raise SystemExit(_run_once(settings))
     if args.drain_seconds is not None:

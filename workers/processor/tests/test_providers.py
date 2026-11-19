@@ -98,3 +98,37 @@ def test_openai_audio_builder_uses_chat_provider() -> None:
 
     assert isinstance(provider, OpenAIAudioChatTranscriptionProvider)
     assert provider.model == "mimo-v2.6-pro"
+
+
+@pytest.mark.parametrize(
+    ("field", "setting"),
+    [
+        ("openai_api_key", "OPENAI_API_KEY"),
+        ("openai_base_url", "OPENAI_BASE_URL"),
+        ("vision_model", "VISION_MODEL"),
+    ],
+)
+def test_demo_vision_requires_vision_settings(field: str, setting: str) -> None:
+    values = {
+        "vision_provider": "openai_compatible",
+        "demo_vision": True,
+        "openai_api_key": "demo-test-secret",
+        "openai_base_url": "https://provider.example/v1",
+        "vision_model": "image-capable",
+    }
+    values[field] = ""
+
+    with pytest.raises(ProviderConfigurationError, match=setting) as exc_info:
+        build_vision(Settings(**values))
+
+    assert "demo-test-secret" not in str(exc_info.value)
+
+
+def test_demo_vision_rejects_another_provider() -> None:
+    with pytest.raises(ProviderConfigurationError, match="VISION_PROVIDER"):
+        build_vision(
+            Settings(
+                vision_provider="fixture",
+                demo_vision=True,
+            )
+        )

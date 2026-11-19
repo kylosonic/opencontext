@@ -121,6 +121,14 @@ class Settings:
     ocr_language: str = field(
         default_factory=lambda: _env("OCR_LANGUAGE", "eng") or "eng"
     )
+    demo_vision: bool = field(
+        default_factory=lambda: _env("OPENCONTEXT_DEMO_VISION", "fixture").lower()
+        == "real"
+    )
+    fixture_visible_text: str = field(
+        default_factory=lambda: _env("FIXTURE_VISIBLE_TEXT", "OpenContext fixture frame")
+        or "OpenContext fixture frame"
+    )
     tesseract_path: str = field(
         default_factory=lambda: _env("TESSERACT_PATH", "tesseract") or "tesseract"
     )

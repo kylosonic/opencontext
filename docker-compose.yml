@@ -65,12 +65,18 @@ services:
       WORKER_API_TOKEN: local-compose-worker-token
       WORKER_ID: compose-worker
       WORKER_SHUTDOWN_GRACE_SECONDS: 90
-      TRANSCRIPTION_PROVIDER: faster_whisper
-      TRANSCRIPTION_MODEL: tiny.en
-      VISION_PROVIDER: fixture
+      TRANSCRIPTION_PROVIDER: ${OPENCONTEXT_TRANSCRIPTION_PROVIDER:-faster_whisper}
+      TRANSCRIPTION_MODEL: ${OPENCONTEXT_DEMO_MODEL:-tiny.en}
+      VISION_PROVIDER: ${VISION_PROVIDER:-fixture}
+      OPENAI_BASE_URL: ${OPENCONTEXT_DEMO_OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_API_KEY: ${OPENCONTEXT_DEMO_OPENAI_API_KEY:-}
+      OPENCODE_API_KEY: ${OPENCONTEXT_DEMO_OPENCODE_API_KEY:-}
+      OPENCODE_SESSION_ID: ${OPENCODE_SESSION_ID:-opencontext-demo}
+      VISION_MODEL: ${OPENCONTEXT_DEMO_MODEL:-gpt-4o-mini}
       OCR_PROVIDER: vision
       OCR_LANGUAGE: eng
-      TEXT_PROVIDER: template
+      TEXT_PROVIDER: ${TEXT_PROVIDER:-template}
+      TEXT_MODEL: ${OPENCONTEXT_DEMO_MODEL:-gpt-4o-mini}
       FIXTURE_VISIBLE_TEXT: OpenContext local compose fixture
       HF_HOME: /models
       USE_FASTER_WHISPER: ${USE_FASTER_WHISPER:-1}
@@ -83,8 +89,9 @@ services:
         [
           "CMD",
           "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://web:3000/api/health/ready', timeout=5)",
+          "-m",
+          "oc_worker.main",
+          "--check-demo-vision",
         ]
       interval: 30s
       timeout: 10s

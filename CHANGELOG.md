@@ -5,6 +5,11 @@ All notable changes are documented here. The project follows
 
 ## Unreleased
 
+- Added an opt-in real-vision mode for the local Compose demo. The fixture
+  provider remains the default and continues to be labeled as fixture output;
+  real mode validates the configured image-capable model and key before
+  startup, and the end-to-end smoke test now checks a synthetic image as well
+  as its video fixture.
 - Fixed still-image conversion with FFmpeg 6.1 by removing an output-only
   `-autorotate` flag from the input arguments. EXIF orientation continues to
   be applied automatically exactly once and is now verified by rotated pixels.

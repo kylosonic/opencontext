@@ -1,11 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputDir = path.join(repoRoot, ".artifacts");
 const output = path.join(outputDir, "opencontext-fixture.mp4");
+const outputPng = path.join(outputDir, "opencontext-fixture.png");
 
 await mkdir(outputDir, { recursive: true });
 const result = spawnSync(
@@ -43,4 +45,34 @@ if (result.error) {
 if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
+const pngResult = spawnSync(
+  "ffmpeg",
+  [
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-i",
+    output,
+    "-frames:v",
+    "1",
+    outputPng,
+  ],
+  { stdio: "inherit" },
+);
+if (pngResult.error) {
+  throw pngResult.error;
+}
+if (pngResult.status !== 0) {
+  process.exit(pngResult.status ?? 1);
+}
 console.log(output);
+console.log(outputPng);
+
+const referenceSource = path.join(repoRoot, "docs/assets/real-vision-checkout.png");
+const referenceOutput = path.join(outputDir, "real-vision-checkout.png");
+if (existsSync(referenceSource)) {
+  const { copyFile } = await import("node:fs/promises");
+  await copyFile(referenceSource, referenceOutput);
+  console.log(referenceOutput);
+}

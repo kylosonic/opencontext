@@ -1,6 +1,18 @@
 # Real vision demo: implementation plan
 
-Status: PROPOSED — waiting for approval
+Status: IMPLEMENTED — credential-free checks verified; live provider blocked by 429
+
+## Implementation status
+
+The opt-in Compose selector, startup validation, synthetic reference image, and
+image upload coverage are implemented. On 2026-11-19, focused local runs passed
+19 demo/provider tests and 25 demo/image-regression tests.
+
+The existing OpenCode Go smoke reached the provider on 2026-11-19 using
+`glm-5.3-flash`, but the first synthetic-image request returned HTTP 429 (rate
+limited). No live real-model observation or live Compose upload has been
+recorded. This failure is not model evidence and does not trigger fixture
+fallback.
 
 ## Objective
 

@@ -51,6 +51,13 @@ jobs:
         run: |
           npm run evaluation:video
           npm run evaluation:hearing-video
+          npm run vision:fixture
+
+      - name: Verify demo launcher syntax
+        run: |
+          node --check scripts/real-vision-demo.mjs
+          node --check scripts/compose-smoke.mjs
+          docker compose -f docker-compose.yml config --quiet
 
       - name: Install worker for contract and end-to-end tests
         run: python -m pip install -e "workers/processor[dev]"
@@ -85,6 +92,9 @@ jobs:
     defaults:
       run:
         working-directory: workers/processor
+    env:
+      OPENAI_API_KEY: ""
+      OPENCODE_API_KEY: ""
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -310,10 +320,12 @@ jobs:
 
       - name: Validate Compose exports
         run: |
-          test -s .artifacts/compose-smoke/context.md
-          test -s .artifacts/compose-smoke/context.json
-          grep -q "E0001" .artifacts/compose-smoke/context.md
-          node -e "const fs=require('node:fs');const p=JSON.parse(fs.readFileSync('.artifacts/compose-smoke/context.json','utf8'));if(!Array.isArray(p.evidence)||p.evidence.length===0)throw new Error('Compose export produced no evidence')"
+          test -s .artifacts/compose-smoke/video/context.md
+          test -s .artifacts/compose-smoke/video/context.json
+          test -s .artifacts/compose-smoke/image/context.md
+          test -s .artifacts/compose-smoke/image/context.json
+          grep -q "E0001" .artifacts/compose-smoke/video/context.md
+          node -e "const fs=require('node:fs');for(const n of ['video','image']){const p=JSON.parse(fs.readFileSync('.artifacts/compose-smoke/'+n+'/context.json','utf8'));if(!Array.isArray(p.evidence)||p.evidence.length===0)throw new Error(n+' Compose export produced no evidence')}"
 
       - name: Print Compose logs
         if: failure()

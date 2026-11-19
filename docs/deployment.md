@@ -282,3 +282,34 @@ The workflow installs Faster Whisper and caches the model between runs. It uses
 `docker compose up --build` provides a local PostgreSQL-backed web app, worker,
 and local-only sign-in. It is a development stack, not a production hardening
 recipe. See `docs/security-review.md` before exposing any instance publicly.
+
+The worker health check validates its AI provider configuration without making
+a provider request. The default environment uses the fixture vision provider
+and local Faster Whisper. The optional real-vision path is selected with
+`npm run compose:demo -- real`, which requires:
+
+```text
+OPENCONTEXT_DEMO_MODEL=<image-capable model>
+OPENAI_BASE_URL=<OpenAI-compatible endpoint>
+OPENAI_API_KEY=<provider key>       # or OPENCODE_API_KEY
+```
+
+The launcher runs a container configuration check before starting the stack.
+It binds the configured model to the vision and text provider and disables
+transcription for this image-focused demo so an audio endpoint is unnecessary.
+It does not print keys. The `.env.local` file used for local credentials is
+ignored by Git. Do not add secrets to `docker-compose.yml`.
+
+Real vision makes an external network request and can incur provider charges.
+The documented reference image is generated, contains no personal or payment
+account data, and is stored at `docs/assets/real-vision-checkout.png`. Use
+`docs/issues/02-real-vision-smoke.md` for the provider-only smoke check. The
+Compose upload test can use the same reference image in an explicit
+`OPENCONTEXT_DEMO_VISION=real` run:
+
+```bash
+OPENCONTEXT_DEMO_VISION=real node scripts/compose-smoke.mjs
+```
+
+The default network-free Checks still use fixture mode and require no
+credentials.

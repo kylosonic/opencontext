@@ -20,6 +20,7 @@ from oc_worker.providers.transcription.openai_compatible import (
     OpenAICompatibleTranscriptionProvider,
 )
 from oc_worker.providers.vision.base import VisionProvider
+from oc_worker.providers.vision.demo import validate_demo_vision
 from oc_worker.providers.vision.fixture import FixtureVisionProvider
 from oc_worker.providers.vision.ollama import OllamaVisionProvider
 from oc_worker.providers.vision.openai_compatible import OpenAICompatibleVisionProvider
@@ -69,6 +70,8 @@ def build_transcription(settings: Settings) -> TranscriptionProvider | None:
 
 def build_vision(settings: Settings) -> VisionProvider | None:
     """Build the vision provider; None when none is configured."""
+    if settings.demo_vision:
+        validate_demo_vision(settings)
     provider = settings.vision_provider.lower()
     if provider in ("", "none", "off"):
         return None
