@@ -116,7 +116,7 @@ async function pollJob(jobId) {
   throw new Error(`Job did not complete before timeout; last status ${lastStatus}`);
 }
 
-async function upload(source, mime) {
+async function upload(source, filename, mime) {
   const intentResponse = await expectOk(
     await request("/api/uploads", {
       method: "POST",
@@ -125,7 +125,7 @@ async function upload(source, mime) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        filename: path.basename(source),
+        filename,
         sizeBytes: source.length,
         mime,
         detailLevel: "MEDIUM",
@@ -194,7 +194,7 @@ async function main() {
   const userId = await signIn();
   const mode = process.env.OPENCONTEXT_DEMO_VISION === "real" ? "real" : "fixture";
   const imageResult = await saveContext(
-    await upload(image, "image/png"),
+    await upload(image, path.basename(stillImagePath), "image/png"),
     path.join(outputDir, "image"),
   );
   if (mode === "real") {
@@ -213,7 +213,7 @@ async function main() {
     );
   }
   const videoResult = await saveContext(
-    await upload(await readFile(videoPath), "video/mp4"),
+    await upload(await readFile(videoPath), path.basename(videoPath), "video/mp4"),
     path.join(outputDir, "video"),
   );
 
