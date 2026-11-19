@@ -236,6 +236,8 @@ def extract_image_frame(
     Static image inputs have no duration, so the video ``fps`` filter emits
     no packet. ``-frames:v 1`` converts the first decoded image directly;
     the scale expression bounds the long edge without changing aspect ratio.
+    FFmpeg autorotates decoded frames by default; keeping ``-autorotate``
+    before the input would fail on FFmpeg 6.1 because it is output-only.
     """
     ffmpeg = _ffmpeg_path(ffmpeg_path)
     destination = Path(dst)
@@ -254,7 +256,6 @@ def extract_image_frame(
         [
             ffmpeg,
             "-y",
-            "-autorotate",
             "-i",
             str(src),
             "-frames:v",

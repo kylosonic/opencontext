@@ -21,9 +21,10 @@ def test_transparency_is_flattened_to_white(tmp_path: Path) -> None:
     assert all(channel >= 250 for channel in normalized.getpixel((0, 0)))
 
 
-def test_exif_orientation_is_applied(tmp_path: Path) -> None:
+def test_exif_orientation_is_applied_once(tmp_path: Path) -> None:
     source = tmp_path / "phone-photo.jpg"
-    image = Image.new("RGB", (80, 40), "red")
+    image = Image.new("RGB", (80, 40), "white")
+    image.paste((100, 0, 0), (0, 0, 12, 12))
     exif = Image.Exif()
     exif[274] = 6
     image.save(source, exif=exif)
@@ -34,3 +35,12 @@ def test_exif_orientation_is_applied(tmp_path: Path) -> None:
     normalized = Image.open(output)
     assert normalized.size == (40, 80)
     assert normalized.getexif().get(274) is None
+    # Orientation 6 rotates the source clockwise: the top-left source marker
+    # becomes a marker near the top-right of this portrait output.
+    def darker_pixels(x: int, y: int) -> int:
+        gray = normalized.crop((x, y, x + 12, y + 12)).convert("L")
+        return sum(1 for value in gray.get_flattened_data() if value < 245)
+
+    assert darker_pixels(28, 0) >= 4
+    assert darker_pixels(0, 0) == 0
+    assert darker_pixels(0, 68) == 0

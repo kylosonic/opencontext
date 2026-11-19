@@ -5,6 +5,9 @@ All notable changes are documented here. The project follows
 
 ## Unreleased
 
+- Fixed still-image conversion with FFmpeg 6.1 by removing an output-only
+  `-autorotate` flag from the input arguments. EXIF orientation continues to
+  be applied automatically exactly once and is now verified by rotated pixels.
 - Added a graceful long-running worker supervisor, a configurable per-job
   processing deadline, claim-error backoff, and bounded container shutdown.
   The worker container now explicitly receives `SIGTERM`.

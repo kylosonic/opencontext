@@ -177,9 +177,6 @@ export async function evaluateOperations(
     : null;
   const alerts: OperationsSnapshot["alerts"] = [];
 
-  const claimAgeMinutes = lastWorkerClaimAt
-    ? roundedMinutes(now.getTime() - lastWorkerClaimAt.getTime())
-    : null;
   const heartbeatAgeMinutes = workerHeartbeatAt
     ? roundedMinutes(now.getTime() - workerHeartbeatAt.getTime())
     : null;
