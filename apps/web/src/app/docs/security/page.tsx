@@ -1,0 +1,138 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { DocsShell } from "@/components/docs-shell";
+import { Badge } from "@/components/ui/badge";
+
+export const metadata: Metadata = {
+  title: "Security & retention - OpenContext docs",
+};
+
+export default function SecurityPage() {
+  return (
+    <DocsShell
+      kicker="Operations"
+      title="Security & retention"
+      description="How signed-in access, media transfer, review notes, and automatic cleanup work in the hosted preview."
+      accessory={
+        <Badge tone="neutral" mono>
+          Working preview
+        </Badge>
+      }
+    >
+      <div className="space-y-10 text-sm leading-relaxed text-ink-muted">
+        <section aria-labelledby="access-title">
+          <h2 id="access-title" className="text-xl font-semibold text-ink">
+            Accounts and access
+          </h2>
+          <p className="mt-3">
+            The hosted app signs in with GitHub. User job routes use the
+            signed-in session and return only resources owned by that user.
+          </p>
+        </section>
+
+        <section aria-labelledby="storage-title">
+          <h2 id="storage-title" className="text-xl font-semibold text-ink">
+            Media and storage
+          </h2>
+          <p className="mt-3">
+            The browser transfers source bytes through short-lived upload URLs.
+            In production, those writes go to object storage; locally, the app
+            serves a session-authenticated disk upload endpoint. OpenContext
+            verifies the stored object&apos;s size, media type, and required
+            file signature before queueing it.
+          </p>
+          <p className="mt-3">
+            Image and PDF preview requests are owner-authenticated. The worker
+            downloads the source to process it and uses configured model
+            providers for transcription, vision, OCR, or optional text
+            refinement. The provider path and its credentials are deployment
+            configuration; the local CLI can use local providers.
+          </p>
+        </section>
+
+        <section aria-labelledby="retention-title">
+          <h2 id="retention-title" className="text-xl font-semibold text-ink">
+            Retention and removal
+          </h2>
+          <div className="mt-3 divide-y divide-line border-y border-line">
+            {[
+              [
+                "Completed job",
+                "14 days",
+                "Source media, intermediate artifacts, results, and exports available from that job.",
+              ],
+              [
+                "Incomplete job",
+                "7 days",
+                "Unfinished job and its stored artifacts.",
+              ],
+              [
+                "Abandoned upload",
+                "15 minutes",
+                "Uncommitted upload intent; temporary objects are removed by the retention sweep.",
+              ],
+              [
+                "Manual deletion",
+                "Immediate",
+                "After owner confirmation, the job disappears from the list and its URL no longer exposes it.",
+              ],
+            ].map(([item, period, detail]) => (
+              <div
+                key={item}
+                className="grid gap-1 py-4 sm:grid-cols-[9rem_7rem_minmax(0,1fr)] sm:gap-4"
+              >
+                <h3 className="font-medium text-ink">{item}</h3>
+                <p className="text-ink">{period}</p>
+                <p>{detail}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4">
+            Results downloaded or copied elsewhere remain under your own storage
+            and access controls. The retention window is shown on each job page.
+          </p>
+        </section>
+
+        <section aria-labelledby="notes-title">
+          <h2 id="notes-title" className="text-xl font-semibold text-ink">
+            Evidence review data
+          </h2>
+          <p className="mt-3">
+            A review can contain a note of up to 1,000 characters and a
+            suggested correction of up to 5,000 characters. Suggested
+            corrections can be attached only to a flagged claim. Reviews are
+            stored with the result, included in Markdown and JSON exports, and
+            removed when the job is deleted or expires.
+          </p>
+        </section>
+
+        <section aria-labelledby="limits-title">
+          <h2 id="limits-title" className="text-xl font-semibold text-ink">
+            Preview boundaries
+          </h2>
+          <ul className="mt-3 list-disc space-y-2 pl-5">
+            <li>
+              The hosted provider configuration is not a guarantee that media
+              never leaves a particular machine; local CLI processing is the
+              path for local model execution.
+            </li>
+            <li>
+              The current verification does not include an independent
+              penetration test or sustained high-traffic security evidence.
+            </li>
+            <li>
+              Public result sharing and team access controls are not available.
+            </li>
+          </ul>
+          <p className="mt-4">
+            Read{" "}
+            <Link href="/docs/status" className="text-accent hover:underline">
+              status and limits
+            </Link>{" "}
+            before using the preview for sensitive or critical material.
+          </p>
+        </section>
+      </div>
+    </DocsShell>
+  );
+}

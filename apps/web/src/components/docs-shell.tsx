@@ -46,7 +46,12 @@ export function DocsShell({
                 {description}
               </p>
             </header>
-            <div className={cx("pt-8", kicker === "API reference" ? "max-w-full" : "max-w-3xl")}>
+            <div
+              className={cx(
+                "pt-8",
+                kicker === "API reference" ? "max-w-full" : "max-w-3xl",
+              )}
+            >
               {children}
             </div>
             <DocsPager />
@@ -61,11 +66,31 @@ export function DocsShell({
 const PAGE_ORDER = [
   { href: "/docs", label: "Overview", title: "Overview" },
   { href: "/docs/quickstart", label: "Quickstart", title: "Quickstart" },
+  { href: "/docs/uploads", label: "Uploading media", title: "Uploading media" },
+  { href: "/docs/jobs", label: "Job lifecycle", title: "Job lifecycle" },
+  {
+    href: "/docs/results",
+    label: "Results & evidence",
+    title: "Results & evidence",
+  },
   { href: "/docs/api", label: "Jobs API", title: "Jobs API" },
   { href: "/docs/packages", label: "CLI & packages", title: "CLI & packages" },
-  { href: "/docs/agents", label: "Agent integration", title: "Agent integration" },
-  { href: "/docs/workers", label: "Worker deployment", title: "Worker deployment" },
+  {
+    href: "/docs/agents",
+    label: "Agent integration",
+    title: "Agent integration",
+  },
+  {
+    href: "/docs/workers",
+    label: "Worker deployment",
+    title: "Worker deployment",
+  },
   { href: "/docs/status", label: "Status & limits", title: "Status & limits" },
+  {
+    href: "/docs/security",
+    label: "Security & retention",
+    title: "Security & retention",
+  },
   { href: "/docs/api-errors", label: "Error catalog", title: "Error catalog" },
 ] as const;
 
@@ -73,10 +98,16 @@ function DocsPager() {
   const pathname = usePathname();
   const index = PAGE_ORDER.findIndex((page) => page.href === pathname);
   const previous = index > 0 ? PAGE_ORDER[index - 1] : undefined;
-  const next = index >= 0 && index < PAGE_ORDER.length - 1 ? PAGE_ORDER[index + 1] : undefined;
+  const next =
+    index >= 0 && index < PAGE_ORDER.length - 1
+      ? PAGE_ORDER[index + 1]
+      : undefined;
 
   return (
-    <nav aria-label="Documentation pages" className="mt-14 border-t border-line pt-6">
+    <nav
+      aria-label="Documentation pages"
+      className="mt-14 border-t border-line pt-6"
+    >
       <div className="grid gap-3 sm:grid-cols-2">
         {previous ? (
           <Link
@@ -86,7 +117,9 @@ function DocsPager() {
             <span className="flex items-center gap-1.5 text-xs text-ink-faint">
               <ArrowLeft aria-hidden="true" size={14} /> Previous
             </span>
-            <span className="mt-1 block text-sm font-medium text-ink">{previous.title}</span>
+            <span className="mt-1 block text-sm font-medium text-ink">
+              {previous.title}
+            </span>
           </Link>
         ) : (
           <span aria-hidden="true" />
@@ -102,7 +135,9 @@ function DocsPager() {
             <span className="flex items-center justify-end gap-1.5 text-xs text-ink-faint">
               Next <ArrowRight aria-hidden="true" size={14} />
             </span>
-            <span className="mt-1 block text-sm font-medium text-ink">{next.title}</span>
+            <span className="mt-1 block text-sm font-medium text-ink">
+              {next.title}
+            </span>
           </Link>
         )}
       </div>

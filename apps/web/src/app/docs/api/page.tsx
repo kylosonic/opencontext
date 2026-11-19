@@ -8,14 +8,63 @@ export const metadata: Metadata = {
 };
 
 const ENDPOINTS = [
-  ["POST", "/api/uploads", "Create a direct-upload intent for supported media."],
-  ["PUT", "signed object URL", "Upload bytes directly to configured object storage."],
-  ["POST", "/api/uploads/[id]/complete", "Verify and finalize the object, creating a queued job."],
+  [
+    "POST",
+    "/api/uploads",
+    "Create a direct-upload intent for supported media.",
+  ],
+  [
+    "PUT",
+    "signed object URL",
+    "Upload bytes directly to configured object storage.",
+  ],
+  [
+    "POST",
+    "/api/uploads/[id]/complete",
+    "Verify and finalize the object, creating a queued job.",
+  ],
+  [
+    "POST",
+    "/api/uploads/batch/complete",
+    "Commit 2-10 uploaded images as one ordered image-set job.",
+  ],
   ["GET", "/api/jobs", "List the current owner's jobs, newest first."],
   ["GET", "/api/jobs/[id]", "Read a job's current state and stage progress."],
-  ["POST", "/api/jobs/[id]/retry", "Retry an incomplete or transiently failed job."],
-  ["GET", "/api/jobs/[id]/export?format=markdown", "Download the owner's Markdown result."],
-  ["GET", "/api/jobs/[id]/export?format=json", "Download the owner's structured result."],
+  [
+    "POST",
+    "/api/jobs/[id]/retry",
+    "Retry an incomplete or transiently failed job.",
+  ],
+  [
+    "DELETE",
+    "/api/jobs/[id]",
+    "Delete an owner's job. Returns 204 on success.",
+  ],
+  [
+    "GET",
+    "/api/jobs/[id]/export?format=markdown",
+    "Download the owner's Markdown result.",
+  ],
+  [
+    "GET",
+    "/api/jobs/[id]/export?format=json",
+    "Download the owner's structured result.",
+  ],
+  [
+    "GET",
+    "/api/jobs/[id]/source?asset=0",
+    "Load an owner-authenticated image or PDF preview.",
+  ],
+  [
+    "PATCH",
+    "/api/jobs/[id]/evidence/[evidenceId]",
+    "Confirm or flag an evidence claim and save review notes.",
+  ],
+  [
+    "POST",
+    "/api/worker/heartbeat",
+    "Internal worker-token heartbeat for idle worker health (204).",
+  ],
 ] as const;
 
 export default function JobsApiPage() {
@@ -23,7 +72,7 @@ export default function JobsApiPage() {
     <DocsShell
       kicker="API reference"
       title="Jobs API"
-      description="Owner-authenticated endpoints for the upload-to-context workflow. All processing endpoints require a signed-in job owner."
+      description="Owner-authenticated endpoints for the upload-to-context workflow, plus the fixed worker heartbeat interface."
     >
       <div className="space-y-10 text-sm leading-relaxed text-ink-muted">
         <section aria-labelledby="contract-title">
@@ -31,22 +80,45 @@ export default function JobsApiPage() {
             Workflow
           </h2>
           <p className="mt-3">
-            Create an upload intent, send the file directly to object storage, complete the intent, then poll the job. A background worker claims queued work and runs the five processing stages.
+            Create an upload intent, send the file to the returned upload URL,
+            complete the intent, then poll the job. A worker claims queued work,
+            processes it, and reports stage progress. User routes use the
+            signed-in browser session; only worker and operations routes use
+            service bearer tokens.
           </p>
           <div className="mt-4 overflow-x-auto rounded-lg border border-line">
             <table className="w-full min-w-[34rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line-strong text-left">
-                  <th scope="col" className="px-3 py-2 font-mono text-xs text-ink-faint">Method</th>
-                  <th scope="col" className="px-3 py-2 font-mono text-xs text-ink-faint">Path</th>
-                  <th scope="col" className="px-3 py-2 text-xs text-ink-faint">Purpose</th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2 font-mono text-xs text-ink-faint"
+                  >
+                    Method
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2 font-mono text-xs text-ink-faint"
+                  >
+                    Path
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-xs text-ink-faint">
+                    Purpose
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {ENDPOINTS.map(([method, path, purpose]) => (
-                  <tr key={`${method}-${path}`} className="border-b border-line align-top last:border-0">
-                    <td className="px-3 py-3 font-mono text-xs text-ink">{method}</td>
-                    <td className="break-all px-3 py-3 font-mono text-xs text-ink">{path}</td>
+                  <tr
+                    key={`${method}-${path}`}
+                    className="border-b border-line align-top last:border-0"
+                  >
+                    <td className="px-3 py-3 font-mono text-xs text-ink">
+                      {method}
+                    </td>
+                    <td className="break-all px-3 py-3 font-mono text-xs text-ink">
+                      {path}
+                    </td>
                     <td className="px-3 py-3">{purpose}</td>
                   </tr>
                 ))}
@@ -59,19 +131,33 @@ export default function JobsApiPage() {
           <h2 id="example-title" className="text-xl font-semibold text-ink">
             Read a job
           </h2>
-          <p className="mt-3">Call these endpoints from a signed-in browser session. Authentication cookies are required.</p>
+          <p className="mt-3">
+            Call these endpoints from a signed-in browser session. Include
+            cookies with requests specified in a code example.
+          </p>
           <div className="mt-4">
             <CodeBlock
               wrap
               label="Read job status"
               code={`fetch("/api/jobs/job_123", { credentials: "include" })
-  .then((response) => response.json())
-  .then((job) => {
-    console.log(job.status);             // QUEUED, PROCESSING, COMPLETED...
-    console.log(job.stageStates);        // per-stage status and attempts
+  .then(async (response) => {
+    if (!response.ok) throw new Error(\`Job request failed: \${response.status}\`);
+    const job = await response.json();
+    console.log(job.status);       // QUEUED, processing stages, COMPLETED, PARTIAL, or FAILED
+    console.log(job.progress);     // 0-100
+    console.log(job.stageStates);  // each stage's status, attempt, progress, and errors
   });`}
             />
           </div>
+          <p className="mt-4">
+            <code>JobDetail</code> also includes <code>errorStage</code>,{" "}
+            <code>failureKind</code>, <code>retryAllowed</code>, source
+            metadata, and <code>retentionNote</code>. Poll active jobs every
+            three seconds and stop when
+            <code>status</code> is <code>COMPLETED</code>, <code>PARTIAL</code>,
+            or <code>FAILED</code>. The list endpoint returns the smaller{" "}
+            <code>JobSummary</code> shape.
+          </p>
         </section>
 
         <section aria-labelledby="upload-title">
@@ -79,7 +165,9 @@ export default function JobsApiPage() {
             Create an upload
           </h2>
           <p className="mt-3">
-            Declare the filename, byte size, and optional MIME type first. Use the returned URL and headers for the PUT, then complete the upload. A single intent expires after 15 minutes.
+            Declare the filename, byte size, optional MIME type, and detail
+            level. Use the returned URL, method, and headers for the transfer,
+            then complete the intent. A single intent expires after 15 minutes.
           </p>
           <div className="mt-4 space-y-3">
             <CodeBlock
@@ -88,13 +176,16 @@ export default function JobsApiPage() {
               code={`const response = await fetch("/api/uploads", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
+  credentials: "include",
   body: JSON.stringify({
     filename: "walkthrough.mp4",
     mime: file.type,
     sizeBytes: file.size,
+    detailLevel: "MEDIUM",
   }),
 });
-const intent = await response.json();`}
+if (!response.ok) throw new Error(\`Upload intent failed: \${response.status}\`);
+const intent = await response.json(); // uploadId, method, url, headers, expiresAt`}
             />
             <CodeBlock
               wrap
@@ -107,12 +198,111 @@ const intent = await response.json();`}
 
 const queued = await fetch(\`/api/uploads/\${intent.uploadId}/complete\`, {
   method: "POST",
+  credentials: "include",
 });
+if (!queued.ok) throw new Error(\`Upload completion failed: \${queued.status}\`);
 const job = await queued.json();`}
             />
           </div>
           <p className="mt-4">
-            Use <code>POST /api/uploads/batch/complete</code> with ordered <code>uploadIds</code> for an image set containing 2 to 10 images.
+            On success, the complete route returns <code>201</code> and a{" "}
+            <code>JobSummary</code>; the job is now <code>QUEUED</code>.
+            Supported inputs and limits are listed in{" "}
+            <Link href="/docs/uploads" className="text-accent hover:underline">
+              Uploading media
+            </Link>
+            .
+          </p>
+        </section>
+
+        <section aria-labelledby="batch-title">
+          <h2 id="batch-title" className="text-xl font-semibold text-ink">
+            Create an ordered image set
+          </h2>
+          <p className="mt-3">
+            Create and transfer one intent for every image, preserving the
+            intended order. Then commit all intents together. A set contains 2
+            to 10 images and creates one job.
+          </p>
+          <div className="mt-4">
+            <CodeBlock
+              wrap
+              label="Complete an image-set upload"
+              code={`const response = await fetch("/api/uploads/batch/complete", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify({
+    uploadIds: orderedUploadIds, // IDs from POST /api/uploads, in image order
+    detailLevel: "MEDIUM",
+  }),
+});
+if (!response.ok) throw new Error(\`Image set failed: \${response.status}\`);
+const job = await response.json(); // JobSummary with one job ID`}
+            />
+          </div>
+          <p className="mt-4">
+            If one member is invalid, missing, or expired, the batch fails
+            without creating a partial job. Use{" "}
+            <code>DELETE /api/uploads/[id]</code> to cancel an unfinished or
+            failed intent; a successful cancel returns <code>204</code>.
+          </p>
+        </section>
+
+        <section aria-labelledby="manage-title">
+          <h2 id="manage-title" className="text-xl font-semibold text-ink">
+            Manage a job and its results
+          </h2>
+          <p className="mt-3">
+            Retry keeps the same job and reuses stages that already succeeded. A
+            retry returns the updated <code>JobDetail</code>. Deletion is
+            permanent after confirmation and has no response body:
+          </p>
+          <div className="mt-4 space-y-3">
+            <CodeBlock
+              wrap
+              label="Retry and delete"
+              code={`const retried = await fetch("/api/jobs/job_123/retry", {
+  method: "POST",
+  credentials: "include",
+});
+
+const deleted = await fetch("/api/jobs/job_123", {
+  method: "DELETE",
+  credentials: "include",
+});
+if (deleted.status !== 204) throw new Error(\`Delete failed: \${deleted.status}\`);`}
+            />
+            <CodeBlock
+              wrap
+              label="Save an evidence review"
+              code={`const updated = await fetch("/api/jobs/job_123/evidence/8", {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify({
+    status: "FLAGGED",
+    note: "The second button is disabled.",
+    correctedText: "The secondary button is disabled.",
+  }),
+});
+if (!updated.ok) throw new Error(\`Review failed: \${updated.status}\`);
+const { markdown, json } = await updated.json();`}
+            />
+          </div>
+          <p className="mt-4">
+            Review status is <code>CONFIRMED</code>, <code>FLAGGED</code>, or{" "}
+            <code>UNREVIEWED</code>. A correction, and a note, can be up to
+            5,000 and 1,000 characters respectively. A suggested correction is
+            allowed only on a flagged claim. Clearing a review requires{" "}
+            <code>UNREVIEWED</code> with no note or correction.
+          </p>
+          <p className="mt-4">
+            Image and PDF previews are available from{" "}
+            <code>GET /api/jobs/[id]/source</code>. Use the zero-based{" "}
+            <code>asset</code> query parameter to select an image in a set.
+            Video playback uses a direct source URL instead of this preview
+            route.
           </p>
         </section>
 
@@ -120,7 +310,10 @@ const job = await queued.json();`}
           <h2 id="errors-title" className="text-xl font-semibold text-ink">
             Errors
           </h2>
-          <p className="mt-3">Failures use a stable envelope. The full catalog lists every public code and HTTP status.</p>
+          <p className="mt-3">
+            Failures use a stable envelope. The full catalog lists every public
+            code and HTTP status.
+          </p>
           <div className="mt-4">
             <CodeBlock
               wrap
@@ -134,10 +327,41 @@ const job = await queued.json();`}
             />
           </div>
           <p className="mt-4">
-            <Link href="/docs/api-errors" className="text-accent hover:underline">
+            <Link
+              href="/docs/api-errors"
+              className="text-accent hover:underline"
+            >
               View the API error catalog
             </Link>
           </p>
+        </section>
+
+        <section aria-labelledby="worker-title">
+          <h2 id="worker-title" className="text-xl font-semibold text-ink">
+            Worker heartbeat
+          </h2>
+          <p className="mt-3">
+            The worker process uses its own internal API with{" "}
+            <code>Authorization: Bearer &lt;WORKER_API_TOKEN&gt;</code>. The
+            idle heartbeat does not accept a user session:
+          </p>
+          <div className="mt-4">
+            <CodeBlock
+              wrap
+              label="Worker heartbeat request"
+              code={`const heartbeat = await fetch("/api/worker/heartbeat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: \`Bearer \${process.env.WORKER_API_TOKEN}\`,
+  },
+  body: JSON.stringify({ workerId: "oc-worker-prod-1" }),
+});
+if (heartbeat.status !== 204) {
+  throw new Error(\`Worker heartbeat rejected: \${heartbeat.status}\`);
+}`}
+            />
+          </div>
         </section>
       </div>
     </DocsShell>

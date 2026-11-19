@@ -12,6 +12,9 @@ const NAV_GROUPS = [
     links: [
       { href: "/docs", label: "Overview" },
       { href: "/docs/quickstart", label: "Quickstart" },
+      { href: "/docs/uploads", label: "Uploading media" },
+      { href: "/docs/jobs", label: "Job lifecycle" },
+      { href: "/docs/results", label: "Results & evidence" },
     ],
   },
   {
@@ -27,6 +30,7 @@ const NAV_GROUPS = [
     links: [
       { href: "/docs/workers", label: "Worker deployment" },
       { href: "/docs/status", label: "Status & limits" },
+      { href: "/docs/security", label: "Security & retention" },
       { href: "/docs/api-errors", label: "Error catalog" },
     ],
   },
@@ -82,10 +86,18 @@ export function DocsSidebar() {
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
             aria-controls="docs-mobile-nav"
-            aria-label={open ? "Close documentation navigation" : "Open documentation navigation"}
+            aria-label={
+              open
+                ? "Close documentation navigation"
+                : "Open documentation navigation"
+            }
             className="inline-flex size-9 items-center justify-center rounded-md border border-line text-ink-muted hover:bg-panel-muted hover:text-ink"
           >
-            {open ? <X aria-hidden="true" size={17} /> : <Menu aria-hidden="true" size={17} />}
+            {open ? (
+              <X aria-hidden="true" size={17} />
+            ) : (
+              <Menu aria-hidden="true" size={17} />
+            )}
           </button>
         </div>
         {open && (

@@ -11,9 +11,8 @@ import { Section } from "@/components/ui/section";
 
 const PIPELINE_STEPS = [
   {
-    label: "Video or Image",
-    detail:
-      "A recording, screen capture, or still image is the input.",
+    label: "Media",
+    detail: "A recording, still image, ordered image set, or PDF is the input.",
   },
   {
     label: "Audio + Frames",
@@ -74,7 +73,7 @@ const WHY_CARDS = [
 ];
 
 const HOW_IT_WORKS_STEPS = [
-  "Upload a video, screen recording, or image",
+  "Upload a video, image set, or PDF",
   "Extract audio and sample representative frames",
   "Transcribe speech with timestamps",
   "Analyze frames with a vision model",
@@ -89,12 +88,20 @@ const ROADMAP_ITEMS = [
   {
     label: "Working now",
     tone: "success" as const,
-    items: ["Video, image, PDF, and image-set uploads", "Evidence-linked Markdown and JSON exports", "Local CLI, replay, briefs, and MCP agent tools"],
+    items: [
+      "Video, image, PDF, and image-set uploads",
+      "Evidence-linked Markdown and JSON exports",
+      "Local CLI, replay, briefs, and MCP agent tools",
+    ],
   },
   {
     label: "Next",
     tone: "warning" as const,
-    items: ["Persistent worker host verification", "Broader evaluation fixtures", "Community issue triage"],
+    items: [
+      "Persistent worker host verification",
+      "Operations alert token delivery",
+      "Broader evaluation fixtures",
+    ],
   },
 ];
 
@@ -108,8 +115,12 @@ export default function Home() {
           <Container className="pb-16 pt-16 sm:pb-24 sm:pt-24">
             <div className="mx-auto max-w-3xl text-center">
               <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
-                <Badge tone="accent" mono>MIT licensed · open source</Badge>
-                <Badge tone="neutral" mono>Working preview</Badge>
+                <Badge tone="accent" mono>
+                  MIT licensed · open source
+                </Badge>
+                <Badge tone="neutral" mono>
+                  Working preview
+                </Badge>
               </div>
               <h1
                 id="hero-title"
@@ -118,9 +129,9 @@ export default function Home() {
                 Give text-only AI agents eyes and ears.
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-muted sm:text-xl">
-                OpenContext turns videos, screen recordings, and images into
-                evidence-linked context that text-only coding agents can use
-                and developers can verify.
+                OpenContext converts videos, screen recordings, and visual
+                references into structured context that text-only LLMs and
+                coding agents can understand.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <ButtonLink href="/app/new" size="lg">
@@ -146,7 +157,10 @@ export default function Home() {
         </section>
 
         {/* ------------------------- Pipeline visual ------------------------ */}
-        <section aria-labelledby="pipeline-title" className="border-y border-line bg-panel-muted/60 py-14 sm:py-20">
+        <section
+          aria-labelledby="pipeline-title"
+          className="border-y border-line bg-panel-muted/60 py-14 sm:py-20"
+        >
           <Container>
             <h2 id="pipeline-title" className="sr-only">
               How visual media becomes context
@@ -221,7 +235,9 @@ export default function Home() {
             <aside className="lg:w-72">
               <Card raised className="border-warn-bg bg-warn-bg/40">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                  <Badge tone="warning" mono>Status</Badge>
+                  <Badge tone="warning" mono>
+                    Status
+                  </Badge>
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                   The demo replays this pipeline end to end with pre-authored
@@ -246,9 +262,9 @@ export default function Home() {
                 Copy Context
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                One click puts the complete document on your clipboard, ready
-                to paste into a coding agent. Clipboard blocked? A fallback
-                dialog selects the text for manual copy.
+                One click puts the complete document on your clipboard, ready to
+                paste into a coding agent. Clipboard blocked? A fallback dialog
+                selects the text for manual copy.
               </p>
             </Card>
             <Card className="gap-2">
@@ -257,7 +273,9 @@ export default function Home() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                 Save the document as{" "}
-                <code className="text-[0.8rem]">opencontext-&lt;job-id&gt;.md</code>{" "}
+                <code className="text-[0.8rem]">
+                  opencontext-&lt;job-id&gt;.md
+                </code>{" "}
                 — viewable in any Markdown editor and identical to the copied
                 text.
               </p>
@@ -279,8 +297,8 @@ export default function Home() {
               className="rounded-sm text-accent underline-offset-2 hover:underline"
             >
               demo
-            </Link>
-            {" "}demo, or use it with your uploaded jobs when the app is configured.
+            </Link>{" "}
+            demo, or use it with your uploaded jobs.
           </p>
         </Section>
 
@@ -290,7 +308,11 @@ export default function Home() {
           kicker="Local AI"
           title="Your models, your machine"
           description="OpenContext is designed around a provider abstraction, so analysis can run on local models with no data leaving your machine."
-          accessory={<Badge tone="neutral" mono>Provider adapters implemented</Badge>}
+          accessory={
+            <Badge tone="neutral" mono>
+              Provider adapters implemented
+            </Badge>
+          }
         >
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
@@ -353,12 +375,19 @@ export default function Home() {
               </div>
             </Card>
             <Card className="flex flex-col gap-4">
-              <h3 className="text-base font-semibold text-ink">Roadmap status</h3>
+              <h3 className="text-base font-semibold text-ink">
+                Roadmap status
+              </h3>
               <dl className="grid gap-4">
                 {ROADMAP_ITEMS.map((group) => (
-                  <div key={group.label} className="grid gap-2 sm:grid-cols-[7rem_1fr]">
+                  <div
+                    key={group.label}
+                    className="grid gap-2 sm:grid-cols-[7rem_1fr]"
+                  >
                     <dt className="flex items-center">
-                      <Badge tone={group.tone} mono>{group.label}</Badge>
+                      <Badge tone={group.tone} mono>
+                        {group.label}
+                      </Badge>
                     </dt>
                     <dd className="text-sm leading-relaxed text-ink-muted">
                       {group.items.join(" · ")}
@@ -376,7 +405,11 @@ export default function Home() {
           kicker="Architecture"
           title="A small, separable pipeline"
           description="The web app, a queue, a Python worker, and durable storage stay independent — so heavy media processing never runs inside the web tier."
-          accessory={<Badge tone="neutral" mono>Target architecture</Badge>}
+          accessory={
+            <Badge tone="neutral" mono>
+              Target architecture
+            </Badge>
+          }
         >
           <Card className="overflow-x-auto" padded>
             <ol
@@ -397,16 +430,18 @@ export default function Home() {
                     {node}
                   </span>
                   {index < nodes.length - 1 && (
-                    <span aria-hidden="true" className="text-ink-faint">→</span>
+                    <span aria-hidden="true" className="text-ink-faint">
+                      →
+                    </span>
                   )}
                 </li>
               ))}
             </ol>
           </Card>
           <p className="mt-4 text-sm leading-relaxed text-ink-faint">
-            The web app, queue, worker, and storage run in production on
-            Vercel, Neon Postgres, and S3. The worker currently drains the
-            queue from a scheduled GitHub Actions job.
+            The web app, queue, worker, and storage run in production on Vercel,
+            Neon Postgres, and S3. The worker currently drains the queue from a
+            scheduled GitHub Actions job.
           </p>
         </Section>
 
@@ -416,11 +451,16 @@ export default function Home() {
           kicker="MCP integration"
           title="Give coding agents direct access"
           description="The local MCP server analyzes media, builds repository-aware briefs, and looks up evidence without uploading repository contents."
-          accessory={<Badge tone="success" mono>Implemented</Badge>}
+          accessory={
+            <Badge tone="success" mono>
+              Implemented
+            </Badge>
+          }
         >
           <Card>
             <p className="text-sm leading-relaxed text-ink-muted">
-              Install <code className="text-[0.8rem]">opencontext-video[agent]</code>{" "}
+              Install{" "}
+              <code className="text-[0.8rem]">opencontext-video[agent]</code>{" "}
               and launch <code className="text-[0.8rem]">opencontext-mcp</code>{" "}
               from an MCP-capable coding client. Tools include local media
               analysis, repository-aware implementation briefs, and bounded

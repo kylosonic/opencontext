@@ -28,9 +28,21 @@ describe("docs navigation", () => {
     render(<DocsSidebar />);
 
     expect(
-      screen.getByRole("link", { name: "Jobs API" }).getAttribute("aria-current"),
+      screen
+        .getByRole("link", { name: "Jobs API" })
+        .getAttribute("aria-current"),
     ).toBe("page");
-    expect(screen.getAllByRole("link", { name: "Quickstart" }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: "Quickstart" }).length,
+    ).toBeGreaterThan(0);
+    for (const name of [
+      "Uploading media",
+      "Job lifecycle",
+      "Results & evidence",
+      "Security & retention",
+    ]) {
+      expect(screen.getAllByRole("link", { name }).length).toBeGreaterThan(0);
+    }
 
     const toggle = screen.getByRole("button", {
       name: "Open documentation navigation",
