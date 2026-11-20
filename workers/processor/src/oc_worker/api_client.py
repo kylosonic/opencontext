@@ -36,11 +36,12 @@ from typing import Any
 import httpx
 
 from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.providers.http_status import retry_after_seconds
 
 log = logging.getLogger("oc_worker.api")
 
-DEFAULT_RETRIES = 2
-DEFAULT_BACKOFFS = (2.0, 8.0)
+DEFAULT_RETRIES = 3
+DEFAULT_BACKOFFS = (2.0, 8.0, 20.0)
 
 
 def run_with_retry[T](
@@ -52,9 +53,10 @@ def run_with_retry[T](
 ) -> T:
     """Execute ``fn``, retrying transient failures (jobs.md B7).
 
-    "2 attempts with backoff 2s/8s" is implemented as the initial
-    attempt plus up to ``retries`` automatic retries, sleeping 2s then
-    8s between attempts. Failures stay invisible unless every attempt is
+    The default is the initial attempt plus up to three automatic retries,
+    sleeping 2s, 8s, and 20s between attempts. A provider-provided
+    ``Retry-After`` value takes precedence when it is longer. Failures stay
+    invisible unless every attempt is
     exhausted, in which case the last TransientFailure is re-raised.
     """
     last_exc: TransientFailure | None = None
@@ -65,7 +67,8 @@ def run_with_retry[T](
             last_exc = exc
             if attempt >= retries:
                 break
-            delay = backoffs[min(attempt, len(backoffs) - 1)]
+            backoff = backoffs[min(attempt, len(backoffs) - 1)]
+            delay = max(backoff, exc.retry_after_seconds or 0.0)
             log.debug(
                 "transient_failure=%s attempt=%d/%d retry_in=%.1fs",
                 exc,
@@ -149,7 +152,10 @@ class ApiClient:
             if response.status_code == 204:
                 return None
             if response.status_code == 429 or response.status_code >= 500:
-                raise TransientFailure(f"API {path} returned {response.status_code}")
+                raise TransientFailure(
+                    f"API {path} returned {response.status_code}",
+                    retry_after_seconds=retry_after_seconds(response),
+                )
             if response.status_code >= 400:
                 raise _error_from_response(response, path)
             try:
@@ -184,7 +190,10 @@ class ApiClient:
             try:
                 with self._client.stream("GET", url, headers=headers) as response:
                     if response.status_code == 429 or response.status_code >= 500:
-                        raise TransientFailure(f"source download returned {response.status_code}")
+                        raise TransientFailure(
+                            f"source download returned {response.status_code}",
+                            retry_after_seconds=retry_after_seconds(response),
+                        )
                     if response.status_code >= 400:
                         raise _error_from_response(response, "source")
                     with dest.open("wb") as out:

@@ -53,7 +53,8 @@ image set, and everything produced from it.
 
 ## B7 — Automatic retries (invisible)
 
-- Transient problems (timeouts, rate limits, provider busy) are retried automatically, a small number of times with a pause between attempts.
+- Transient problems (timeouts, rate limits, provider busy) are retried automatically: up to three retries with 2, 8, and 20 second backoff. A numeric or HTTP-date `Retry-After` from the upstream service takes precedence when it requests a longer pause, capped at two minutes.
+- Hosted vision concurrency is configurable with `VISION_CONCURRENCY`; the scheduled OpenCode worker uses one concurrent image request to stay below upstream account limits.
 - **Visible state:** the user sees only normal stage progress; no error appears unless the automatic attempts are exhausted
 - **Acceptance:** a stage that succeeds on the second automatic attempt never surfaces an error to the user
 

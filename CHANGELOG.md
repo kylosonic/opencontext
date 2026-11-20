@@ -5,6 +5,22 @@ All notable changes are documented here. The project follows
 
 ## Unreleased
 
+- Fixed the upload 429 lockout: a single 10-image set previously consumed all
+  10 upload-intent slots for 10 minutes. The per-user intent budget is now 120
+  per 10 minutes, rate-limit responses expose standard quota metadata, and
+  limiter backend failures no longer masquerade as user quota exhaustion.
+- Hardened provider throttling with one hosted-worker vision request at a time
+  by default, three automatic retries, and bounded `Retry-After` handling. The
+  scheduled OpenCode worker runs with `VISION_CONCURRENCY=1`.
+- Added reproducible downloaded photo/video smoke coverage across JPEG, PNG,
+  WebP, MP4, short and longer video, and an audio-bearing trailer.
+- Refreshed the npm lockfile, moved Next.js to 16.4.6, and pinned the patched
+  `effect@3.22.5` transitive dependency. A full npm audit now reports zero
+  known vulnerabilities.
+- Added native Gemini vision through the Generative Language API. It is opt-in
+  for the local Compose demo and available to CLI/worker diagnostics. Gemini
+  keys stay in environment configuration, and the credential-free fixture
+  provider remains the default.
 - Added an opt-in real-vision mode for the local Compose demo. The fixture
   provider remains the default and continues to be labeled as fixture output;
   real mode validates the configured image-capable model and key before

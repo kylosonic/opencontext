@@ -119,6 +119,7 @@ class VisualObservation(BaseModel):
     designObservations: dict[str, str] = Field(default_factory=dict)
     importantChanges: list[str] = Field(default_factory=list)
     provider: str | None = None
+    model: str | None = None
 
     @field_validator(
         "uiElements", "visibleText", "interactions", "importantChanges", mode="before"

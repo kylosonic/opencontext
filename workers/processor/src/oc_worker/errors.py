@@ -24,6 +24,15 @@ class ProcessingCancelled(PermanentFailure):
 class TransientFailure(Exception):
     """A failure worth a bounded number of automatic retries."""
 
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        retry_after_seconds: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
 
 _abort_local = threading.local()
 

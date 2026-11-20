@@ -12,8 +12,23 @@ def validate_demo_vision(settings: Settings) -> None:
     if not provider:
         raise ProviderConfigurationError("OPENCONTEXT_DEMO_VISION=real requires VISION_PROVIDER")
     if provider != "openai_compatible":
+        if provider == "gemini":
+            if not settings.gemini_api_key.strip():
+                raise ProviderConfigurationError(
+                    "GEMINI_API_KEY is required when VISION_PROVIDER=gemini"
+                )
+            if not settings.gemini_base_url.strip():
+                raise ProviderConfigurationError(
+                    "GEMINI_BASE_URL is required when VISION_PROVIDER=gemini"
+                )
+            if not settings.vision_model.strip():
+                raise ProviderConfigurationError(
+                    "VISION_MODEL is required when VISION_PROVIDER=gemini"
+                )
+            return
         raise ProviderConfigurationError(
-            "OPENCONTEXT_DEMO_VISION=real requires VISION_PROVIDER=openai_compatible"
+            "OPENCONTEXT_DEMO_VISION=real requires "
+            "VISION_PROVIDER=openai_compatible or gemini"
         )
     if not settings.openai_api_key.strip():
         raise ProviderConfigurationError(

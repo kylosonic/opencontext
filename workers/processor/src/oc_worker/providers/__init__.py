@@ -22,6 +22,7 @@ from oc_worker.providers.transcription.openai_compatible import (
 from oc_worker.providers.vision.base import VisionProvider
 from oc_worker.providers.vision.demo import validate_demo_vision
 from oc_worker.providers.vision.fixture import FixtureVisionProvider
+from oc_worker.providers.vision.gemini import GeminiVisionProvider
 from oc_worker.providers.vision.ollama import OllamaVisionProvider
 from oc_worker.providers.vision.openai_compatible import OpenAICompatibleVisionProvider
 
@@ -83,6 +84,17 @@ def build_vision(settings: Settings) -> VisionProvider | None:
             model=settings.vision_model,
             session_id=settings.opencode_session_id,
         )
+    if provider == "gemini":
+        if not settings.gemini_api_key:
+            raise ProviderConfigurationError(
+                "GEMINI_API_KEY is required when VISION_PROVIDER=gemini"
+            )
+        return GeminiVisionProvider(
+            api_key=settings.gemini_api_key,
+            base_url=settings.gemini_base_url,
+            model=settings.vision_model,
+            timeout=settings.vision_timeout_seconds,
+        )
     if provider == "openai_compatible":
         if not settings.openai_api_key:
             raise ProviderConfigurationError(
@@ -96,7 +108,7 @@ def build_vision(settings: Settings) -> VisionProvider | None:
         )
     raise ProviderConfigurationError(
         f"Unknown VISION_PROVIDER={settings.vision_provider!r}; "
-        "expected fixture, ollama, openai_compatible, none, or off"
+        "expected fixture, gemini, ollama, openai_compatible, none, or off"
     )
 
 

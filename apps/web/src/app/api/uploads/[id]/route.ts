@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
-import { consumeRateLimit } from "@/server/security/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 import { cancelUpload } from "@/server/uploads";
 
 export const runtime = "nodejs";
@@ -15,11 +19,21 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
-    const limit = await consumeRateLimit(`upload-cancel:${session.user.id}`, 30, 60_000);
+    const limit = await consumeRateLimit(
+      `upload-cancel:${session.user.id}`,
+      RATE_LIMITS.uploadCancel.limit,
+      RATE_LIMITS.uploadCancel.windowMs,
+    );
     if (!limit.allowed) {
-      const response = errorResponse("RATE_LIMITED", "Too many upload cancellations");
-      response.headers.set("Retry-After", String(limit.retryAfterSec));
-      return response;
+      return applyRateLimitHeaders(
+        errorResponse(
+          limit.unavailable ? "INTERNAL" : "RATE_LIMITED",
+          limit.unavailable
+            ? "Upload cancellation is temporarily unavailable — try again shortly"
+            : `Upload cancellation limit reached — try again in ${limit.retryAfterSec} seconds`,
+        ),
+        limit,
+      );
     }
 
     const { id } = await context.params;
@@ -29,8 +43,10 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
         return errorResponse("NOT_FOUND", "Upload intent not found");
       case "FORBIDDEN":
         return errorResponse("FORBIDDEN", "You don't have access to this upload");
-      case "OK":
-        return new NextResponse(null, { status: 204 });
+      case "OK": {
+        const response = new NextResponse(null, { status: 204 });
+        return applyRateLimitHeaders(response, limit);
+      }
     }
   });
 }

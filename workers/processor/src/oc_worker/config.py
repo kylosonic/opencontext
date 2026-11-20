@@ -115,6 +115,19 @@ class Settings:
     vision_model: str = field(
         default_factory=lambda: _env("VISION_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
     )
+    gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY") or "")
+    gemini_base_url: str = field(
+        default_factory=lambda: _env(
+            "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta"
+        )
+        or "https://generativelanguage.googleapis.com/v1beta"
+    )
+    vision_timeout_seconds: float = field(
+        default_factory=lambda: _env_float("VISION_TIMEOUT_SECONDS", 120.0)
+    )
+    vision_concurrency: int = field(
+        default_factory=lambda: _env_int("VISION_CONCURRENCY", 2)
+    )
     ocr_provider: str = field(
         default_factory=lambda: _env("OCR_PROVIDER", "vision") or "vision"
     )

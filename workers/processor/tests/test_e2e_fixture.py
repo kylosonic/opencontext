@@ -255,6 +255,10 @@ def test_generated_image_completes_visual_pipeline(tmp_path: Path, monkeypatch) 
 
     generated = stage_results[-1]["data"]
     assert generated["json"]["source"]["kind"] == "image"
+    assert all(
+        finding["provider"] == "fixture"
+        for finding in generated["json"]["visualFindings"]
+    )
     assert "Checkout total $42" in generated["markdown"]
     assert "Still image has no audio" in generated["markdown"]
 

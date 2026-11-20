@@ -2,7 +2,7 @@
 
 Covers claim (200/204/404/500-retry), progress, stage-result, artifacts,
 complete and fail payloads, plus the B7 retry semantics: transient
-failures retry with 2s/8s backoff, permanent errors never retry.
+failures retry with 2s/8s/20s backoff, permanent errors never retry.
 """
 
 import json
@@ -87,12 +87,14 @@ def test_claim_permanent_http_error_does_not_retry() -> None:
 def test_claim_transient_server_error_retries_with_backoff(monkeypatch) -> None:
     delays: list[float] = []
     _patch_sleep(monkeypatch, delays)
-    recorder = _Recorder([httpx.Response(503), httpx.Response(503), httpx.Response(503)])
+    recorder = _Recorder(
+        [httpx.Response(503), httpx.Response(503), httpx.Response(503), httpx.Response(503)]
+    )
     api = _make_client(recorder.handler)
     with pytest.raises(TransientFailure):
         api.claim()
-    assert len(recorder.requests) == 3  # initial + 2 retries
-    assert delays == [2.0, 8.0]
+    assert len(recorder.requests) == 4  # initial + 3 retries
+    assert delays == [2.0, 8.0, 20.0]
 
 
 def test_claim_transient_then_success_returns_payload(monkeypatch) -> None:
@@ -109,6 +111,24 @@ def test_claim_transient_then_success_returns_payload(monkeypatch) -> None:
     assert claimed == {"job": {"id": "j1"}, "source": {}}
     assert len(recorder.requests) == 2
     assert delays == [2.0]
+
+
+def test_retry_after_header_overrides_the_shorter_default_backoff(monkeypatch) -> None:
+    delays: list[float] = []
+    _patch_sleep(monkeypatch, delays)
+    recorder = _Recorder(
+        [
+            httpx.Response(429, headers={"Retry-After": "12"}),
+            httpx.Response(200, json={"job": {"id": "j1"}, "source": {}}),
+        ]
+    )
+    api = _make_client(recorder.handler)
+
+    claimed = api.claim()
+
+    assert claimed == {"job": {"id": "j1"}, "source": {}}
+    assert len(recorder.requests) == 2
+    assert delays == [12.0]
 
 
 # -- progress / stage-result / complete / fail ---------------------------
@@ -376,8 +396,8 @@ def test_download_source_retries_on_server_error(tmp_path, monkeypatch) -> None:
     dest = tmp_path / "source.bin"
     with pytest.raises(TransientFailure):
         api.download_source("j1", dest)
-    assert len(media_requests) == 3
-    assert delays == [2.0, 8.0]
+    assert len(media_requests) == 4
+    assert delays == [2.0, 8.0, 20.0]
 
 
 def test_error_envelope_parsed_from_body() -> None:

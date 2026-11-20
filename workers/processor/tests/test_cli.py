@@ -210,6 +210,27 @@ def test_doctor_network_check_is_bounded_and_reports_ollama(
     assert "OK         vision: Ollama configured" in output
 
 
+def test_doctor_recognizes_gemini_without_leaking_its_key(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", FFMPEG or "ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "fixture")
+    monkeypatch.setenv("VISION_PROVIDER", "gemini")
+    monkeypatch.setenv("VISION_MODEL", "gemini-test-model")
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-doctor-secret")
+    monkeypatch.setenv("TEXT_PROVIDER", "template")
+
+    code = main(["doctor", "--offline", "--json"])
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    checks = {check["name"]: check for check in payload["checks"]}
+    assert code == 0
+    assert checks["vision"]["status"] == "ok"
+    assert "Gemini Generative Language API configured" in checks["vision"]["detail"]
+    assert "gemini-doctor-secret" not in output
+
+
 def test_version_uses_package_version_function(monkeypatch, capsys) -> None:
     monkeypatch.setattr("oc_worker.cli.package_version", lambda: "9.8.7")
 

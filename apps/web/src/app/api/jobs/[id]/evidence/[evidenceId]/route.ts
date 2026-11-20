@@ -5,7 +5,11 @@ import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
 import { getJob } from "@/server/jobs";
-import { consumeRateLimit } from "@/server/security/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -47,16 +51,19 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     }
     const limit = await consumeRateLimit(
       `evidence-review:${session.user.id}:${id}`,
-      30,
-      60_000,
+      RATE_LIMITS.evidenceReview.limit,
+      RATE_LIMITS.evidenceReview.windowMs,
     );
     if (!limit.allowed) {
-      const response = errorResponse(
-        "RATE_LIMITED",
-        "Too many evidence review updates — wait a moment and try again",
+      return applyRateLimitHeaders(
+        errorResponse(
+          limit.unavailable ? "INTERNAL" : "RATE_LIMITED",
+          limit.unavailable
+            ? "Evidence review is temporarily unavailable — try again shortly"
+            : `Evidence review limit reached — try again in ${limit.retryAfterSec} seconds`,
+        ),
+        limit,
       );
-      response.headers.set("Retry-After", String(limit.retryAfterSec));
-      return response;
     }
 
     const jobResult = await getJob(id, session.user.id);

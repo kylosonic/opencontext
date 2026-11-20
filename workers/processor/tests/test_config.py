@@ -17,6 +17,9 @@ _ENV_KEYS = [
     "OPENAI_BASE_URL",
     "VISION_PROVIDER",
     "VISION_MODEL",
+    "VISION_CONCURRENCY",
+    "GEMINI_API_KEY",
+    "GEMINI_BASE_URL",
     "OLLAMA_BASE_URL",
     "TEXT_PROVIDER",
     "TEXT_MODEL",
@@ -44,6 +47,9 @@ def test_defaults_with_empty_environment(monkeypatch) -> None:
     assert settings.opencode_session_id == "opencontext-local"
     assert settings.vision_provider == "openai_compatible"
     assert settings.vision_model == "gpt-4o-mini"
+    assert settings.vision_concurrency == 2
+    assert settings.gemini_api_key == ""
+    assert settings.gemini_base_url == "https://generativelanguage.googleapis.com/v1beta"
     assert settings.ollama_base_url == "http://localhost:11434"
     assert settings.text_provider == ""
     assert settings.text_model == "gpt-4o-mini"
@@ -58,6 +64,7 @@ def test_env_overrides_apply(monkeypatch) -> None:
     monkeypatch.setenv("WORKER_CONCURRENCY", "3")
     monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "faster_whisper")
     monkeypatch.setenv("VISION_PROVIDER", "ollama")
+    monkeypatch.setenv("VISION_CONCURRENCY", "1")
     monkeypatch.setenv("TEXT_PROVIDER", "openai_compatible")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("FFMPEG_PATH", "C:\\tools\\ffmpeg.exe")
@@ -69,6 +76,7 @@ def test_env_overrides_apply(monkeypatch) -> None:
     assert settings.worker_concurrency == 3
     assert settings.transcription_provider == "faster_whisper"
     assert settings.vision_provider == "ollama"
+    assert settings.vision_concurrency == 1
     assert settings.text_provider == "openai_compatible"
     assert settings.openai_api_key == "sk-test"
     assert settings.ffmpeg_path == "C:\\tools\\ffmpeg.exe"

@@ -143,6 +143,12 @@ the worker. Provider settings are read from the worker process environment.
 - `VISION_PROVIDER=openai_compatible` can call OpenCode Go with
   `OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1`,
   `OPENCODE_API_KEY`, and an image-capable `VISION_MODEL`.
+- `VISION_PROVIDER=gemini` uses `GEMINI_API_KEY`, an image-capable
+  `VISION_MODEL`, and `GEMINI_BASE_URL` for native Gemini image analysis.
+  `VISION_TIMEOUT_SECONDS` bounds the request.
+- `VISION_CONCURRENCY` bounds simultaneous image analysis calls. Use `1` for
+  rate-limited upstream accounts; transient provider errors retry up to three
+  times and honor a bounded `Retry-After` response when supplied.
 - `OCR_PROVIDER=tesseract` extracts text independently with the local
   Tesseract binary. `OCR_PROVIDER=vision` keeps the compatibility behavior of
   deriving OCR rows from the vision provider's `visibleText`.

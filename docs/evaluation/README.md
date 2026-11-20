@@ -57,6 +57,25 @@ npm run evaluation:video
 npm run evaluation:hearing-video
 ```
 
+## Downloaded photo and video smoke corpus
+
+For plumbing coverage with real container and image formats rather than
+synthetic test patterns, download a small mixed corpus:
+
+```bash
+npm run media:corpus
+workers/processor/.venv/bin/opencontext analyze .artifacts/media-corpus \
+  --offline --output-dir .artifacts/media-corpus-output --detail-level LOW
+```
+
+The downloader records the source, license, MIME declaration, byte count, and
+SHA-256 for each file in `.artifacts/media-corpus/manifest.json`. It obtains
+placeholder photography, two MDN CC0 assets, and the CC BY 3.0 Sintel trailer,
+then creates local PNG and WebP variants. The media is ignored by Git and is
+not redistributed by the repository. Offline mode exercises real probing,
+image normalization, frame/audio extraction, aggregation, evidence generation,
+and export while keeping inference deterministic.
+
 See the [OpenCode Go measured report](opencode-go-measured.md) for the run
 configuration, result, published artifacts, and limitations.
 

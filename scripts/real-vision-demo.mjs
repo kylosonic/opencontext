@@ -9,7 +9,7 @@ const args = process.argv.slice(2);
 const dockerArgs = args[0] === "--" ? args.slice(1) : args;
 let mode =
   process.env.OPENCONTEXT_DEMO_VISION ||
-  (process.env.OPENAI_API_KEY ? "real" : "");
+  (process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY ? "real" : "");
 let explicitMode = Boolean(mode);
 if (dockerArgs[0] === "real") {
   mode = "real";
@@ -106,12 +106,19 @@ if (mode !== "real") {
   process.exit(runDocker(fixtureValues, upArgs));
 }
 
-const missing = ["OPENCONTEXT_DEMO_MODEL", "OPENAI_BASE_URL"].filter(
-  (name) => !present(name),
+const useGemini = Boolean(process.env.GEMINI_API_KEY?.trim());
+const geminiModel = process.env.OPENCONTEXT_DEMO_MODEL || "gemini-4-hydrogen";
+const missing = [
+  ...(useGemini ? [] : ["OPENCONTEXT_DEMO_MODEL"]),
+  ...(useGemini ? ["GEMINI_BASE_URL"] : ["OPENAI_BASE_URL"]),
+].filter(
+  (name) =>
+    !present(name) &&
+    (name !== "GEMINI_BASE_URL" ||
+      (!process.env.GEMINI_BASE_URL && !present("GEMINI_API_KEY"))),
 );
-const apiKey = process.env.OPENAI_API_KEY || process.env.OPENCODE_API_KEY;
-if (!apiKey) {
-  missing.push("OPENAI_API_KEY or OPENCODE_API_KEY");
+if (!useGemini && !process.env.OPENAI_API_KEY && !process.env.OPENCODE_API_KEY) {
+  missing.push("GEMINI_API_KEY, OPENAI_API_KEY, or OPENCODE_API_KEY");
 }
 if (missing.length > 0) {
   fail(`real mode requires ${missing.join(", ")}; no provider call was made`);
@@ -119,14 +126,26 @@ if (missing.length > 0) {
 
 const realValues = {
   OPENCONTEXT_DEMO_VISION: "real",
-  OPENCONTEXT_DEMO_MODEL: process.env.OPENCONTEXT_DEMO_MODEL,
-  OPENCONTEXT_DEMO_OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
-  ...(process.env.OPENAI_API_KEY
-    ? { OPENCONTEXT_DEMO_OPENAI_API_KEY: process.env.OPENAI_API_KEY }
-    : { OPENCONTEXT_DEMO_OPENCODE_API_KEY: process.env.OPENCODE_API_KEY }),
-  VISION_PROVIDER: "openai_compatible",
+  OPENCONTEXT_DEMO_MODEL: useGemini
+    ? geminiModel
+    : process.env.OPENCONTEXT_DEMO_MODEL,
+  ...(useGemini
+    ? {
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        GEMINI_BASE_URL:
+          process.env.GEMINI_BASE_URL ||
+          "https://generativelanguage.googleapis.com/v1beta",
+        VISION_PROVIDER: "gemini",
+      }
+    : {
+        OPENCONTEXT_DEMO_OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+        ...(process.env.OPENAI_API_KEY
+          ? { OPENCONTEXT_DEMO_OPENAI_API_KEY: process.env.OPENAI_API_KEY }
+          : { OPENCONTEXT_DEMO_OPENCODE_API_KEY: process.env.OPENCODE_API_KEY }),
+        VISION_PROVIDER: "openai_compatible",
+      }),
   TRANSCRIPTION_PROVIDER: "none",
-  TEXT_PROVIDER: "openai_compatible",
+  TEXT_PROVIDER: useGemini ? "template" : "openai_compatible",
 };
 checkConfiguration(realValues);
 const upArgs = dockerArgs[0] === "up" ? dockerArgs : ["up", "--build"];
