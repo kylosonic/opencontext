@@ -82,6 +82,7 @@ def _observation_payload(obs: VisualObservation) -> dict[str, Any]:
         "designObservations": obs.designObservations,
         "importantChanges": obs.importantChanges,
         "provider": obs.provider,
+        "model": obs.model,
     }
 
 
@@ -177,6 +178,8 @@ def _build_json_payload(
                     "text": claim,
                     "timestampSec": obs.timestampSec,
                     "certainty": obs.certainty.value,
+                    "provider": obs.provider,
+                    "model": obs.model,
                 }
                 if obs.frameId:
                     finding["frameId"] = obs.frameId

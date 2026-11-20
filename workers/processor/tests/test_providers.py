@@ -15,6 +15,7 @@ from oc_worker.providers import (
 from oc_worker.providers.transcription.openai_audio import (
     OpenAIAudioChatTranscriptionProvider,
 )
+from oc_worker.providers.vision.gemini import GeminiVisionProvider
 
 
 @pytest.mark.parametrize("provider", ["", "none", "off"])
@@ -130,5 +131,31 @@ def test_demo_vision_rejects_another_provider() -> None:
             Settings(
                 vision_provider="fixture",
                 demo_vision=True,
+            )
+        )
+
+
+def test_demo_vision_builds_native_gemini() -> None:
+    settings = Settings(
+        vision_provider="gemini",
+        demo_vision=True,
+        vision_model="gemini-4-hydrogen",
+        gemini_api_key="gemini-test-secret",
+    )
+
+    provider = build_vision(settings)
+
+    assert isinstance(provider, GeminiVisionProvider)
+    assert provider.model == "gemini-4-hydrogen"
+
+
+def test_demo_gemini_requires_an_api_key() -> None:
+    with pytest.raises(ProviderConfigurationError, match="GEMINI_API_KEY"):
+        build_vision(
+            Settings(
+                vision_provider="gemini",
+                demo_vision=True,
+                vision_model="gemini-4-hydrogen",
+                gemini_api_key="",
             )
         )

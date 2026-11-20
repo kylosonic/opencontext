@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/prisma";
 
 interface Bucket {
@@ -12,6 +13,37 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   retryAfterSec: number;
+  limit: number;
+  resetAt: number;
+  backend: "memory" | "database" | "memory-fallback" | "unavailable";
+  unavailable?: boolean;
+}
+
+/** Per-user budgets. Keep these centralized so route tests and docs agree. */
+export const RATE_LIMITS = {
+  uploadIntent: { limit: 120, windowMs: 10 * 60_000 },
+  uploadComplete: { limit: 60, windowMs: 60_000 },
+  uploadCancel: { limit: 120, windowMs: 60_000 },
+  jobRetry: { limit: 10, windowMs: 60_000 },
+  evidenceReview: { limit: 60, windowMs: 60_000 },
+} as const;
+
+/** Add standard quota metadata and Retry-After when the request is blocked. */
+export function applyRateLimitHeaders<T extends NextResponse>(
+  response: T,
+  result: RateLimitResult,
+): T {
+  response.headers.set("X-RateLimit-Limit", String(result.limit));
+  response.headers.set("X-RateLimit-Remaining", String(result.remaining));
+  response.headers.set(
+    "X-RateLimit-Reset",
+    String(Math.max(0, Math.ceil(result.resetAt / 1000))),
+  );
+  response.headers.set("X-RateLimit-Backend", result.backend);
+  if (!result.allowed) {
+    response.headers.set("Retry-After", String(Math.max(1, result.retryAfterSec)));
+  }
+  return response;
 }
 
 /**
@@ -36,14 +68,25 @@ export async function consumeRateLimit(
     return consumeMemoryRateLimit(key, limit, windowMs, now);
   } catch (error) {
     console.error("Rate limiter backend failure:", error);
-    if ((process.env.RATE_LIMIT_FAILURE_MODE ?? "open").toLowerCase() === "closed") {
+    const failureMode = (process.env.RATE_LIMIT_FAILURE_MODE ?? "open").toLowerCase();
+    if (failureMode === "closed") {
       return {
         allowed: false,
         remaining: 0,
-        retryAfterSec: Math.max(1, Math.ceil(windowMs / 1000)),
+        retryAfterSec: Math.max(1, Math.ceil(Math.min(windowMs, 30_000) / 1000)),
+        limit,
+        resetAt: now + Math.min(windowMs, 30_000),
+        backend: "unavailable",
+        unavailable: true,
       };
     }
-    return { allowed: true, remaining: limit, retryAfterSec: 0 };
+    // Keep a bounded local quota during a shared-backend outage instead of
+    // turning a service failure into a misleading client 429.
+    return {
+      ...consumeMemoryRateLimit(key, limit, windowMs, now),
+      backend: "memory-fallback",
+      unavailable: true,
+    };
   }
 }
 
@@ -55,14 +98,25 @@ function consumeMemoryRateLimit(
 ): RateLimitResult {
   const current = buckets.get(key);
   if (!current || current.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: Math.max(0, limit - 1), retryAfterSec: 0 };
+    const resetAt = now + windowMs;
+    buckets.set(key, { count: 1, resetAt });
+    return {
+      allowed: true,
+      remaining: Math.max(0, limit - 1),
+      retryAfterSec: 0,
+      limit,
+      resetAt,
+      backend: "memory",
+    };
   }
   if (current.count >= limit) {
     return {
       allowed: false,
       remaining: 0,
       retryAfterSec: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
+      limit,
+      resetAt: current.resetAt,
+      backend: "memory",
     };
   }
   current.count += 1;
@@ -70,6 +124,9 @@ function consumeMemoryRateLimit(
     allowed: true,
     remaining: Math.max(0, limit - current.count),
     retryAfterSec: 0,
+    limit,
+    resetAt: current.resetAt,
+    backend: "memory",
   };
 }
 
@@ -85,7 +142,14 @@ async function consumeDatabaseRateLimit(
     await prisma.rateLimitBucket.create({
       data: { key, count: 1, resetAt, updatedAt: nowDate },
     });
-    return { allowed: true, remaining: Math.max(0, limit - 1), retryAfterSec: 0 };
+    return {
+      allowed: true,
+      remaining: Math.max(0, limit - 1),
+      retryAfterSec: 0,
+      limit,
+      resetAt: resetAt.getTime(),
+      backend: "database",
+    };
   } catch (error) {
     if (
       !(error instanceof Prisma.PrismaClientKnownRequestError) ||
@@ -100,7 +164,14 @@ async function consumeDatabaseRateLimit(
     data: { count: 1, resetAt, updatedAt: nowDate },
   });
   if (reset.count > 0) {
-    return { allowed: true, remaining: Math.max(0, limit - 1), retryAfterSec: 0 };
+    return {
+      allowed: true,
+      remaining: Math.max(0, limit - 1),
+      retryAfterSec: 0,
+      limit,
+      resetAt: resetAt.getTime(),
+      backend: "database",
+    };
   }
 
   const incremented = await prisma.rateLimitBucket.updateMany({
@@ -113,16 +184,23 @@ async function consumeDatabaseRateLimit(
       allowed: true,
       remaining: Math.max(0, limit - (bucket?.count ?? limit)),
       retryAfterSec: 0,
+      limit,
+      resetAt: bucket?.resetAt.getTime() ?? resetAt.getTime(),
+      backend: "database",
     };
   }
 
   const bucket = await prisma.rateLimitBucket.findUnique({ where: { key } });
+  const bucketResetAt = bucket?.resetAt.getTime() ?? resetAt.getTime();
   return {
     allowed: false,
     remaining: 0,
     retryAfterSec: bucket
       ? Math.max(1, Math.ceil((bucket.resetAt.getTime() - now) / 1000))
       : 1,
+    limit,
+    resetAt: bucketResetAt,
+    backend: "database",
   };
 }
 

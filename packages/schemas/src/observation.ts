@@ -26,6 +26,7 @@ export const VisualObservationSchema = z.object({
   designObservations: z.record(z.string(), z.unknown()).default({}),
   importantChanges: z.array(z.string()).default([]),
   provider: z.string().optional(),
+  model: z.string().optional(),
   createdAt: z.string().optional(),
 });
 

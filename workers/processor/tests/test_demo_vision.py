@@ -8,10 +8,11 @@ import pytest
 
 from oc_worker.config import Settings
 from oc_worker.errors import ProviderConfigurationError
-from oc_worker.main import _check_demo_vision
+from oc_worker.main import _check_demo_vision, _demo_vision_summary
 from oc_worker.providers import build_vision
 from oc_worker.providers.vision.demo import validate_demo_vision
 from oc_worker.providers.vision.fixture import FixtureVisionProvider
+from oc_worker.providers.vision.gemini import GeminiVisionProvider
 from oc_worker.providers.vision.openai_compatible import OpenAICompatibleVisionProvider
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -63,6 +64,43 @@ def test_incomplete_real_mode_fails_before_provider_request() -> None:
         validate_demo_vision(settings)
 
     assert "not-a-real-key" not in str(exc_info.value)
+
+
+def test_real_mode_builds_gemini_vision_from_settings() -> None:
+    settings = Settings(
+        demo_vision=True,
+        vision_provider="gemini",
+        vision_model="gemini-test-model",
+        gemini_api_key="not-a-real-key",
+        vision_timeout_seconds=180,
+        transcription_provider="none",
+    )
+    _check_demo_vision(settings)
+
+    provider = build_vision(settings)
+
+    assert isinstance(provider, GeminiVisionProvider)
+    assert provider.model == "gemini-test-model"
+    assert "gemini-4-hydrogen" in LAUNCHER.read_text(encoding="utf-8")
+    assert "OPENCONTEXT_DEMO_OPENAI_BASE_URL" in LAUNCHER.read_text(encoding="utf-8")
+
+
+def test_gemini_demo_summary_reports_the_gemini_endpoint() -> None:
+    settings = Settings(
+        demo_vision=True,
+        vision_provider="gemini",
+        vision_model="gemini-test-model",
+        gemini_api_key="not-a-real-key",
+        gemini_base_url="https://gemini.example/v1beta",
+        openai_base_url="https://wrong.example/v1",
+    )
+
+    assert _demo_vision_summary(settings) == {
+        "mode": "real",
+        "visionProvider": "gemini",
+        "baseUrl": "https://gemini.example/v1beta",
+        "visionModel": "gemini-test-model",
+    }
 
 
 def test_openai_key_alone_does_not_enable_local_real_mode(

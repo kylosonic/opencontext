@@ -22,12 +22,16 @@ work. It is not a penetration-test report.
   paths are passed as values to `-i`; option-like filenames cannot become
   commands. Automated tests pin this behavior.
 - **Rate limiting:** upload intent creation, completion, cancellation, retries,
-  and evidence review are rate limited per user. `memory` is the local
+  and evidence review are rate limited per user. A maximum 10-image set uses 10
+  of 120 upload-intent slots per 10 minutes, avoiding a one-set lockout while
+  retaining a bounded abuse budget. `memory` is the local
   single-instance default; `database` shares fixed-window quotas through the
   application database for multi-instance deployments. A PostgreSQL test with
   six independent processes verified that concurrent requests cannot exceed
   the stored quota. Backend failure can be configured fail-open or fail-closed,
-  and platform/WAF limits remain useful.
+  and platform/WAF limits remain useful. Fail-open mode now falls back to the
+  in-process quota instead of disabling limits entirely; fail-closed mode maps
+  an unavailable limiter to a service error rather than a misleading 429.
 - **Temporary files:** worker jobs use isolated temporary directories and
   best-effort cleanup. Upload intents expire and are swept with their objects.
 - **Direct transfer:** production media bytes go directly to object storage;

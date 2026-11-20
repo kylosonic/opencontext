@@ -40,6 +40,15 @@ Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
 same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
 during a limiter outage is safer for your deployment than allowing it.
 
+The application budgets 120 upload-intent requests per user per 10 minutes, so
+repeated maximum-size 10-image sets do not lock the account after one upload.
+Completion allows 60 requests per minute, cancellation permits 120, job retry
+permits 10 per job per minute, and evidence review permits 60 per job per
+minute. Responses expose `X-RateLimit-*` metadata and genuine quota exhaustion
+includes `Retry-After`. With `open`, a database limiter outage falls back to a
+bounded in-process quota; with `closed`, it returns a service error instead of
+misreporting the condition as a client 429.
+
 After deploying, verify the secret-safe readiness report:
 
 ```bash
@@ -293,6 +302,12 @@ OPENCONTEXT_DEMO_MODEL=<image-capable model>
 OPENAI_BASE_URL=<OpenAI-compatible endpoint>
 OPENAI_API_KEY=<provider key>       # or OPENCODE_API_KEY
 ```
+
+For Gemini, supply `GEMINI_API_KEY`. `OPENCONTEXT_DEMO_MODEL` defaults to
+`gemini-4-hydrogen` and can be set to another model available to the project.
+`GEMINI_BASE_URL` defaults to the Generative Language API v1beta endpoint. This
+selects native Gemini image analysis; text generation continues to use the local
+template provider.
 
 The launcher runs a container configuration check before starting the stack.
 It binds the configured model to the vision and text provider and disables

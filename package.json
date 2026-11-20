@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Turn video and images into context for text-only AI",
+  "overrides": {
+    "effect": "3.22.5"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -11,6 +14,7 @@
     "dev": "npm run build --workspace @kylosonic/opencontext-schemas && npm run dev --workspace web",
     "compose:demo": "node scripts/real-vision-demo.mjs",
     "fixture": "node scripts/generate-fixture.mjs",
+    "media:corpus": "node scripts/download-media-corpus.mjs",
     "evaluation:video": "node scripts/generate-measured-evaluation-video.mjs",
     "evaluation:hearing-video": "node scripts/generate-hearing-evaluation-video.mjs",
     "vision:fixture": "node scripts/generate-vision-reference.mjs",

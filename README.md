@@ -114,7 +114,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   deployments, with multi-process PostgreSQL contention coverage.
 - Database-backed queue and resumable worker stages.
 - Faster Whisper, OpenAI-compatible transcription, multimodal audio-chat,
-  OpenAI-compatible vision, Ollama, and deterministic fixture providers.
+  OpenAI-compatible vision, native Gemini vision, Ollama, and deterministic
+  fixture providers.
 - Independently selectable Tesseract OCR or vision-derived OCR compatibility.
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
@@ -141,7 +142,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   or speech accuracy.
 - Docker Compose is verified through a real upload and completed
   PostgreSQL-backed web/worker job in CI.
-- Python and npm packages have not been published.
+- Published `0.1.0` packages are available, but the next release has not been
+  cut for the unreleased fixes and Gemini provider.
 - A broader real-world evaluation set with conversational speech, noisy
   recordings, and dense UI remains pending.
 - The default demo fixture has no audio track, so the production smoke job

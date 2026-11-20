@@ -156,6 +156,17 @@ def test_provider_transport_errors_are_transient(factory, tmp_path: Path) -> Non
         _invoke(provider, tmp_path)
 
 
+def test_provider_429_preserves_bounded_retry_after() -> None:
+    provider = _openai_vision(
+        _client(httpx.Response(429, headers={"Retry-After": "15"}))
+    )
+
+    with pytest.raises(TransientFailure) as exc_info:
+        provider.analyze(b"frame", {"timestampSec": 0})
+
+    assert exc_info.value.retry_after_seconds == 15.0
+
+
 def test_opencode_headers_and_string_fields_are_normalized() -> None:
     seen: dict[str, str] = {}
 

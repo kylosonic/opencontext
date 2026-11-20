@@ -3,6 +3,7 @@ import { verifyOpsToken, verifyWorkerToken } from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
 import {
   consumeRateLimit,
+  RATE_LIMITS,
   resetRateLimits,
 } from "@/server/security/rate-limit";
 
@@ -75,6 +76,8 @@ describe("fixed-window rate limiting", () => {
     const blocked = await consumeRateLimit("user:1", 2, 60_000, 3_000);
     expect(blocked.allowed).toBe(false);
     expect(blocked.retryAfterSec).toBe(58);
+    expect(blocked.limit).toBe(2);
+    expect(blocked.backend).toBe("memory");
   });
 
   it("resets after the fixed window", async () => {
@@ -97,6 +100,7 @@ describe("fixed-window rate limiting", () => {
     const blocked = await consumeRateLimit("shared", 2, 60_000, 3_000);
     expect(blocked.allowed).toBe(false);
     expect(blocked.retryAfterSec).toBe(58);
+    expect(blocked.backend).toBe("database");
     expect(await prisma.rateLimitBucket.count()).toBe(1);
   });
 
@@ -110,10 +114,19 @@ describe("fixed-window rate limiting", () => {
     process.env.RATE_LIMIT_FAILURE_MODE = "closed";
     const closed = await consumeRateLimit("failure", 1, 60_000);
     expect(closed.allowed).toBe(false);
-    expect(closed.retryAfterSec).toBe(60);
+    expect(closed.retryAfterSec).toBe(30);
+    expect(closed.backend).toBe("unavailable");
+    expect(closed.unavailable).toBe(true);
 
     process.env.RATE_LIMIT_FAILURE_MODE = "open";
     const open = await consumeRateLimit("failure", 1, 60_000);
     expect(open.allowed).toBe(true);
+    expect(open.backend).toBe("memory-fallback");
+    expect(open.unavailable).toBe(true);
+  });
+
+  it("keeps upload budgets usable for repeated maximum-size image sets", () => {
+    expect(RATE_LIMITS.uploadIntent.limit).toBeGreaterThanOrEqual(120);
+    expect(RATE_LIMITS.uploadIntent.windowMs).toBe(10 * 60_000);
   });
 });

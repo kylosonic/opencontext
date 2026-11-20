@@ -3,7 +3,11 @@ import { CompleteUploadBatchRequestSchema } from "@kylosonic/opencontext-schemas
 import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
 import { jobToSummary } from "@/server/jobs";
-import { consumeRateLimit } from "@/server/security/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 import { completeUploadBatch } from "@/server/uploads";
 
 export const runtime = "nodejs";
@@ -17,13 +21,19 @@ export async function POST(request: Request): Promise<Response> {
     }
     const limit = await consumeRateLimit(
       `upload-complete:${session.user.id}`,
-      20,
-      60_000,
+      RATE_LIMITS.uploadComplete.limit,
+      RATE_LIMITS.uploadComplete.windowMs,
     );
     if (!limit.allowed) {
-      const response = errorResponse("RATE_LIMITED", "Too many upload completions");
-      response.headers.set("Retry-After", String(limit.retryAfterSec));
-      return response;
+      return applyRateLimitHeaders(
+        errorResponse(
+          limit.unavailable ? "INTERNAL" : "RATE_LIMITED",
+          limit.unavailable
+            ? "Upload completion is temporarily unavailable — try again shortly"
+            : `Upload completion limit reached — try again in ${limit.retryAfterSec} seconds`,
+        ),
+        limit,
+      );
     }
 
     let body: unknown;
@@ -56,8 +66,10 @@ export async function POST(request: Request): Promise<Response> {
         );
       case "INVALID_CONTENT":
         return errorResponse("VALIDATION_ERROR", result.message);
-      case "OK":
-        return NextResponse.json(jobToSummary(result.job), { status: 201 });
+      case "OK": {
+        const response = NextResponse.json(jobToSummary(result.job), { status: 201 });
+        return applyRateLimitHeaders(response, limit);
+      }
     }
   });
 }

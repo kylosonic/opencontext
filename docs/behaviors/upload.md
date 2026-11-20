@@ -65,6 +65,13 @@ Status: IMPLEMENTED — DIRECT UPLOAD PATH TESTED
 - **Failure outcome:** the batch is rejected if any image fails byte, MIME, decode, or size validation; no partial job is created. A PDF over 30 pages fails before analysis.
 - **Acceptance:** upload two checkout states → the job contains both images, two observations, and cross-image findings; upload a two-page PDF → the result contains two page observations and a PDF preview.
 
+## B5b — Upload rate budgets
+
+- **Actor:** signed-in user
+- **Expected outcome:** one maximum-size 10-image set uses 10 of 120 upload-intent slots per 10 minutes, leaving room for retries and multiple jobs. Upload completion allows 60 requests per minute, and cancellation allows 120 per minute.
+- **Visible outcome:** success and failure responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `X-RateLimit-Backend`. A genuine quota rejection returns 429 with `Retry-After`; a limiter backend outage never masquerades as a client quota rejection.
+- **Acceptance:** upload or retry multiple 10-image sets without reaching a one-set lockout; exhaust the documented budget with an isolated test identity and verify the 429 response exposes the reset time and quota headers.
+
 ## B6 — Job display name
 
 - **Actor:** signed-in user

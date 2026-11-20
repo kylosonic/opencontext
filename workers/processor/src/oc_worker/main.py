@@ -232,6 +232,27 @@ def _check_demo_vision(settings: Settings) -> None:
     build_text(settings)
 
 
+def _demo_vision_summary(settings: Settings) -> dict[str, object]:
+    output: dict[str, object] = {
+        "mode": "real" if settings.demo_vision else "fixture",
+        "visionProvider": settings.vision_provider.lower(),
+    }
+    if settings.demo_vision:
+        output.update(
+            {
+                "baseUrl": (
+                    settings.gemini_base_url
+                    if settings.vision_provider.lower() == "gemini"
+                    else settings.openai_base_url
+                ),
+                "visionModel": settings.vision_model,
+            }
+        )
+    else:
+        output["fixtureVisibleText"] = settings.fixture_visible_text
+    return output
+
+
 def _drain(
     api: ApiClient,
     pipeline: Pipeline,
@@ -368,19 +389,7 @@ def main() -> None:
         except ProviderConfigurationError as exc:
             log.error("demo vision configuration error: %s", exc)
             raise SystemExit(2) from None
-        output: dict[str, object] = {
-            "mode": "real" if settings.demo_vision else "fixture",
-            "visionProvider": settings.vision_provider.lower(),
-        }
-        if settings.demo_vision:
-            output.update(
-                {
-                    "baseUrl": settings.openai_base_url,
-                    "visionModel": settings.vision_model,
-                }
-            )
-        else:
-            output["fixtureVisibleText"] = settings.fixture_visible_text
+        output = _demo_vision_summary(settings)
         print(json.dumps(output, sort_keys=True))
         raise SystemExit(0)
     if args.once:

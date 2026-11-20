@@ -25,7 +25,11 @@ import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
 import { initialStageStates } from "@/server/jobs";
 import { createUser, resetDatabase, resetStorage } from "./helpers";
-import { resetRateLimits } from "@/server/security/rate-limit";
+import {
+  consumeRateLimit,
+  RATE_LIMITS,
+  resetRateLimits,
+} from "@/server/security/rate-limit";
 
 const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
@@ -114,6 +118,12 @@ describe("direct upload + list", () => {
       }),
     );
     expect(intentResponse.status).toBe(201);
+    expect(intentResponse.headers.get("X-RateLimit-Limit")).toBe(
+      String(RATE_LIMITS.uploadIntent.limit),
+    );
+    expect(intentResponse.headers.get("X-RateLimit-Remaining")).toBe(
+      String(RATE_LIMITS.uploadIntent.limit - 1),
+    );
     const intent = (await intentResponse.json()) as {
       uploadId: string;
       url: string;
@@ -176,19 +186,13 @@ describe("direct upload + list", () => {
   it("returns Retry-After when the upload-intent quota is exhausted", async () => {
     const user = await createUser();
     asUser(user.id);
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const response = await uploadsPost(
-        new Request("http://test.local/api/uploads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: `attempt-${attempt}.mp4`,
-            sizeBytes: 4,
-            mime: "video/mp4",
-          }),
-        }),
+    for (let attempt = 0; attempt < RATE_LIMITS.uploadIntent.limit; attempt += 1) {
+      const limited = await consumeRateLimit(
+        `upload-intent:${user.id}`,
+        RATE_LIMITS.uploadIntent.limit,
+        RATE_LIMITS.uploadIntent.windowMs,
       );
-      expect(response.status).toBe(201);
+      expect(limited.allowed).toBe(true);
     }
 
     const blocked = await uploadsPost(
@@ -204,6 +208,10 @@ describe("direct upload + list", () => {
     );
     expect(blocked.status).toBe(429);
     expect(Number(blocked.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(blocked.headers.get("X-RateLimit-Limit")).toBe(
+      String(RATE_LIMITS.uploadIntent.limit),
+    );
+    expect(blocked.headers.get("X-RateLimit-Remaining")).toBe("0");
   });
 
   it("complete rejects a missing object with 409 UPLOAD_INCOMPLETE", async () => {

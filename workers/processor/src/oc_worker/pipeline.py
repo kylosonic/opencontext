@@ -3,8 +3,9 @@ AGGREGATING → GENERATING_CONTEXT (weights 20/25/35/10/10).
 
 Implements the retry and resume semantics of jobs.md B4-B7:
 
-- Transient failures are retried within the stage (2 retries, backoff
-  2s/8s) via `run_with_retry`; they stay invisible unless exhausted,
+- Transient failures are retried within the stage (3 retries, backoff
+  2s/8s/20s, or a longer provider Retry-After) via `run_with_retry`;
+  they stay invisible unless exhausted,
   in which case the job fails with `failureKind=TRANSIENT`.
 - Permanent failures fail the job immediately with the specific reason
   (B6: "This file is not a valid video" / "Video is longer than the
@@ -71,7 +72,6 @@ NOT_AN_IMAGE_MESSAGE = "This file is not a valid image"
 NOT_A_PDF_MESSAGE = "This file is not a valid PDF"
 TOO_LONG_MESSAGE = "Video is longer than the 30-minute limit"
 NO_AUDIO_REASON = "NO_AUDIO"
-VISION_CONCURRENCY = 2
 LEASE_HEARTBEAT_SECONDS = 60.0
 
 # Injectable ffmpeg entry points (tests substitute fakes).
@@ -570,8 +570,10 @@ class Pipeline:
 
         observations: list[VisualObservation] = []
         ocr_items: list[OCRObservation] = []
-        with ThreadPoolExecutor(max_workers=VISION_CONCURRENCY) as pool:
+        vision_concurrency = max(1, min(8, self.settings.vision_concurrency))
+        with ThreadPoolExecutor(max_workers=vision_concurrency) as pool:
             for raw, ocr_raw in pool.map(analyze_one, selected):
+                raw["provider"] = self.vision_provider.name
                 observations.append(VisualObservation.model_validate(raw))
                 ocr_items.extend(OCRObservation.model_validate(item) for item in ocr_raw)
         log.info("job=%s stage=ANALYZING frames_analyzed=%d", job_id, len(observations))

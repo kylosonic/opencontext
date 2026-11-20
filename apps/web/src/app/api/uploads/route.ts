@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { UploadIntentRequestSchema } from "@kylosonic/opencontext-schemas";
 import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
-import { consumeRateLimit } from "@/server/security/rate-limit";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 import { createUploadIntent } from "@/server/uploads";
 
 export const runtime = "nodejs";
@@ -16,16 +20,17 @@ export async function POST(request: Request): Promise<Response> {
     }
     const limit = await consumeRateLimit(
       `upload-intent:${session.user.id}`,
-      10,
-      10 * 60_000,
+      RATE_LIMITS.uploadIntent.limit,
+      RATE_LIMITS.uploadIntent.windowMs,
     );
     if (!limit.allowed) {
       const response = errorResponse(
-        "RATE_LIMITED",
-        "Too many upload requests — wait a few minutes and try again",
+        limit.unavailable ? "INTERNAL" : "RATE_LIMITED",
+        limit.unavailable
+          ? "Upload rate limiting is temporarily unavailable — try again shortly"
+          : `Upload limit reached — try again in ${limit.retryAfterSec} seconds`,
       );
-      response.headers.set("Retry-After", String(limit.retryAfterSec));
-      return response;
+      return applyRateLimitHeaders(response, limit);
     }
 
     const contentLength = Number(request.headers.get("content-length") ?? "0");
@@ -50,7 +55,7 @@ export async function POST(request: Request): Promise<Response> {
     if (result.kind === "INVALID") {
       return errorResponse(result.code, result.message);
     }
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         uploadId: result.uploadId,
         method: result.method,
@@ -60,5 +65,6 @@ export async function POST(request: Request): Promise<Response> {
       },
       { status: 201 },
     );
+    return applyRateLimitHeaders(response, limit);
   });
 }

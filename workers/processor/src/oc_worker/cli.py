@@ -90,7 +90,7 @@ def _command_status(label: str, command: str, *, required: bool) -> dict[str, st
         subprocess.run(
             [resolved, "-version"],
             capture_output=True,
-            timeout=5,
+            timeout=15,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -233,6 +233,31 @@ def _provider_checks(
             )
         else:
             checks.append({"name": "vision", "status": "unverified", "detail": detail})
+    elif vision == "gemini":
+        configured = _configured(settings.gemini_api_key)
+        detail = (
+            f"Gemini Generative Language API configured at {settings.gemini_base_url}; "
+            f"model={settings.vision_model}"
+        )
+        if not configured:
+            checks.append(
+                {
+                    "name": "vision",
+                    "status": "missing",
+                    "detail": "GEMINI_API_KEY is not set",
+                }
+            )
+        elif check_network and not offline:
+            checks.append(
+                _remote_status(
+                    "vision",
+                    f"{settings.gemini_base_url.rstrip('/')}/models?pageSize=1",
+                    headers={"x-goog-api-key": settings.gemini_api_key},
+                    detail=detail,
+                )
+            )
+        else:
+            checks.append({"name": "vision", "status": "ok", "detail": detail})
     elif vision == "openai_compatible":
         configured = _configured(settings.openai_api_key)
         if not configured:
@@ -270,7 +295,7 @@ def _provider_checks(
                 "status": "missing",
                 "detail": (
                     f"unknown VISION_PROVIDER={settings.vision_provider!r}; "
-                    "expected fixture, ollama, openai_compatible, none, or off"
+                    "expected fixture, gemini, ollama, openai_compatible, none, or off"
                 ),
             }
         )

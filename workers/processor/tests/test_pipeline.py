@@ -14,11 +14,12 @@ from pathlib import Path
 import httpx
 
 from oc_worker import api_client as api_module
+from oc_worker import context as context_module
 from oc_worker import pipeline as pipeline_module
 from oc_worker.api_client import ApiClient
 from oc_worker.config import Settings
 from oc_worker.errors import TransientFailure
-from oc_worker.models import Segment
+from oc_worker.models import Certainty, Segment, VisualObservation
 from oc_worker.pipeline import Pipeline
 
 API_BASE = "http://api.test"
@@ -867,8 +868,8 @@ def test_transient_failure_exhausted_reports_retryable_fail(monkeypatch) -> None
     transcription = FakeTranscription(error=TransientFailure("provider busy"))
     pipeline = _make_pipeline(handler, transcription=transcription)
     assert pipeline.run_job(_job()) == "failed"
-    assert len(transcription.calls) == 3  # initial + 2 retries (2s/8s backoff)
-    assert delays == [2.0, 8.0]
+    assert len(transcription.calls) == 4  # initial + 3 retries (2s/8s/20s)
+    assert delays == [2.0, 8.0, 20.0]
     fail_bodies = [
         body for path, body in handler.json_requests() if path.endswith("/fail")
     ]
@@ -1111,3 +1112,28 @@ def test_canonical_vision_payload_flows_through_untouched() -> None:
         }
     ]
     assert json_payload["formatVersion"] == 2
+
+
+def test_context_records_the_actual_vision_model() -> None:
+    observation = VisualObservation(
+        timestampSec=0,
+        certainty=Certainty.OBSERVED,
+        sceneTitle="Checkout",
+        visibleText=["Checkout"],
+        provider="gemini",
+        model="gemini-test-model",
+    )
+
+    _, payload = context_module.build_context(
+        source_name="checkout.png",
+        duration_sec=1,
+        detail_level="MEDIUM",
+        segments=[],
+        observations=[observation],
+        ocr=[],
+        timeline=[],
+        source_kind="image",
+    )
+
+    assert payload["visualFindings"][0]["provider"] == "gemini"
+    assert payload["visualFindings"][0]["model"] == "gemini-test-model"
