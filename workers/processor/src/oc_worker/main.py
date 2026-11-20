@@ -29,6 +29,13 @@ LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 log = logging.getLogger("oc_worker.main")
 
 
+def _configure_logging() -> None:
+    """Enable application logs without writing presigned HTTP URLs to CI."""
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    for noisy_logger in ("httpx", "httpcore"):
+        logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
+
 class WorkerStopper:
     """Coordinates graceful worker shutdown without interrupting an active job."""
 
@@ -382,7 +389,7 @@ def main() -> None:
             settings,
             worker_job_timeout_seconds=max(0.0, args.job_timeout_seconds),
         )
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    _configure_logging()
     if args.check_demo_vision:
         try:
             _check_demo_vision(settings)

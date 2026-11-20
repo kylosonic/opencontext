@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Any
@@ -11,6 +12,13 @@ import pytest
 import oc_worker.main as worker_main
 from oc_worker.config import Settings
 from oc_worker.errors import TransientFailure
+
+
+def test_logging_suppresses_signed_http_urls() -> None:
+    worker_main._configure_logging()
+
+    assert logging.getLogger("httpx").level == logging.WARNING
+    assert logging.getLogger("httpcore").level == logging.WARNING
 
 
 class _FakeApi:

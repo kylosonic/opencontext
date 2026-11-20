@@ -20,6 +20,7 @@ pipeline tests prove the stride is applied before aggregation.
 from oc_worker.aggregation import (
     build_timeline,
     frame_selected,
+    limit_frames,
     mark_interaction_certainty,
 )
 from oc_worker.models import (
@@ -64,6 +65,19 @@ def test_frame_selected_stride_by_detail_level() -> None:
     assert not frame_selected(8.0, DetailLevel.MEDIUM)
     assert frame_selected(1.0, "HIGH")
     assert frame_selected(7.0, DetailLevel.HIGH)
+
+
+def test_limit_frames_evenly_samples_and_keeps_endpoints() -> None:
+    frames = [{"timestamp": float(index)} for index in range(10)]
+    assert limit_frames(frames, 10) == frames
+    assert limit_frames(frames, 0) == frames
+    assert [frame["timestamp"] for frame in limit_frames(frames, 1)] == [0.0]
+    assert [frame["timestamp"] for frame in limit_frames(frames, 4)] == [
+        0.0,
+        3.0,
+        6.0,
+        9.0,
+    ]
 
 
 def test_empty_observations_produce_empty_timeline() -> None:

@@ -128,6 +128,9 @@ class Settings:
     vision_concurrency: int = field(
         default_factory=lambda: _env_int("VISION_CONCURRENCY", 2)
     )
+    vision_max_frames: int = field(
+        default_factory=lambda: _env_int("VISION_MAX_FRAMES", 60)
+    )
     ocr_provider: str = field(
         default_factory=lambda: _env("OCR_PROVIDER", "vision") or "vision"
     )

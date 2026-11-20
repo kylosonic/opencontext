@@ -79,6 +79,23 @@ describe("claimJob — portable atomic claim (ADR-0001)", () => {
     expect(later?.id).toBe(job.id);
   });
 
+  it("defers a requeue to the provider's retry window", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    await claimJob({ workerId: "worker-a" });
+    const before = Date.now();
+
+    await requeueJob(job.id, {
+      stage: "ANALYZING",
+      attempts: 1,
+      retryAfterSec: 120,
+    });
+
+    const requeued = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
+    expect(requeued.availableAt?.getTime()).toBeGreaterThanOrEqual(before + 119_000);
+    expect(await claimJob({ workerId: "worker-b" })).toBeNull();
+  });
+
   it("returns null when the queue is idle", async () => {
     const user = await createUser();
     await createQueuedJob(user.id);

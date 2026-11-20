@@ -9,6 +9,7 @@ export interface FailInput {
   error: string;
   failureKind: "NONE" | "TRANSIENT" | "PERMANENT";
   retryable: boolean;
+  retryAfterSec?: number;
 }
 
 export type FailResult =
@@ -36,7 +37,11 @@ export async function failJob(jobId: string, workerId: string, input: FailInput)
     !transientBudgetExhausted(job.attempts);
 
   if (transientRequeue) {
-    const requeued = await requeueJob(jobId, { stage: input.stage, attempts: job.attempts });
+    const requeued = await requeueJob(jobId, {
+      stage: input.stage,
+      attempts: job.attempts,
+      retryAfterSec: input.retryAfterSec,
+    });
     return { kind: "REQUEUED", job: requeued };
   }
 

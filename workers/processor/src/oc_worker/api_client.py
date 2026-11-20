@@ -35,7 +35,7 @@ from typing import Any
 
 import httpx
 
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import PermanentFailure, TransientFailure, current_abort
 from oc_worker.providers.http_status import retry_after_seconds
 
 log = logging.getLogger("oc_worker.api")
@@ -49,6 +49,7 @@ def run_with_retry[T](
     *,
     retries: int = DEFAULT_RETRIES,
     backoffs: tuple[float, ...] = DEFAULT_BACKOFFS,
+    max_inline_retry_after_seconds: float = 30.0,
     on_retry: Callable[[Exception, float], None] | None = None,
 ) -> T:
     """Execute ``fn``, retrying transient failures (jobs.md B7).
@@ -65,6 +66,16 @@ def run_with_retry[T](
             return fn()
         except TransientFailure as exc:
             last_exc = exc
+            if (
+                exc.retry_after_seconds is not None
+                and exc.retry_after_seconds > max_inline_retry_after_seconds
+            ):
+                log.info(
+                    "transient_failure=%s deferred_retry_after=%.1fs",
+                    exc,
+                    exc.retry_after_seconds,
+                )
+                raise
             if attempt >= retries:
                 break
             backoff = backoffs[min(attempt, len(backoffs) - 1)]
@@ -78,7 +89,11 @@ def run_with_retry[T](
             )
             if on_retry is not None:
                 on_retry(exc, delay)
-            time.sleep(delay)
+            abort = current_abort()
+            if abort is not None:
+                abort.sleep(delay)
+            else:
+                time.sleep(delay)
     assert last_exc is not None
     raise last_exc
 
@@ -307,6 +322,7 @@ class ApiClient:
         error: str,
         failure_kind: str,
         retryable: bool,
+        retry_after_sec: float | None = None,
     ) -> dict[str, Any]:
         payload = {
             "stage": stage,
@@ -314,4 +330,6 @@ class ApiClient:
             "failureKind": failure_kind,
             "retryable": retryable,
         }
+        if retry_after_sec is not None:
+            payload["retryAfterSec"] = min(900, max(0, round(retry_after_sec)))
         return self._request("POST", f"/api/worker/jobs/{job_id}/fail", json=payload)

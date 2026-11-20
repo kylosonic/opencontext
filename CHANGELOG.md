@@ -10,8 +10,18 @@ All notable changes are documented here. The project follows
   per 10 minutes, rate-limit responses expose standard quota metadata, and
   limiter backend failures no longer masquerade as user quota exhaustion.
 - Hardened provider throttling with one hosted-worker vision request at a time
-  by default, three automatic retries, and bounded `Retry-After` handling. The
-  scheduled OpenCode worker runs with `VISION_CONCURRENCY=1`.
+  by default and three short in-stage retries. A longer upstream
+  `Retry-After` now defers the job for up to 15 minutes through the shared
+  queue instead of tying up the worker, and automatic claims increased from
+  two to five. The scheduled OpenCode worker runs with
+  `VISION_CONCURRENCY=1`.
+- Image/video analysis now reports progress after every selected frame, cancels
+  not-yet-started frames after a failure, and evenly samples long recordings
+  to `VISION_MAX_FRAMES` (60 by default) so one job cannot exhaust its deadline
+  on an unbounded frame count.
+- Worker HTTP-library access logs are suppressed because they included full
+  presigned object-storage URLs. Job, stage, status, and provider diagnostics
+  remain visible.
 - Added reproducible downloaded photo/video smoke coverage across JPEG, PNG,
   WebP, MP4, short and longer video, and an audio-bearing trailer.
 - Refreshed the npm lockfile, moved Next.js to 16.4.6, and pinned the patched

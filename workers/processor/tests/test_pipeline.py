@@ -13,12 +13,11 @@ from pathlib import Path
 
 import httpx
 
-from oc_worker import api_client as api_module
 from oc_worker import context as context_module
 from oc_worker import pipeline as pipeline_module
 from oc_worker.api_client import ApiClient
 from oc_worker.config import Settings
-from oc_worker.errors import TransientFailure
+from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.models import Certainty, Segment, VisualObservation
 from oc_worker.pipeline import Pipeline
 
@@ -323,6 +322,7 @@ def test_lease_heartbeat_survives_a_temporary_api_failure() -> None:
 def _make_pipeline(
     handler: _Handler,
     *,
+    settings: Settings | None = None,
     transcription: FakeTranscription | None = None,
     vision: FakeVision | None = None,
     ocr: FakeOcr | None = None,
@@ -336,7 +336,7 @@ def _make_pipeline(
 ) -> Pipeline:
     return Pipeline(
         _api(handler),
-        _settings(),
+        settings or _settings(),
         transcription_provider=transcription or FakeTranscription(),
         vision_provider=vision or FakeVision(),
         ocr_provider=ocr,
@@ -434,6 +434,8 @@ def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:
         f"/api/worker/jobs/{JOB_ID}/progress",  # TRANSCRIBING
         f"/api/worker/jobs/{JOB_ID}/stage-result",  # TRANSCRIBING
         f"/api/worker/jobs/{JOB_ID}/progress",  # ANALYZING
+        f"/api/worker/jobs/{JOB_ID}/progress",  # ANALYZING frame 1/2
+        f"/api/worker/jobs/{JOB_ID}/progress",  # ANALYZING frame 2/2
         f"/api/worker/jobs/{JOB_ID}/stage-result",  # ANALYZING
         f"/api/worker/jobs/{JOB_ID}/progress",  # AGGREGATING
         f"/api/worker/jobs/{JOB_ID}/stage-result",  # AGGREGATING
@@ -467,13 +469,17 @@ def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:
         "progress": 5,
         "message": "Analyzing visual frames",
     }
-    assert progress_bodies[5] == {
+    assert progress_bodies[5]["progress"] == 50
+    assert progress_bodies[5]["message"] == "Analyzed frame 1 of 2"
+    assert progress_bodies[6]["progress"] == 95
+    assert progress_bodies[6]["message"] == "Analyzed frame 2 of 2"
+    assert progress_bodies[7] == {
         "stage": "AGGREGATING",
         "stageStatus": "RUNNING",
         "progress": 20,
         "message": "Aggregating timeline",
     }
-    assert progress_bodies[6] == {
+    assert progress_bodies[8] == {
         "stage": "GENERATING_CONTEXT",
         "stageStatus": "RUNNING",
         "progress": 30,
@@ -817,6 +823,50 @@ def test_low_detail_selects_no_frames_at_one_fps() -> None:
     assert stage_results[3]["data"] == {"timeline": []}
 
 
+def test_analysis_failure_cancels_remaining_queued_frames() -> None:
+    handler = _Handler()
+    vision = FakeVision(error=PermanentFailure("provider rejected image"))
+    settings = Settings(
+        worker_api_url=API_BASE,
+        worker_id="worker-1",
+        vision_concurrency=1,
+    )
+    pipeline = _make_pipeline(
+        handler,
+        settings=settings,
+        vision=vision,
+        extract_frames=_extract_frames_ok(tuple(float(value) for value in range(10))),
+    )
+
+    assert pipeline.run_job(_job(detail_level="HIGH")) == "failed"
+    assert len(vision.calls) == 1
+    failures = [
+        body for path, body in handler.json_requests() if path.endswith("/fail")
+    ]
+    assert failures[-1]["stage"] == "ANALYZING"
+    assert failures[-1]["error"] == "provider rejected image"
+
+
+def test_vision_frame_cap_evenly_samples_long_video() -> None:
+    handler = _Handler()
+    vision = FakeVision()
+    settings = Settings(
+        worker_api_url=API_BASE,
+        worker_id="worker-1",
+        vision_concurrency=1,
+        vision_max_frames=3,
+    )
+    pipeline = _make_pipeline(
+        handler,
+        settings=settings,
+        vision=vision,
+        extract_frames=_extract_frames_ok((0.0, 1.0, 2.0, 3.0, 4.0)),
+    )
+
+    assert pipeline.run_job(_job(detail_level="HIGH")) == "completed"
+    assert [call[1]["timestampSec"] for call in vision.calls] == [0.0, 2.0, 4.0]
+
+
 def test_permanent_failure_not_a_video_fails_job() -> None:
     handler = _Handler()
     transcription = FakeTranscription()
@@ -863,7 +913,7 @@ def test_transient_failure_exhausted_reports_retryable_fail(monkeypatch) -> None
     def fake_sleep(delay: float) -> None:
         delays.append(delay)
 
-    monkeypatch.setattr(api_module.time, "sleep", fake_sleep)
+    monkeypatch.setattr(pipeline_module.JobAbort, "sleep", lambda _self, delay: fake_sleep(delay))
     handler = _Handler()
     transcription = FakeTranscription(error=TransientFailure("provider busy"))
     pipeline = _make_pipeline(handler, transcription=transcription)
@@ -887,6 +937,30 @@ def test_transient_failure_exhausted_reports_retryable_fail(monkeypatch) -> None
     ]
     assert all(result["stage"] != "TRANSCRIBING" for result in stage_results)
     assert "complete" not in handler.paths()
+
+
+def test_provider_retry_after_defers_the_whole_job() -> None:
+    handler = _Handler()
+    transcription = FakeTranscription(
+        error=TransientFailure("provider throttled", retry_after_seconds=120.0)
+    )
+    pipeline = _make_pipeline(handler, transcription=transcription)
+
+    assert pipeline.run_job(_job()) == "failed"
+
+    assert len(transcription.calls) == 1
+    fail_bodies = [
+        body for path, body in handler.json_requests() if path.endswith("/fail")
+    ]
+    assert fail_bodies == [
+        {
+            "stage": "TRANSCRIBING",
+            "error": "provider throttled",
+            "failureKind": "TRANSIENT",
+            "retryable": True,
+            "retryAfterSec": 120,
+        }
+    ]
 
 
 def test_job_timeout_fails_processing_without_completion() -> None:
@@ -936,7 +1010,7 @@ def test_transient_then_success_within_stage_is_invisible(monkeypatch) -> None:
     def fake_sleep(delay: float) -> None:
         delays.append(delay)
 
-    monkeypatch.setattr(api_module.time, "sleep", fake_sleep)
+    monkeypatch.setattr(pipeline_module.JobAbort, "sleep", lambda _self, delay: fake_sleep(delay))
     handler = _Handler()
     attempts = 0
 

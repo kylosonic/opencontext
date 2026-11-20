@@ -9,7 +9,7 @@ import { prisma } from "@/server/db/prisma";
 export const LEASE_MS = 5 * 60 * 1000;
 export const BACKOFF_MS = [2_000, 8_000] as const;
 /** Auto-retry budget for transient failures (jobs.md B7, blueprint §4). */
-export const QUEUE_MAX_ATTEMPTS = 2;
+export const QUEUE_MAX_ATTEMPTS = 5;
 
 /** Portable claimability predicates (no SKIP LOCKED per ADR-0003). */
 function claimConditions(now: Date) {

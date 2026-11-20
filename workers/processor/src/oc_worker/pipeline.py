@@ -28,7 +28,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -479,6 +479,8 @@ class Pipeline:
         frames: list[dict[str, Any]],
         detail_level: DetailLevel,
         duration_sec: float | None,
+        *,
+        report_progress: bool,
     ) -> tuple[list[VisualObservation], list[OCRObservation]]:
         job_id = job["id"]
         selected = [
@@ -487,95 +489,166 @@ class Pipeline:
             if frame.get("sourceKind") != "video"
             or aggregation.frame_selected(float(frame["timestamp"]), detail_level)
         ]
+        selected = aggregation.limit_frames(selected, self.settings.vision_max_frames)
+        stop_after_failure = threading.Event()
 
-        def analyze_one(frame: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-            frame_bytes = Path(frame["path"]).read_bytes()
-            vision_context = {
-                "timestampSec": float(frame["timestamp"]),
-                "detailLevel": detail_level.value,
-                "jobName": job.get("displayName"),
-                "durationSec": duration_sec,
-                "sourceKind": self._source_kind(job),
-                "sourceIndex": int(frame.get("sourceIndex") or 0),
-                "sourceName": frame.get("sourceName"),
-            }
-            raw = self._timed(
-                lambda: run_with_retry(
-                    lambda: self.vision_provider.analyze(frame_bytes, vision_context)
-                )
-            )
-            raw = aggregation.mark_interaction_certainty(raw)
-            raw["timestampSec"] = float(frame["timestamp"])
-            raw["frameId"] = frame.get("frameId")
-            raw["provider"] = self.vision_provider.name
-            ocr: list[dict[str, Any]] = []
-            embedded_text = str(frame.get("embeddedText") or "").strip()
-            if embedded_text:
-                for line in embedded_text.splitlines():
-                    text = line.strip()
-                    if text:
-                        ocr.append(
-                            {
-                                "timestampSec": float(frame["timestamp"]),
-                                "frameId": frame.get("frameId"),
-                                "text": text,
-                                "provider": "pdf_text",
-                            }
-                        )
-            if self.ocr_provider is None:
-                for text_item in raw.get("visibleText") or []:
-                    # canonical visibleText entries are strings; legacy
-                    # providers may still send {text, confidence?} dicts.
-                    if isinstance(text_item, str):
-                        text = text_item.strip()
-                        confidence: float | None = None
-                    elif isinstance(text_item, dict):
-                        text = str(text_item.get("text") or "").strip()
-                        confidence = text_item.get("confidence")
-                    else:
-                        continue
-                    if not text:
-                        continue
-                    row: dict[str, Any] = {
-                        "timestampSec": float(frame["timestamp"]),
-                        "frameId": frame.get("frameId"),
-                        "text": text,
-                        "provider": self.vision_provider.name,
-                    }
-                    if confidence is not None:
-                        row["confidence"] = confidence
-                    ocr.append(row)
-            else:
-                recognized = self._timed(
+        def analyze_one(
+            index: int, frame: dict[str, Any]
+        ) -> tuple[int, dict[str, Any], list[dict[str, Any]]]:
+            if stop_after_failure.is_set():
+                return index, {}, []
+            previous_abort = bind_abort(self._cancel)
+            try:
+                frame_bytes = Path(frame["path"]).read_bytes()
+                vision_context = {
+                    "timestampSec": float(frame["timestamp"]),
+                    "detailLevel": detail_level.value,
+                    "jobName": job.get("displayName"),
+                    "durationSec": duration_sec,
+                    "sourceKind": self._source_kind(job),
+                    "sourceIndex": int(frame.get("sourceIndex") or 0),
+                    "sourceName": frame.get("sourceName"),
+                }
+
+                def log_vision_retry(exc: Exception, delay: float) -> None:
+                    log.warning(
+                        "job=%s stage=ANALYZING frame=%d/%d provider_retry "
+                        "error=%r retry_in=%.1fs",
+                        job_id,
+                        index + 1,
+                        len(selected),
+                        str(exc),
+                        delay,
+                    )
+
+                raw = self._timed(
                     lambda: run_with_retry(
-                        lambda: self.ocr_provider.extract(frame_bytes, vision_context)
+                        lambda: self.vision_provider.analyze(frame_bytes, vision_context),
+                        on_retry=log_vision_retry,
                     )
                 )
-                for item in recognized:
-                    if not isinstance(item, dict):
-                        continue
-                    text = str(item.get("text") or "").strip()
-                    if not text:
-                        continue
-                    row: dict[str, Any] = {
-                        "timestampSec": float(frame["timestamp"]),
-                        "frameId": frame.get("frameId"),
-                        "text": text,
-                        "provider": self.ocr_provider.name,
-                    }
-                    if item.get("confidence") is not None:
-                        row["confidence"] = item["confidence"]
-                    ocr.append(row)
-            return raw, ocr
+                raw = aggregation.mark_interaction_certainty(raw)
+                raw["timestampSec"] = float(frame["timestamp"])
+                raw["frameId"] = frame.get("frameId")
+                raw["provider"] = self.vision_provider.name
+                ocr: list[dict[str, Any]] = []
+                embedded_text = str(frame.get("embeddedText") or "").strip()
+                if embedded_text:
+                    for line in embedded_text.splitlines():
+                        text = line.strip()
+                        if text:
+                            ocr.append(
+                                {
+                                    "timestampSec": float(frame["timestamp"]),
+                                    "frameId": frame.get("frameId"),
+                                    "text": text,
+                                    "provider": "pdf_text",
+                                }
+                            )
+                if self.ocr_provider is None:
+                    for text_item in raw.get("visibleText") or []:
+                        # canonical visibleText entries are strings; legacy
+                        # providers may still send {text, confidence?} dicts.
+                        if isinstance(text_item, str):
+                            text = text_item.strip()
+                            confidence: float | None = None
+                        elif isinstance(text_item, dict):
+                            text = str(text_item.get("text") or "").strip()
+                            confidence = text_item.get("confidence")
+                        else:
+                            continue
+                        if not text:
+                            continue
+                        row: dict[str, Any] = {
+                            "timestampSec": float(frame["timestamp"]),
+                            "frameId": frame.get("frameId"),
+                            "text": text,
+                            "provider": self.vision_provider.name,
+                        }
+                        if confidence is not None:
+                            row["confidence"] = confidence
+                        ocr.append(row)
+                else:
+                    def log_ocr_retry(exc: Exception, delay: float) -> None:
+                        log.warning(
+                            "job=%s stage=ANALYZING frame=%d/%d ocr_retry "
+                            "error=%r retry_in=%.1fs",
+                            job_id,
+                            index + 1,
+                            len(selected),
+                            str(exc),
+                            delay,
+                        )
+
+                    recognized = self._timed(
+                        lambda: run_with_retry(
+                            lambda: self.ocr_provider.extract(frame_bytes, vision_context),
+                            on_retry=log_ocr_retry,
+                        )
+                    )
+                    for item in recognized:
+                        if not isinstance(item, dict):
+                            continue
+                        text = str(item.get("text") or "").strip()
+                        if not text:
+                            continue
+                        row: dict[str, Any] = {
+                            "timestampSec": float(frame["timestamp"]),
+                            "frameId": frame.get("frameId"),
+                            "text": text,
+                            "provider": self.ocr_provider.name,
+                        }
+                        if item.get("confidence") is not None:
+                            row["confidence"] = item["confidence"]
+                        ocr.append(row)
+                return index, raw, ocr
+            except BaseException:
+                stop_after_failure.set()
+                raise
+            finally:
+                bind_abort(previous_abort)
 
         observations: list[VisualObservation] = []
         ocr_items: list[OCRObservation] = []
         vision_concurrency = max(1, min(8, self.settings.vision_concurrency))
-        with ThreadPoolExecutor(max_workers=vision_concurrency) as pool:
-            for raw, ocr_raw in pool.map(analyze_one, selected):
-                raw["provider"] = self.vision_provider.name
-                observations.append(VisualObservation.model_validate(raw))
-                ocr_items.extend(OCRObservation.model_validate(item) for item in ocr_raw)
+        if not selected:
+            return observations, ocr_items
+        pool = ThreadPoolExecutor(max_workers=vision_concurrency)
+        completed_results: list[tuple[int, dict[str, Any], list[dict[str, Any]]]] = []
+        futures = {
+            pool.submit(analyze_one, index, frame): index
+            for index, frame in enumerate(selected)
+        }
+        try:
+            for completed_count, future in enumerate(as_completed(futures), start=1):
+                result = future.result()
+                completed_results.append(result)
+                index = result[0]
+                if report_progress:
+                    self.api.progress(
+                        job_id,
+                        stage="ANALYZING",
+                        stage_status="RUNNING",
+                        progress=5 + round(90 * completed_count / len(selected)),
+                        message=f"Analyzed frame {completed_count} of {len(selected)}",
+                    )
+                log.info(
+                    "job=%s stage=ANALYZING frame=%d/%d status=analyzed",
+                    job_id,
+                    index + 1,
+                    len(selected),
+                )
+        except BaseException:
+            stop_after_failure.set()
+            pool.shutdown(wait=True, cancel_futures=True)
+            raise
+        else:
+            pool.shutdown(wait=True)
+
+        for _, raw, ocr_raw in sorted(completed_results, key=lambda item: item[0]):
+            raw["provider"] = self.vision_provider.name
+            observations.append(VisualObservation.model_validate(raw))
+            ocr_items.extend(OCRObservation.model_validate(item) for item in ocr_raw)
         log.info("job=%s stage=ANALYZING frames_analyzed=%d", job_id, len(observations))
         return observations, ocr_items
 
@@ -601,7 +674,11 @@ class Pipeline:
                 message="Analyzing visual frames",
             )
         observations, ocr_items = self._analyze_frames(
-            job, frames, detail_level, probe_data.get("durationSec")
+            job,
+            frames,
+            detail_level,
+            probe_data.get("durationSec"),
+            report_progress=not resume,
         )
         if not resume:
             self.api.stage_result(
@@ -724,7 +801,13 @@ class Pipeline:
             self._fail(job_id, str(exc), "PERMANENT", retryable=False)
             return "failed"
         except TransientFailure as exc:
-            self._fail(job_id, str(exc), "TRANSIENT", retryable=True)
+            self._fail(
+                job_id,
+                str(exc),
+                "TRANSIENT",
+                retryable=True,
+                retry_after_seconds=exc.retry_after_seconds,
+            )
             return "failed"
         finally:
             self._stop_heartbeat()
@@ -734,7 +817,15 @@ class Pipeline:
         log.info("job=%s status=completed duration=%.1fs", job_id, elapsed)
         return "completed"
 
-    def _fail(self, job_id: str, error: str, failure_kind: str, *, retryable: bool) -> None:
+    def _fail(
+        self,
+        job_id: str,
+        error: str,
+        failure_kind: str,
+        *,
+        retryable: bool,
+        retry_after_seconds: float | None = None,
+    ) -> None:
         log.error(
             "job=%s stage=%s status=failed error=%r failure_kind=%s",
             job_id,
@@ -749,6 +840,7 @@ class Pipeline:
                 error=error,
                 failure_kind=failure_kind,
                 retryable=retryable,
+                retry_after_sec=retry_after_seconds,
             )
         except (PermanentFailure, TransientFailure) as exc:
             log.error("job=%s fail_report_error=%s", job_id, exc)

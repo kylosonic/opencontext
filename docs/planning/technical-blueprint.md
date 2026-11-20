@@ -91,7 +91,7 @@ Loop: idle-poll claim every 3s; concurrency 1 default (`WORKER_CONCURRENCY`, bou
 
 **Progress cadence:** stage start/end + intra-stage fractions; API computes percent from stage weights; UI polls every 3s (jobs B3).
 
-**Retry semantics:** *transient* (timeouts/rate-limit/5xx/busy): three retries within the stage with backoff (2s, 8s, 20s), or the provider's longer bounded `Retry-After`, invisible unless exhausted (B7). *manual* (B5): API resets failed stages, same job id, completed stages skipped, aggregation+context re-run. *permanent* (B6): no retry of any kind. **Resume idempotency:** stage-result upserts, artifact upserts by kind+timestamp, expired lease → re-queue → worker re-checks server `stageStates` before running anything.
+**Retry semantics:** *transient* (timeouts/rate-limit/5xx/busy): three in-stage retries with backoff (2s, 8s, 20s). A longer `Retry-After` (bounded to 15 minutes) defers the job through the shared queue, with up to five claims, so a throttled provider does not occupy a worker; errors stay invisible unless the budget is exhausted (B7). *manual* (B5): API resets failed stages, same job id, completed stages skipped, aggregation+context re-run. *permanent* (B6): no retry of any kind. **Resume idempotency:** stage-result upserts, artifact upserts by kind+timestamp, expired lease → re-queue → worker re-checks server `stageStates` before running anything.
 
 ## 5. Demo design (demo.md B1–B3)
 
