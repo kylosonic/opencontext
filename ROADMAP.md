@@ -12,8 +12,6 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 - Connect the operations alert endpoint to a production notification receiver
   and record a real delivery after the persistent worker is live.
-- Add an audio-backed end-to-end fixture that exercises real speech
-  transcription in CI.
 - Add CORS for any custom production domain.
 
 ## Later

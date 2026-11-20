@@ -48,6 +48,7 @@ from oc_worker.models import (
     OCRObservation,
     Segment,
     VisualObservation,
+    clamp_segments_to_duration,
 )
 from oc_worker.pdf import MAX_PDF_PAGES, extract_pdf_pages
 from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
@@ -433,7 +434,11 @@ class Pipeline:
         return probe_data, audio_path, frames
 
     def _transcribing(
-        self, job: dict[str, Any], audio_path: Path | None, resume: bool
+        self,
+        job: dict[str, Any],
+        audio_path: Path | None,
+        resume: bool,
+        duration_sec: float | None,
     ) -> list[Segment]:
         self._current_stage = "TRANSCRIBING"
         self._check_deadline()
@@ -463,6 +468,9 @@ class Pipeline:
                 lambda: self.transcription_provider.transcribe(str(audio_path))
             )
         )
+        # Speech models can end past the media; the stored segments are the
+        # source of truth for the results view, so bound them before sending.
+        segments = clamp_segments_to_duration(segments, duration_sec)
         if not resume:
             self.api.stage_result(
                 job_id,
@@ -782,7 +790,12 @@ class Pipeline:
                 probe_data, audio_path, frames = self._extracting(job, workdir, resume_extracting)
 
                 resume_transcribing = self._done(job, "TRANSCRIBING")
-                segments = self._transcribing(job, audio_path, resume_transcribing)
+                segments = self._transcribing(
+                    job,
+                    audio_path,
+                    resume_transcribing,
+                    probe_data.get("durationSec"),
+                )
 
                 resume_analyzing = self._done(job, "ANALYZING")
                 observations, ocr_items = self._analyzing(

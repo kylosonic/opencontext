@@ -20,6 +20,7 @@ from oc_worker.config import Settings
 from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.models import Certainty, Segment, VisualObservation
 from oc_worker.pipeline import Pipeline
+from oc_worker.replay import validate_context
 
 API_BASE = "http://api.test"
 JOB_ID = "job-1"
@@ -593,6 +594,49 @@ def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:
     assert json_payload["timeline"] == expected_timeline
     assert text.payloads and text.payloads[-1]["formatVersion"] == 2
     assert text.payloads[-1] == json_payload
+
+
+def test_transcript_bounds_are_clamped_to_the_probed_duration() -> None:
+    """A speech model may end past the media; stored and exported bounds are bounded."""
+    handler = _Handler()
+    transcription = FakeTranscription(
+        segments=[
+            Segment(start=0.0, end=4.0, text="Opening"),
+            Segment(start=10.0, end=99.0, text="Trailing"),
+        ]
+    )
+    pipeline = _make_pipeline(
+        handler,
+        transcription=transcription,
+        probe=_probe_ok(duration=12.0),
+        extract_frames=_extract_frames_ok((0.0,)),
+    )
+
+    assert pipeline.run_job(_job()) == "completed"
+
+    stage_results = [
+        body
+        for path, body in handler.json_requests()
+        if path.endswith("/stage-result")
+    ]
+    transcribing = next(
+        result for result in stage_results if result["stage"] == "TRANSCRIBING"
+    )
+    assert transcribing["data"]["segments"] == [
+        {"start": 0.0, "end": 4.0, "text": "Opening"},
+        {"start": 10.0, "end": 12.0, "text": "Trailing"},
+    ]
+
+    payload = next(
+        result for result in stage_results if result["stage"] == "GENERATING_CONTEXT"
+    )["data"]["json"]
+    assert [segment["end"] for segment in payload["transcript"]] == [4.0, 12.0]
+    assert [
+        evidence["endSec"]
+        for evidence in payload["evidence"]
+        if evidence["kind"] == "TRANSCRIPT"
+    ] == [4.0, 12.0]
+    assert validate_context(payload)["ok"] is True
 
 
 def test_independent_ocr_provider_replaces_vision_derived_rows() -> None:

@@ -120,6 +120,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
 - Generated-video end-to-end test from upload through worker output.
+- Audio-backed worker end-to-end test that transcribes the committed Harvard
+  recording with real Faster Whisper in CI and checks transcript WER/CER and
+  evidence timestamp bounds.
 - Generated image-set and PDF jobs are covered from upload and batch commit
   through worker rendering, result persistence, and export data.
 - Real S3-compatible presigned upload/download coverage in CI.
@@ -208,7 +211,17 @@ cd workers/processor
 
 `npm test` includes cross-language contract tests and generated media end-to-end
 tests that exercise direct upload, queue claim, worker HTTP calls, FFmpeg and
-PDFium extraction, provider output, evidence persistence, and exports.
+PDFium extraction, provider output, evidence persistence, and exports. The
+worker suite also contains an opt-in audio-backed test that runs real local
+speech recognition against the attributed Harvard recording:
+
+```bash
+cd workers/processor
+OPENCONTEXT_ASR_E2E=1 .venv/Scripts/python -m pytest tests/test_audio_e2e.py
+```
+
+The first run downloads the `tiny.en` model into the Hugging Face cache; CI
+caches it and runs the test on every build.
 
 ## Architecture
 

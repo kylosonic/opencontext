@@ -62,6 +62,12 @@ All notable changes are documented here. The project follows
   `@kylosonic/opencontext-schemas@0.1.0` on npm. npm publishing now uses
   GitHub OIDC Trusted Publishing, so release workflows no longer need a
   long-lived publish token.
+- Clamped speech-model segment bounds to the probed source duration, so a
+  trailing Faster Whisper segment can no longer create evidence timestamps past
+  the end of the recording.
+- Added an audio-backed worker end-to-end test that transcribes the committed
+  Harvard recording with real Faster Whisper, checks transcript WER/CER, and
+  validates the evidence ledger and its timestamp bounds in CI.
 - Added a worker lease heartbeat so long transcription and vision stages keep
   their queue claim, and made the worker container run as an unprivileged user.
 - Added PNG, JPEG, and WebP image inputs, including ordered sets of up to 10
