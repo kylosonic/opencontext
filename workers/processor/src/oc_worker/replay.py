@@ -70,12 +70,18 @@ def validate_context(payload: dict[str, Any]) -> dict[str, Any]:
                 _error("SOURCE_NAME_MISSING", "source.name", "Source name is required")
             )
         duration = _number(source.get("durationSec"))
-        if duration is None or duration <= 0:
+        still_source = str(source.get("kind") or "").lower() in {"image", "pdf"}
+        if duration is None or duration < 0 or (duration == 0 and not still_source):
+            duration_message = (
+                "Source duration must be a non-negative number for a still source"
+                if still_source
+                else "Source duration must be a positive number"
+            )
             errors.append(
                 _error(
                     "SOURCE_DURATION_INVALID",
                     "source.durationSec",
-                    "Source duration must be a positive number",
+                    duration_message,
                 )
             )
 
