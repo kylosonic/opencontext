@@ -10,11 +10,20 @@ export const LEASE_MS = 5 * 60 * 1000;
 export const BACKOFF_MS = [2_000, 8_000] as const;
 /** Auto-retry budget for transient failures (jobs.md B7, blueprint §4). */
 export const QUEUE_MAX_ATTEMPTS = 5;
+const CLAIMABLE_STATUSES = [
+  "QUEUED",
+  "DOWNLOADING",
+  "EXTRACTING",
+  "TRANSCRIBING",
+  "ANALYZING",
+  "AGGREGATING",
+  "GENERATING_CONTEXT",
+] as const;
 
 /** Portable claimability predicates (no SKIP LOCKED per ADR-0003). */
 function claimConditions(now: Date) {
   return {
-    status: "QUEUED" as const,
+    status: { in: [...CLAIMABLE_STATUSES] },
     OR: [
       { claimedBy: null },
       { leaseUntil: null },
@@ -61,7 +70,11 @@ export async function claimJob(input: ClaimInput) {
       continue; // lost a race; try the next candidate
     }
     const job = await prisma.job.findUnique({ where: { id: candidate.id } });
-    if (job && job.claimedBy === input.workerId && job.status === "QUEUED") {
+    if (
+      job &&
+      job.claimedBy === input.workerId &&
+      (CLAIMABLE_STATUSES as readonly string[]).includes(job.status)
+    ) {
       return job;
     }
   }
@@ -78,7 +91,7 @@ export function isClaimable(
   },
   now: Date = new Date(),
 ): boolean {
-  if (job.status !== "QUEUED") {
+  if (!(CLAIMABLE_STATUSES as readonly string[]).includes(job.status)) {
     return false;
   }
   const leaseFree =

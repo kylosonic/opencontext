@@ -61,6 +61,26 @@ describe("claimJob — portable atomic claim (ADR-0001)", () => {
     expect(reclaimed?.attempts).toBe(2);
   });
 
+  it("recovers an active stage after its worker lease expires", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    await claimJob({ workerId: "worker-a" });
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: "ANALYZING",
+        leaseUntil: new Date(Date.now() - 1000),
+      },
+    });
+
+    const recovered = await claimJob({ workerId: "worker-b" });
+
+    expect(recovered?.id).toBe(job.id);
+    expect(recovered?.status).toBe("ANALYZING");
+    expect(recovered?.claimedBy).toBe("worker-b");
+    expect(recovered?.attempts).toBe(2);
+  });
+
   it("respects availableAt backoff from a transient requeue", async () => {
     const user = await createUser();
     const job = await createQueuedJob(user.id);

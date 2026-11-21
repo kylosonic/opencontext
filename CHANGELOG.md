@@ -22,6 +22,9 @@ All notable changes are documented here. The project follows
 - Worker HTTP-library access logs are suppressed because they included full
   presigned object-storage URLs. Job, stage, status, and provider diagnostics
   remain visible.
+- Active jobs whose worker disappears are claimable again when their lease
+  expires. Previously only `QUEUED` rows were reclaimed, so a killed process
+  could leave an `ANALYZING` job stuck indefinitely.
 - Added reproducible downloaded photo/video smoke coverage across JPEG, PNG,
   WebP, MP4, short and longer video, and an audio-bearing trailer.
 - Refreshed the npm lockfile, moved Next.js to 16.4.6, and pinned the patched
