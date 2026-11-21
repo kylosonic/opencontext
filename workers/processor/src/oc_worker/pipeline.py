@@ -512,6 +512,7 @@ class Pipeline:
                     "timestampSec": float(frame["timestamp"]),
                     "detailLevel": detail_level.value,
                     "jobName": job.get("displayName"),
+                    "sessionId": f"opencontext-{job_id}",
                     "durationSec": duration_sec,
                     "sourceKind": self._source_kind(job),
                     "sourceIndex": int(frame.get("sourceIndex") or 0),

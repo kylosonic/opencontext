@@ -108,8 +108,9 @@ class OpenAICompatibleVisionProvider:
                 },
             ],
         }
+        request_session = str(context.get("sessionId") or self.session_id)
         headers = openai_compatible_headers(
-            self.api_key, self.base_url, self.session_id
+            self.api_key, self.base_url, request_session
         )
         try:
             response = self._client.post(

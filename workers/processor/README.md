@@ -142,7 +142,9 @@ the worker. Provider settings are read from the worker process environment.
 - `VISION_PROVIDER=ollama` remains available for a local Ollama server.
 - `VISION_PROVIDER=openai_compatible` can call OpenCode Go with
   `OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1`,
-  `OPENCODE_API_KEY`, and an image-capable `VISION_MODEL`.
+  `OPENCODE_API_KEY`, and an image-capable `VISION_MODEL`. Each claimed job
+  receives an independent `x-opencode-session` identifier so one job cannot
+  exhaust another job's session quota or share conversation state.
 - `VISION_PROVIDER=gemini` uses `GEMINI_API_KEY`, an image-capable
   `VISION_MODEL`, and `GEMINI_BASE_URL` for native Gemini image analysis.
   `VISION_TIMEOUT_SECONDS` bounds the request.

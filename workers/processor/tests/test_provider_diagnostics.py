@@ -229,6 +229,39 @@ def test_opencode_headers_and_string_fields_are_normalized() -> None:
     assert observation["importantChanges"] == ["A toast appears"]
 
 
+def test_opencode_job_session_overrides_the_shared_default() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.update({key.lower(): value for key, value in request.headers.items()})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {"sceneTitle": "Independent job"}
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    provider = OpenAICompatibleVisionProvider(
+        base_url="https://opencode.ai/inference/go/openai/v1",
+        api_key="secret",
+        model="glm-5.3-flash",
+        session_id="shared-worker-default",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    provider.analyze(b"frame", {"sessionId": "opencontext-job-123"})
+
+    assert seen["x-opencode-session"] == "opencontext-job-123"
+
+
 def _write_wav(path: Path) -> None:
     with wave.open(str(path), "wb") as output:
         output.setnchannels(1)
