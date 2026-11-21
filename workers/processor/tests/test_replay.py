@@ -114,6 +114,65 @@ def _payload() -> dict:
     }
 
 
+def _still_payload() -> dict:
+    return {
+        "formatVersion": 2,
+        "evidenceVersion": 1,
+        "source": {
+            "name": "checkout.png",
+            "kind": "image",
+            "durationSec": 0,
+            "detailLevel": "MEDIUM",
+        },
+        "timeline": [{"start": 0, "end": 0, "summary": "A checkout page."}],
+        "transcript": [],
+        "visualFindings": [
+            {
+                "field": "visualDescription",
+                "timestampSec": 0,
+                "certainty": "OBSERVED",
+                "text": "A checkout page.",
+            }
+        ],
+        "uiHierarchy": [],
+        "interactions": [],
+        "visibleText": [],
+        "stateTransitions": [],
+        "implementationObservations": [],
+        "evidence": [
+            {
+                "id": 1,
+                "kind": "VISUAL",
+                "timestampSec": 0,
+                "certainty": "OBSERVED",
+                "text": "A checkout page.",
+                "source": {"collection": "visualFindings", "index": 0},
+            }
+        ],
+    }
+
+
+def test_validate_context_accepts_zero_duration_still_source() -> None:
+    report = validate_context(_still_payload())
+    assert report["ok"] is True, report["errors"]
+
+
+def test_validate_context_rejects_negative_and_nonzero_video_duration() -> None:
+    negative = _still_payload()
+    negative["source"]["durationSec"] = -1
+    assert any(
+        error["code"] == "SOURCE_DURATION_INVALID"
+        for error in validate_context(negative)["errors"]
+    )
+
+    video = _still_payload()
+    video["source"]["kind"] = "video"
+    assert any(
+        error["code"] == "SOURCE_DURATION_INVALID"
+        for error in validate_context(video)["errors"]
+    )
+
+
 def test_valid_context_replays_as_evidence_linked_brief(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'", encoding="utf-8")
     (tmp_path / "app.py").write_text("print('demo')", encoding="utf-8")

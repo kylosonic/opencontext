@@ -803,6 +803,7 @@ def test_ordered_image_set_builds_cross_image_context() -> None:
 
     assert pipeline.run_job(_job(source={"kind": "image", "ext": "png"})) == "completed"
     assert sorted(call["sourceIndex"] for call in vision.calls) == [0, 1]
+    assert {call["sessionId"] for call in vision.calls} == {f"opencontext-{JOB_ID}"}
     stage_results = [
         body for path, body in handler.json_requests() if path.endswith("/stage-result")
     ]
