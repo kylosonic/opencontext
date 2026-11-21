@@ -147,8 +147,12 @@ the worker. Provider settings are read from the worker process environment.
   `VISION_MODEL`, and `GEMINI_BASE_URL` for native Gemini image analysis.
   `VISION_TIMEOUT_SECONDS` bounds the request.
 - `VISION_CONCURRENCY` bounds simultaneous image analysis calls. Use `1` for
-  rate-limited upstream accounts; transient provider errors retry up to three
-  times and honor a bounded `Retry-After` response when supplied.
+  rate-limited upstream accounts. Transient provider errors retry up to three
+  times with short backoff. A longer `Retry-After` defers the whole job so the
+  worker can continue with other queued work.
+- `VISION_MAX_FRAMES` sets the maximum number of evenly sampled video/PDF
+  frames sent to the vision provider per job (default 60). Image sets are
+  already limited to 10 source images.
 - `OCR_PROVIDER=tesseract` extracts text independently with the local
   Tesseract binary. `OCR_PROVIDER=vision` keeps the compatibility behavior of
   deriving OCR rows from the vision provider's `visibleText`.

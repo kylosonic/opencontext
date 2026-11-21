@@ -13,6 +13,8 @@ import pytest
 
 from oc_worker import package_version
 from oc_worker.cli import main
+from oc_worker.models import Segment
+from oc_worker.replay import validate_context
 
 FFMPEG = shutil.which("ffmpeg")
 pytestmark = pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")
@@ -78,6 +80,56 @@ def test_offline_cli_writes_markdown_and_json(tmp_path: Path, monkeypatch) -> No
     assert "CLI fixture text" in rendered
     assert payload["evidence"]
     assert payload["timeline"]
+
+
+def test_cli_clamps_transcript_end_to_video_duration(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A provider segment that runs past the clip stays inside the recording."""
+
+    class OverrunTranscription:
+        name = "overrun-transcription"
+
+        def transcribe(self, audio_path: str) -> list[Segment]:
+            return [Segment(start=0.0, end=9.0, text="Speech model overrun.")]
+
+    video = tmp_path / "fixture.mp4"
+    _fixture(video)
+    monkeypatch.setattr(
+        "oc_worker.cli.build_transcription",
+        lambda settings: OverrunTranscription(),
+    )
+    json_path = tmp_path / "context.json"
+
+    code = main(
+        [
+            "analyze",
+            str(video),
+            "--vision-provider",
+            "fixture",
+            "--ocr-provider",
+            "fixture",
+            "--text-provider",
+            "template",
+            "--json",
+            str(json_path),
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    duration = payload["source"]["durationSec"]
+    assert 1.5 <= duration <= 2.5
+    assert payload["transcript"] == [
+        {"start": 0.0, "end": duration, "text": "Speech model overrun."}
+    ]
+    transcript_evidence = [
+        evidence
+        for evidence in payload["evidence"]
+        if evidence["kind"] == "TRANSCRIPT"
+    ]
+    assert transcript_evidence[0]["endSec"] == duration
+    assert validate_context(payload)["ok"] is True
 
 
 def test_directory_batch_writes_collision_safe_outputs(

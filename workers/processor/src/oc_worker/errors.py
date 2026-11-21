@@ -64,6 +64,14 @@ class JobAbort:
         if self.aborted:
             raise ProcessingCancelled(self.reason)
 
+    def sleep(self, seconds: float) -> None:
+        """Sleep interruptibly and raise promptly when the deadline expires."""
+        self.check()
+        if seconds <= 0:
+            return
+        self._event.wait(seconds)
+        self.check()
+
 
 def bind_abort(signal: JobAbort | None) -> JobAbort | None:
     """Bind the active abort to the current worker thread."""

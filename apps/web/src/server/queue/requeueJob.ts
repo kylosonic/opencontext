@@ -12,10 +12,14 @@ import { BACKOFF_MS, QUEUE_MAX_ATTEMPTS } from "./claimJob";
  */
 export async function requeueJob(
   jobId: string,
-  options: { stage?: string; attempts?: number },
+  options: { stage?: string; attempts?: number; retryAfterSec?: number },
 ) {
   const attempts = options.attempts ?? 0;
   const backoff = BACKOFF_MS[Math.min(attempts, BACKOFF_MS.length - 1)];
+  const retryAfterMs = Math.min(
+    15 * 60_000,
+    Math.max(0, options.retryAfterSec ?? 0) * 1_000,
+  );
 
   return prisma.$transaction(async (tx) => {
     const job = await tx.job.findUnique({ where: { id: jobId } });
@@ -43,7 +47,7 @@ export async function requeueJob(
         errorStage: null,
         claimedBy: null,
         leaseUntil: null,
-        availableAt: new Date(Date.now() + backoff),
+        availableAt: new Date(Date.now() + Math.max(backoff, retryAfterMs)),
         stageStates: stageStates as Prisma.InputJsonValue,
       },
     });

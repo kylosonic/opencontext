@@ -52,4 +52,4 @@ def retry_after_seconds(response: httpx.Response) -> float | None:
             seconds = (retry_at - datetime.now(UTC)).total_seconds()
         except (TypeError, ValueError):
             return None
-    return min(120.0, max(0.0, seconds))
+    return min(900.0, max(0.0, seconds))

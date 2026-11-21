@@ -167,6 +167,17 @@ def test_provider_429_preserves_bounded_retry_after() -> None:
     assert exc_info.value.retry_after_seconds == 15.0
 
 
+def test_provider_429_caps_a_long_retry_after_at_fifteen_minutes() -> None:
+    provider = _openai_vision(
+        _client(httpx.Response(429, headers={"Retry-After": "3600"}))
+    )
+
+    with pytest.raises(TransientFailure) as exc_info:
+        provider.analyze(b"frame", {"timestampSec": 0})
+
+    assert exc_info.value.retry_after_seconds == 900.0
+
+
 def test_opencode_headers_and_string_fields_are_normalized() -> None:
     seen: dict[str, str] = {}
 

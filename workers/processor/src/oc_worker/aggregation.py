@@ -49,6 +49,24 @@ def frame_selected(timestamp_sec: float, detail_level: DetailLevel | str) -> boo
     return int(round(timestamp_sec)) % stride == 0
 
 
+def limit_frames(
+    frames: list[dict[str, Any]], max_frames: int
+) -> list[dict[str, Any]]:
+    """Evenly sample a frame list without dropping the final frame.
+
+    The detail level controls minimum spacing; this hard ceiling keeps provider
+    latency bounded for long recordings. Sampling is deterministic and keeps
+    the first and last selected frames whenever more than one frame is kept.
+    """
+    if max_frames <= 0 or len(frames) <= max_frames:
+        return frames
+    if max_frames == 1:
+        return frames[:1]
+    last = len(frames) - 1
+    indices = [round(index * last / (max_frames - 1)) for index in range(max_frames)]
+    return [frames[index] for index in indices]
+
+
 def _strip_title(scene_title: str | None) -> str | None:
     """Scene title trimmed; None when the observation is untitled."""
     if scene_title is None:

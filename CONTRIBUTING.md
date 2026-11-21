@@ -147,6 +147,10 @@ npx vitest run src/server/__tests__/worker-contract.test.ts
 
 cd workers/processor
 .venv/Scripts/python -m pytest tests/test_pipeline.py -q
+
+# opt-in: real Faster Whisper transcription of the committed Harvard recording
+# (downloads the tiny.en model into the Hugging Face cache on first run)
+OPENCONTEXT_ASR_E2E=1 .venv/Scripts/python -m pytest tests/test_audio_e2e.py -q
 ```
 
 ## Change guidelines

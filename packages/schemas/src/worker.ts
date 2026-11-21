@@ -88,6 +88,7 @@ export const WorkerFailRequestSchema = z.object({
   error: z.string().min(1),
   failureKind: FailureKindSchema,
   retryable: z.boolean().default(false),
+  retryAfterSec: z.number().int().min(0).max(900).optional(),
 });
 
 export type WorkerFailRequest = z.infer<typeof WorkerFailRequestSchema>;

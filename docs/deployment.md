@@ -195,6 +195,13 @@ The deadline complements provider request timeouts and host container limits.
 Heap memory and CPU quotas are host policy; they cannot be enforced portably
 inside the existing worker process.
 
+Provider throttles do not hold a worker for a long `Retry-After` window. When
+an upstream service asks for more than 30 seconds, the worker reports a
+transient failure with the bounded reset delay; the queue defers that job for
+up to 15 minutes and immediately continues with other work. Long videos also
+use `VISION_MAX_FRAMES` evenly sampled frames (default 60) so provider latency
+has a predictable upper bound.
+
 The worker renews each claimed job's lease every minute, independently of
 stage progress reports. If the API is temporarily unavailable, it retries the
 heartbeat on the next interval. A terminated worker stops renewing, so the job
@@ -206,6 +213,10 @@ volume at `/models` to retain downloaded transcription models across restarts.
 The image forwards `SIGTERM` directly. Configure the host to restart the
 container on failure and set memory and CPU quotas appropriate for the selected
 providers.
+
+Worker entrypoint logging suppresses `httpx` and `httpcore` access logs because
+those records include full presigned object-storage URLs. Application-level job,
+stage, status, and provider-error logs remain enabled and contain no credentials.
 
 ### Operations alerts
 

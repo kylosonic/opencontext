@@ -45,6 +45,7 @@ jobs:
           VISION_PROVIDER: openai_compatible
           VISION_MODEL: ${{ vars.VISION_MODEL || 'glm-5.3-flash' }}
           VISION_CONCURRENCY: "1"
+          VISION_MAX_FRAMES: "60"
           OCR_PROVIDER: vision
           TEXT_PROVIDER: template
           OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://opencode.ai/inference/go/openai/v1' }}

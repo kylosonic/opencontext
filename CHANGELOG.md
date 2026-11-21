@@ -10,8 +10,21 @@ All notable changes are documented here. The project follows
   per 10 minutes, rate-limit responses expose standard quota metadata, and
   limiter backend failures no longer masquerade as user quota exhaustion.
 - Hardened provider throttling with one hosted-worker vision request at a time
-  by default, three automatic retries, and bounded `Retry-After` handling. The
-  scheduled OpenCode worker runs with `VISION_CONCURRENCY=1`.
+  by default and three short in-stage retries. A longer upstream
+  `Retry-After` now defers the job for up to 15 minutes through the shared
+  queue instead of tying up the worker, and automatic claims increased from
+  two to five. The scheduled OpenCode worker runs with
+  `VISION_CONCURRENCY=1`.
+- Image/video analysis now reports progress after every selected frame, cancels
+  not-yet-started frames after a failure, and evenly samples long recordings
+  to `VISION_MAX_FRAMES` (60 by default) so one job cannot exhaust its deadline
+  on an unbounded frame count.
+- Worker HTTP-library access logs are suppressed because they included full
+  presigned object-storage URLs. Job, stage, status, and provider diagnostics
+  remain visible.
+- Active jobs whose worker disappears are claimable again when their lease
+  expires. Previously only `QUEUED` rows were reclaimed, so a killed process
+  could leave an `ANALYZING` job stuck indefinitely.
 - Added reproducible downloaded photo/video smoke coverage across JPEG, PNG,
   WebP, MP4, short and longer video, and an audio-bearing trailer.
 - Refreshed the npm lockfile, moved Next.js to 16.4.6, and pinned the patched
@@ -52,6 +65,12 @@ All notable changes are documented here. The project follows
   `@kylosonic/opencontext-schemas@0.1.0` on npm. npm publishing now uses
   GitHub OIDC Trusted Publishing, so release workflows no longer need a
   long-lived publish token.
+- Clamped speech-model segment bounds to the probed source duration, so a
+  trailing Faster Whisper segment can no longer create evidence timestamps past
+  the end of the recording.
+- Added an audio-backed worker end-to-end test that transcribes the committed
+  Harvard recording with real Faster Whisper, checks transcript WER/CER, and
+  validates the evidence ledger and its timestamp bounds in CI.
 - Added a worker lease heartbeat so long transcription and vision stages keep
   their queue claim, and made the worker container run as an unprivileged user.
 - Added PNG, JPEG, and WebP image inputs, including ordered sets of up to 10

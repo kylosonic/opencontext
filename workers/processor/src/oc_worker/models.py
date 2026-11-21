@@ -89,6 +89,30 @@ class Segment(BaseModel):
     text: str
 
 
+def clamp_segments_to_duration(
+    segments: list[Segment], duration_sec: float | None
+) -> list[Segment]:
+    """Clamp speech segments to the probed source duration.
+
+    Speech models can report a final segment that ends past the end of the
+    audio: Faster Whisper pads the last decoding window, so a five-second
+    clip can end at 7.0s. Evidence built from those bounds fails the replay
+    contract ("Transcript end exceeds source duration"), and the results
+    view would seek past the video, so every segment is clamped into
+    ``[0, duration]`` with ``end >= start``. A missing or non-positive
+    duration leaves the segments unchanged.
+    """
+    if duration_sec is None or float(duration_sec) <= 0:
+        return list(segments)
+    limit = float(duration_sec)
+    clamped: list[Segment] = []
+    for segment in segments:
+        start = min(max(0.0, float(segment.start)), limit)
+        end = min(max(start, float(segment.end)), limit)
+        clamped.append(segment.model_copy(update={"start": start, "end": end}))
+    return clamped
+
+
 class VisualObservation(BaseModel):
     """One frame-level visual observation.
 

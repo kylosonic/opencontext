@@ -19,6 +19,7 @@ from oc_worker.models import (
     StageName,
     StageStatus,
     VisualObservation,
+    clamp_segments_to_duration,
 )
 
 
@@ -254,3 +255,41 @@ def test_observation_design_observations_junk_normalizes_to_empty_record() -> No
     assert VisualObservation(timestampSec=1.0, designObservations="noise").designObservations == {}
     assert VisualObservation(timestampSec=1.0, designObservations=42).designObservations == {}
     assert VisualObservation(timestampSec=1.0, designObservations=None).designObservations == {}
+
+
+def test_clamp_segments_trims_a_trailing_end_past_the_duration() -> None:
+    segments = [
+        Segment(start=0.0, end=4.0, text="Opening"),
+        Segment(start=4.0, end=7.0, text="Trailing"),
+    ]
+
+    clamped = clamp_segments_to_duration(segments, 5.0)
+
+    assert [(item.start, item.end) for item in clamped] == [(0.0, 4.0), (4.0, 5.0)]
+    assert [item.text for item in clamped] == ["Opening", "Trailing"]
+    # The input models are not mutated.
+    assert segments[1].end == 7.0
+
+
+def test_clamp_segments_bounds_starts_and_ends_to_the_recording() -> None:
+    clamped = clamp_segments_to_duration(
+        [
+            Segment(start=-1.0, end=2.0, text="negative start"),
+            Segment(start=3.0, end=2.0, text="inverted bounds"),
+            Segment(start=9.0, end=12.0, text="entirely past the end"),
+        ],
+        5.0,
+    )
+
+    assert [(item.start, item.end) for item in clamped] == [
+        (0.0, 2.0),
+        (3.0, 3.0),
+        (5.0, 5.0),
+    ]
+
+
+def test_clamp_segments_leaves_bounds_alone_without_a_duration() -> None:
+    segments = [Segment(start=0.0, end=7.0, text="Untouched")]
+
+    assert clamp_segments_to_duration(segments, None) == segments
+    assert clamp_segments_to_duration(segments, 0) == segments

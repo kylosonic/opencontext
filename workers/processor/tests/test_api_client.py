@@ -6,13 +6,20 @@ failures retry with 2s/8s/20s backoff, permanent errors never retry.
 """
 
 import json
+import threading
 
 import httpx
 import pytest
 
 from oc_worker import api_client as api_module
 from oc_worker.api_client import ApiClient, run_with_retry
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import (
+    JobAbort,
+    PermanentFailure,
+    ProcessingCancelled,
+    TransientFailure,
+    bind_abort,
+)
 
 CLAIM_PATH = "/api/worker/jobs/claim"
 
@@ -131,6 +138,22 @@ def test_retry_after_header_overrides_the_shorter_default_backoff(monkeypatch) -
     assert delays == [12.0]
 
 
+def test_long_retry_after_defers_without_blocking_worker(monkeypatch) -> None:
+    delays: list[float] = []
+    _patch_sleep(monkeypatch, delays)
+    recorder = _Recorder(
+        [httpx.Response(429, headers={"Retry-After": "120"})]
+    )
+    api = _make_client(recorder.handler)
+
+    with pytest.raises(TransientFailure) as exc_info:
+        api.claim()
+
+    assert exc_info.value.retry_after_seconds == 120.0
+    assert len(recorder.requests) == 1
+    assert delays == []
+
+
 # -- progress / stage-result / complete / fail ---------------------------
 
 
@@ -236,6 +259,31 @@ def test_fail_posts_failure_kind_and_retryable() -> None:
     )
     assert _json_body(recorder.requests[1])["failureKind"] == "PERMANENT"
     assert _json_body(recorder.requests[1])["retryable"] is False
+
+
+def test_fail_includes_bounded_provider_retry_after() -> None:
+    recorder = _Recorder([httpx.Response(200, json={}), httpx.Response(200, json={})])
+    api = _make_client(recorder.handler)
+
+    api.fail(
+        "j1",
+        stage="ANALYZING",
+        error="vision provider returned 429",
+        failure_kind="TRANSIENT",
+        retryable=True,
+        retry_after_sec=120.4,
+    )
+    api.fail(
+        "j1",
+        stage="ANALYZING",
+        error="vision provider returned 429",
+        failure_kind="TRANSIENT",
+        retryable=True,
+        retry_after_sec=2_000,
+    )
+
+    assert _json_body(recorder.requests[0])["retryAfterSec"] == 120
+    assert _json_body(recorder.requests[1])["retryAfterSec"] == 900
 
 
 # -- x-worker-id identity header (regression: NOT_CLAIMED on live API) ---
@@ -493,3 +541,25 @@ def test_run_with_retry_unexpected_exception_propagates_immediately(monkeypatch)
         run_with_retry(unexpected, retries=2, backoffs=(2.0, 8.0))
     assert attempts == 1
     assert delays == []
+
+
+def test_run_with_retry_stops_backoff_at_job_deadline() -> None:
+    abort = JobAbort()
+    previous = bind_abort(abort)
+    timer = threading.Timer(0.02, abort.abort)
+    timer.start()
+    attempts = 0
+
+    def always_fails() -> None:
+        nonlocal attempts
+        attempts += 1
+        raise TransientFailure("provider busy")
+
+    try:
+        with pytest.raises(ProcessingCancelled):
+            run_with_retry(always_fails, retries=3, backoffs=(5.0, 5.0, 5.0))
+    finally:
+        timer.cancel()
+        bind_abort(previous)
+
+    assert attempts == 1

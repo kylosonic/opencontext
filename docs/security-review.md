@@ -1,6 +1,6 @@
 # Security Review
 
-Last reviewed: 2026-11-09
+Last reviewed: 2026-11-21
 
 This document records implementation-level controls and remaining deployment
 work. It is not a penetration-test report.
@@ -36,11 +36,13 @@ work. It is not a penetration-test report.
   best-effort cleanup. Upload intents expire and are swept with their objects.
 - **Direct transfer:** production media bytes go directly to object storage;
   the application does not proxy large upload bodies.
-- **Dependency advisories:** the 2026-11-08 audit findings that affected
-  network-facing runtime packages were resolved by upgrading Next.js to
-  16.4.5, Zod to 4.6.7, Vitest to 5.1.0, and Prisma to 7.10.1 with driver
-  adapters. No high or critical npm advisories remain; eight moderate findings
-  are confined to the TypeScript ESLint development toolchain.
+- **Dependency advisories:** dependencies were refreshed on 2026-11-21,
+  including Next.js 16.4.6, and the full `npm audit` reports zero known
+  vulnerabilities.
+- **Worker logs:** the worker suppresses HTTP library access logs because they
+  include full presigned object-storage URLs. Secrets stay out of application
+  logs, and long provider throttles are deferred without printing credentials
+  or media bytes.
 
 ## Verified tests
 

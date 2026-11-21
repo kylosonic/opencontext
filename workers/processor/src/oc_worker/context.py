@@ -45,7 +45,13 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from oc_worker.models import DetailLevel, OCRObservation, Segment, VisualObservation
+from oc_worker.models import (
+    DetailLevel,
+    OCRObservation,
+    Segment,
+    VisualObservation,
+    clamp_segments_to_duration,
+)
 from oc_worker.providers.text.base import TextProvider, anchored_lines
 
 log = logging.getLogger("oc_worker.context")
@@ -558,6 +564,9 @@ def build_context(
 ) -> tuple[str, dict[str, Any]]:
     """Build the developer context; returns (markdown, json payload)."""
     level = DetailLevel(detail_level)
+    # A speech model can run past the media end; keep evidence timestamps
+    # inside the recording for both the CLI and worker callers.
+    segments = clamp_segments_to_duration(segments, duration_sec)
     generated_at = datetime.now(UTC).isoformat(timespec="seconds")
     payload = _build_json_payload(
         source_name=source_name,
