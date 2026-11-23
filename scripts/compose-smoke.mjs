@@ -355,7 +355,10 @@ async function main() {
     videoResults.push(
       await saveContext(
         job,
-        path.join(outputDir, `video-${index + 1}`),
+        path.join(
+          outputDir,
+          videoPaths.length === 1 ? "video" : `video-${index + 1}`,
+        ),
       ),
     );
   }
