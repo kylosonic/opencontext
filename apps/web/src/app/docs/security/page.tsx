@@ -58,12 +58,12 @@ export default function SecurityPage() {
             {[
               [
                 "Completed job",
-                "14 days",
+                "14 days by default",
                 "Source media, intermediate artifacts, results, and exports available from that job.",
               ],
               [
                 "Incomplete job",
-                "7 days",
+                "7 days by default",
                 "Unfinished job and its stored artifacts.",
               ],
               [
@@ -88,6 +88,9 @@ export default function SecurityPage() {
             ))}
           </div>
           <p className="mt-4">
+            Deployment operators can set separate positive retention windows with{" "}
+            <code>RETENTION_COMPLETED_DAYS</code> and{" "}
+            <code>RETENTION_INCOMPLETE_DAYS</code>.{" "}
             Results downloaded or copied elsewhere remain under your own storage
             and access controls. The retention window is shown on each job page.
           </p>

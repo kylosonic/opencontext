@@ -46,15 +46,19 @@ export default function StatusPage() {
             Deployment evidence
           </h2>
           <p className="mt-3">
-            The hosted deployment has a recorded end-to-end job: all five stages
-            reached 100%, with evidence IDs, source timestamps, certainty
-            labels, and both exports verified. The readiness endpoint reported
-            all six required configuration checks.
+            The hosted deployment has recorded end-to-end photo and video jobs:
+            all five stages reached 100%, with evidence IDs, source timestamps,
+            certainty labels, and both exports verified. The 2026-11-24 rollout
+            applied the PostgreSQL migration without drift and replayed three
+            production exports.
           </p>
           <p className="mt-3">
-            That job ran from the scheduled GitHub Actions worker. A persistent
-            host deployment still needs its own live process, restart, and
-            alerting evidence before it can be called verified.
+            Jobs ran from the scheduled GitHub Actions worker. The public
+            readiness endpoint reports aggregate status without subsystem
+            details; authenticated readiness and operations alerts use the
+            configured operations token. A persistent worker host still needs
+            its own live restart and failover evidence before it can be called
+            verified.
           </p>
           <div className="mt-3 border-l-2 border-line-strong pl-4 text-ink-faint">
             The public site can lag the repository. Production worker status is
@@ -77,9 +81,8 @@ export default function StatusPage() {
               the hosted service exists.
             </li>
             <li>
-              The scheduled worker is active, but no persistent worker host has
-              been verified. The authenticated operations-alert checker still
-              needs working token delivery.
+              The scheduled worker and authenticated operations-alert checker
+              are verified, but no persistent worker host has been verified.
             </li>
             <li>
               Teams, public result sharing, URL ingestion, audio-only uploads,
