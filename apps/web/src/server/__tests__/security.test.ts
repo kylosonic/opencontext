@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { verifyOpsToken, verifyWorkerToken, workerIdOf } from "@/server/api-helpers";
+import {
+  rateLimitDeniedResponse,
+  verifyOpsToken,
+  verifyWorkerToken,
+  workerIdOf,
+} from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
 import {
   consumeRateLimit,
@@ -189,5 +194,20 @@ describe("fixed-window rate limiting", () => {
   it("keeps upload budgets usable for repeated maximum-size image sets", () => {
     expect(RATE_LIMITS.uploadIntent.limit).toBeGreaterThanOrEqual(120);
     expect(RATE_LIMITS.uploadIntent.windowMs).toBe(10 * 60_000);
+  });
+
+  it("reports a fail-closed limiter outage as internal rather than quota", async () => {
+    const response = rateLimitDeniedResponse({
+      allowed: false,
+      remaining: 0,
+      retryAfterSec: 30,
+      limit: 10,
+      resetAt: Date.now() + 30_000,
+      backend: "unavailable",
+      unavailable: true,
+    });
+
+    expect(response.status).toBe(500);
+    expect((await response.json()).error.code).toBe("INTERNAL");
   });
 });

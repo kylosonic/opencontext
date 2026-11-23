@@ -43,6 +43,11 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
         return errorResponse("NOT_FOUND", "Upload intent not found");
       case "FORBIDDEN":
         return errorResponse("FORBIDDEN", "You don't have access to this upload");
+      case "IN_PROGRESS":
+        return errorResponse(
+          "UPLOAD_INCOMPLETE",
+          "This upload cannot be cancelled while completion is in progress",
+        );
       case "OK": {
         const response = new NextResponse(null, { status: 204 });
         return applyRateLimitHeaders(response, limit);

@@ -9,6 +9,7 @@ vi.mock("@/auth", () => ({
 }));
 
 import { GET as getAuth } from "@/app/api/auth/[...nextauth]/route";
+import { handlers } from "@/auth";
 import { POST as sweepRetention } from "@/app/api/admin/retention-sweep/route";
 import { GET as getOperations } from "@/app/api/ops/alerts/route";
 import { POST as postWorkerHeartbeat } from "@/app/api/worker/heartbeat/route";
@@ -43,6 +44,7 @@ function expectGenuineQuota429(response: Response, limit: number): void {
 }
 
 beforeEach(async () => {
+  vi.clearAllMocks();
   vi.stubEnv("RATE_LIMIT_BACKEND", "memory");
   vi.stubEnv("VERCEL", "1");
   vi.stubEnv("OPS_API_TOKEN", "operations-route-token-at-least-16");
@@ -54,6 +56,41 @@ afterEach(() => {
 });
 
 describe("route-level quota enforcement", () => {
+  it("adds quota headers to immutable Auth.js redirect responses", async () => {
+    vi.mocked(handlers.GET).mockReturnValueOnce(
+      Promise.resolve(
+        Response.redirect(
+          "http://test.local/api/auth/error?error=AccessDenied",
+          302,
+        ),
+      ),
+    );
+
+    const response = await getAuth(
+      request("/api/auth/callback/github?error=AccessDenied", { method: "GET" }),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("error=AccessDenied");
+    expect(response.headers.get("X-RateLimit-Limit")).toBe(
+      String(RATE_LIMITS.auth.limit),
+    );
+  });
+
+  it("preserves multiple Auth.js Set-Cookie headers while cloning", async () => {
+    const authResponse = new Response(null, { status: 302 });
+    authResponse.headers.set("location", "http://test.local/app");
+    authResponse.headers.append("set-cookie", "session=a; Path=/; HttpOnly");
+    authResponse.headers.append("set-cookie", "callback=b; Path=/; HttpOnly");
+    vi.mocked(handlers.GET).mockReturnValueOnce(Promise.resolve(authResponse));
+
+    const response = await getAuth(
+      request("/api/auth/callback/github", { method: "GET" }),
+    );
+
+    expect(response.headers.getSetCookie()).toHaveLength(2);
+  });
+
   it("limits authentication requests by resolved client address", async () => {
     const req = request("/api/auth/session", { method: "GET" });
     await exhaust(req, "auth", RATE_LIMITS.auth.limit);
@@ -102,5 +139,51 @@ describe("route-level quota enforcement", () => {
     const response = await sweepRetention(req);
 
     expectGenuineQuota429(response, RATE_LIMITS.retentionSweep.limit);
+  });
+});
+
+describe("trusted client-address extraction", () => {
+  it("ignores spoofable forwarded headers on standalone hosts", () => {
+    vi.stubEnv("VERCEL", "0");
+    vi.stubEnv("TRUST_PROXY", "");
+    const first = new Request("http://test.local", {
+      headers: { "X-Vercel-Forwarded-For": "198.51.100.1" },
+    });
+    const second = new Request("http://test.local", {
+      headers: { "X-Vercel-Forwarded-For": "198.51.100.2" },
+    });
+
+    expect(requestRateKey(first, "test")).toBe(requestRateKey(second, "test"));
+  });
+
+  it("uses the rightmost untrusted X-Forwarded-For hop behind one proxy", () => {
+    vi.stubEnv("VERCEL", "0");
+    vi.stubEnv("TRUST_PROXY", "true");
+    vi.stubEnv("TRUST_PROXY_HOPS", "1");
+    const first = new Request("http://test.local", {
+      headers: { "X-Forwarded-For": "10.0.0.1, 203.0.113.9" },
+    });
+    const spoofedLeft = new Request("http://test.local", {
+      headers: { "X-Forwarded-For": "192.0.2.99, 203.0.113.9" },
+    });
+    const otherClient = new Request("http://test.local", {
+      headers: { "X-Forwarded-For": "10.0.0.1, 203.0.113.10" },
+    });
+
+    expect(requestRateKey(first, "test")).toBe(requestRateKey(spoofedLeft, "test"));
+    expect(requestRateKey(first, "test")).not.toBe(requestRateKey(otherClient, "test"));
+  });
+
+  it("separates authenticated machine traffic without a trusted address", () => {
+    vi.stubEnv("VERCEL", "0");
+    vi.stubEnv("TRUST_PROXY", "");
+    const first = new Request("http://test.local", {
+      headers: { Authorization: "Bearer worker-token-one" },
+    });
+    const second = new Request("http://test.local", {
+      headers: { Authorization: "Bearer worker-token-two" },
+    });
+
+    expect(requestRateKey(first, "worker")).not.toBe(requestRateKey(second, "worker"));
   });
 });

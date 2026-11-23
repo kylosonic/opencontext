@@ -7,6 +7,7 @@ const baseUrl = (process.env.OPENCONTEXT_BASE_URL ?? "http://localhost:3000").re
   /\/$/,
   "",
 );
+const baseOrigin = new URL(baseUrl).origin;
 const videoPath = path.resolve(
   process.env.OPENCONTEXT_FIXTURE ?? ".artifacts/opencontext-fixture.mp4",
 );
@@ -72,11 +73,20 @@ function rememberCookies(response) {
 async function request(url, options = {}) {
   const headers = new Headers(options.headers);
   const target = new URL(url, baseUrl);
-  if (cookies.size > 0 && target.origin === new URL(baseUrl).origin) {
+  if (cookies.size > 0 && target.origin === baseOrigin) {
     headers.set(
       "Cookie",
       [...cookies].map(([name, value]) => `${name}=${value}`).join("; "),
     );
+  }
+  const method = (options.method ?? "GET").toUpperCase();
+  if (
+    ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
+    target.origin === baseOrigin &&
+    !headers.has("origin")
+  ) {
+    headers.set("Origin", baseOrigin);
+    headers.set("Sec-Fetch-Site", "same-origin");
   }
   const response = await fetch(target, {
     ...options,
@@ -325,7 +335,7 @@ async function main() {
   if (mode === "real") {
     const expected = ["checkout", "1042", "42", "pay now", "4242"];
     const imagePayload = JSON.parse(
-      await readFile(path.join(outputDir, "image", "context.json"), "utf8"),
+      await readFile(imageResult.json, "utf8"),
     );
     const visibleText = imagePayload.visibleText
       .map((item) => (typeof item === "string" ? item : String(item.text ?? "")))

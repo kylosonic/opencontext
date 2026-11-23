@@ -22,8 +22,8 @@ const ARTIFACT_EXTENSIONS = {
  * POST /api/worker/jobs/[id]/artifacts — multipart binary upload (audio,
  * frames). Fields: `file` (required), `kind` (SOURCE|AUDIO|FRAME),
  * `timestampSec` (frames). Stores the object and registers a Media row
- * (references only, ADR-0004). Key is deterministic per
- * (kind, timestampSec) so re-uploads are idempotent. Response: {key, id}.
+ * (references only, ADR-0004). The route caps the wire stream even when a
+ * proxy omits or understates Content-Length. Response: {key, id}.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   return withErrorHandling(async () => {
@@ -54,21 +54,48 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       );
     }
 
-    const contentLength = Number(request.headers.get("content-length") ?? "");
-    if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
+    const contentLengthHeader = request.headers.get("content-length");
+    const contentLength = Number(contentLengthHeader ?? "0");
+    if (
+      contentLengthHeader !== null &&
+      (!Number.isSafeInteger(contentLength) || contentLength <= 0)
+    ) {
       return errorResponse(
         "VALIDATION_ERROR",
-        "Artifact uploads require a bounded Content-Length",
+        "Artifact Content-Length is invalid",
       );
     }
     if (contentLength > MAX_ARTIFACT_MULTIPART_BYTES) {
       return errorResponse("VALIDATION_ERROR", "Artifact upload is too large");
     }
 
+    if (!request.body) {
+      return errorResponse("VALIDATION_ERROR", "Artifact upload body is missing");
+    }
+
+    let bytesRead = 0;
+    const boundedBody = request.body.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          bytesRead += chunk.byteLength;
+          if (bytesRead > MAX_ARTIFACT_MULTIPART_BYTES) {
+            controller.error(new Error("ARTIFACT_TOO_LARGE"));
+            return;
+          }
+          controller.enqueue(chunk);
+        },
+      }),
+    );
+
     let form: FormData;
     try {
-      form = await request.formData();
-    } catch {
+      form = await new Response(boundedBody, {
+        headers: { "Content-Type": contentType },
+      }).formData();
+    } catch (error) {
+      if (error instanceof Error && error.message === "ARTIFACT_TOO_LARGE") {
+        return errorResponse("VALIDATION_ERROR", "Artifact upload is too large");
+      }
       return errorResponse(
         "VALIDATION_ERROR",
         "Request body must be multipart/form-data with a `file` field",

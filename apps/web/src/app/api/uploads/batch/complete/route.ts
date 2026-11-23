@@ -60,6 +60,11 @@ export async function POST(request: Request): Promise<Response> {
         return errorResponse("FORBIDDEN", "You don't have access to these uploads");
       case "EXPIRED":
         return errorResponse("UPLOAD_EXPIRED", "One or more uploads have expired");
+      case "IN_PROGRESS":
+        return errorResponse(
+          "UPLOAD_INCOMPLETE",
+          "Upload completion is already in progress",
+        );
       case "INCOMPLETE":
         return errorResponse(
           "UPLOAD_INCOMPLETE",

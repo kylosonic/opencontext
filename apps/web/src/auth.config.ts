@@ -12,13 +12,22 @@ import { authGithub, authSecret } from "@opencontext/config";
  */
 const github = authGithub();
 
+export function resolveAuthTrustHost(
+  env: Record<string, string | undefined>,
+): boolean | undefined {
+  if (env.VERCEL === "1") return true;
+  const override = env.AUTH_TRUST_HOST?.trim().toLowerCase();
+  if (!override) return undefined;
+  return override === "true";
+}
+
 export const authConfig = {
   secret: authSecret(),
   // Vercel is a trusted proxy. Standalone deployments must opt in rather
   // than allowing arbitrary Host/X-Forwarded-Host values to determine URLs.
-  trustHost:
-    process.env.VERCEL === "1" ||
-    process.env.AUTH_TRUST_HOST?.trim().toLowerCase() === "true",
+  // Leave this undefined unless explicitly configured so @auth/core can use
+  // its AUTH_URL / development fallback. Explicit false still opts out.
+  trustHost: resolveAuthTrustHost(process.env),
   session: { strategy: "jwt", maxAge: 24 * 60 * 60, updateAge: 15 * 60 },
   pages: {
     signIn: "/auth/signin",

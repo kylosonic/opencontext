@@ -1,5 +1,9 @@
 import { auth } from "@/auth";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  errorResponse,
+  rateLimitDeniedResponse,
+  withErrorHandling,
+} from "@/server/api-helpers";
 import { getJob } from "@/server/jobs";
 import { storage } from "@/server/storage";
 import {
@@ -37,10 +41,7 @@ export async function GET(
       RATE_LIMITS.sourceRead.windowMs,
     );
     if (!limit.allowed) {
-      return applyRateLimitHeaders(
-        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
-        limit,
-      );
+      return rateLimitDeniedResponse(limit, "Source preview");
     }
 
     const { id } = await context.params;
@@ -83,9 +84,15 @@ export async function GET(
         "Content-Type": contentType,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
         ...(contentType === "application/pdf"
-          ? { "Content-Disposition": "inline; filename=source.pdf" }
+          ? {
+              "Content-Disposition": "inline; filename=source.pdf",
+              // This overrides the app-wide CSP for the PDF document. A
+              // sandbox/default-src none policy prevents browser PDF viewers
+              // (and Firefox PDF.js) from initializing, while this same-origin
+              // framing restriction still prevents third-party embedding.
+              "Content-Security-Policy": "frame-ancestors 'self'",
+            }
           : {}),
       },
     }), limit);

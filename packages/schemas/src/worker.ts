@@ -15,14 +15,14 @@ import { MediaKindSchema } from "./media.js";
  */
 
 /** POST /api/worker/jobs/claim */
-export const WorkerClaimRequestSchema = z.object({
+export const WorkerClaimRequestSchema = z.strictObject({
   workerId: z.string().trim().min(1).max(128),
 });
 
 export type WorkerClaimRequest = z.infer<typeof WorkerClaimRequestSchema>;
 
 /** GET /api/worker/jobs/[id]/source */
-export const WorkerSourceInfoSchema = z.object({
+export const WorkerSourceInfoSchema = z.strictObject({
   uri: z.string().min(1).max(8_192),
   provider: z.enum(["local", "s3"]),
   sizeBytes: z.number().int().nonnegative(),
@@ -30,7 +30,7 @@ export const WorkerSourceInfoSchema = z.object({
   kind: SourceKindSchema,
   assets: z
     .array(
-      z.object({
+      z.strictObject({
         uri: z.string().min(1).max(8_192),
         provider: z.enum(["local", "s3"]),
         sizeBytes: z.number().int().nonnegative(),
@@ -48,7 +48,7 @@ export const WorkerSourceInfoSchema = z.object({
 export type WorkerSourceInfo = z.infer<typeof WorkerSourceInfoSchema>;
 
 /** POST /api/worker/jobs/[id]/progress */
-export const WorkerProgressRequestSchema = z.object({
+export const WorkerProgressRequestSchema = z.strictObject({
   stage: StageNameSchema,
   stageStatus: StageStatusSchema,
   progress: z.number().int().min(0).max(100),
@@ -58,7 +58,7 @@ export const WorkerProgressRequestSchema = z.object({
 export type WorkerProgressRequest = z.infer<typeof WorkerProgressRequestSchema>;
 
 /** POST /api/worker/jobs/[id]/heartbeat */
-export const WorkerHeartbeatRequestSchema = z.object({
+export const WorkerHeartbeatRequestSchema = z.strictObject({
   stage: StageNameSchema,
   progress: z.number().int().min(0).max(100),
 });
@@ -66,13 +66,13 @@ export const WorkerHeartbeatRequestSchema = z.object({
 export type WorkerHeartbeatRequest = z.infer<typeof WorkerHeartbeatRequestSchema>;
 
 /** POST /api/worker/jobs/[id]/artifacts (multipart fields besides `file`). */
-export const WorkerArtifactFieldsSchema = z.object({
+export const WorkerArtifactFieldsSchema = z.strictObject({
   kind: MediaKindSchema,
   timestampSec: z.coerce.number().finite().nonnegative().max(86_400).optional(),
 });
 
 /** POST /api/worker/jobs/[id]/stage-result */
-export const WorkerStageResultRequestSchema = z.object({
+export const WorkerStageResultRequestSchema = z.strictObject({
   stage: StageNameSchema,
   outcome: z.enum(["SUCCEEDED", "FAILED", "SKIPPED"]),
   attempt: z.number().int().nonnegative(),
@@ -85,7 +85,7 @@ export type WorkerStageResultRequest = z.infer<typeof WorkerStageResultRequestSc
 
 /** POST /api/worker/jobs/[id]/fail */
 export const WorkerFailRequestSchema = z
-  .object({
+  .strictObject({
     stage: StageNameSchema,
     error: z.string().min(1).max(20_000),
     failureKind: FailureKindSchema,
@@ -101,7 +101,7 @@ export const WorkerFailRequestSchema = z
 export type WorkerFailRequest = z.infer<typeof WorkerFailRequestSchema>;
 
 /** POST /api/admin/retention-sweep */
-export const RetentionSweepResponseSchema = z.object({
+export const RetentionSweepResponseSchema = z.strictObject({
   scanned: z.number().int().nonnegative(),
   deleted: z.number().int().nonnegative(),
 });

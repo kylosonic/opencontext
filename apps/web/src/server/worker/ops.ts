@@ -5,8 +5,8 @@ import {
   SourceMetaSchema,
   sourceKindForExtension,
   SKIP_REASON_NO_AUDIO,
-  TranscriptSegmentSchema,
-  TimelineEntrySchema,
+  TranscriptSegmentsSchema,
+  TimelinePayloadSchema,
   type StageName,
   type StageState,
   type WorkerProgressRequest,
@@ -140,7 +140,7 @@ export async function applyStageResult(
     if (input.stage === "AGGREGATING" && input.outcome === "SUCCEEDED" && input.data) {
       const parsed = (input.data as { timeline?: unknown }).timeline;
       if (parsed !== undefined) {
-        const timeline = TimelineEntrySchema.array().safeParse(parsed);
+        const timeline = TimelinePayloadSchema.safeParse(parsed);
         if (!timeline.success) {
           throw new ZodStageDataError("AGGREGATING", "timeline payload is invalid");
         }
@@ -174,9 +174,11 @@ async function routeStageData(
       if (!payload || !Array.isArray(payload.segments)) {
         throw new ZodStageDataError("TRANSCRIBING", "expected { segments: [...] }");
       }
-      const segments = payload.segments.map((segment) =>
-        TranscriptSegmentSchema.parse(segment),
-      );
+      const parsedSegments = TranscriptSegmentsSchema.safeParse(payload.segments);
+      if (!parsedSegments.success) {
+        throw new ZodStageDataError("TRANSCRIBING", "segments payload is invalid");
+      }
+      const segments = parsedSegments.data;
       await tx.transcriptSegment.deleteMany({ where: { jobId } });
       await tx.transcriptSegment.createMany({
         data: segments.map((segment) => ({
@@ -274,7 +276,8 @@ export async function getWorkerSourceInfo(job: Job): Promise<WorkerSourceInfo> {
   const ordered = media.length > 0 ? media : [];
   const assets = await Promise.all(
     ordered.map(async (item, index) => {
-      const ext = item.key.slice(item.key.lastIndexOf(".") + 1).toLowerCase();
+      const dot = item.key.lastIndexOf(".");
+      const ext = (dot >= 0 ? item.key.slice(dot + 1) : "").toLowerCase();
       const uri =
         storage.provider === "s3"
           ? await storage.presign(item.key, 3600)

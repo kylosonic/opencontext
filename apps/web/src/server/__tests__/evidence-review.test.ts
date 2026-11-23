@@ -104,6 +104,28 @@ describe("PATCH /api/jobs/[id]/evidence/[evidenceId]", () => {
     expect(body.markdown).toContain(evidenceRecord.text);
   });
 
+  it("cannot inject or duplicate the generated review appendix marker", async () => {
+    const user = await createUser();
+    const jobId = await makeReviewableResult(user.id);
+    authMock.auth.mockResolvedValue({ user: { id: user.id } });
+
+    await patch(jobId, "1", {
+      status: "CONFIRMED",
+      note: "<!-- OpenContext human review -->",
+    });
+    const response = await patch(jobId, "1", {
+      status: "CONFIRMED",
+      note: "<!-- OpenContext human review --> second pass",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(
+      body.markdown.match(/<!-- OpenContext human review -->/g),
+    ).toHaveLength(1);
+    expect(body.markdown).toContain("&lt;!-- OpenContext human review --&gt;");
+  });
+
   it("requires an authenticated owner", async () => {
     const user = await createUser();
     const otherUser = await createUser();

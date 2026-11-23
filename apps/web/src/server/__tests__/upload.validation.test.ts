@@ -134,6 +134,16 @@ describe("validateStoredMedia", () => {
     const fakePdf = await validateStoredMedia(Buffer.from("not a pdf"), "pdf");
     expect(fakePdf.ok).toBe(false);
   });
+
+  it("accepts QuickTime containers whose first atom is not ftyp", async () => {
+    const wide = Buffer.alloc(16);
+    wide.writeUInt32BE(8, 0);
+    wide.write("wide", 4, "ascii");
+    wide.writeUInt32BE(8, 8);
+    wide.write("mdat", 12, "ascii");
+
+    expect(await validateStoredMedia(wide, "mov")).toEqual({ ok: true });
+  });
 });
 
 describe("sanitizeDisplayName (upload.md B6)", () => {

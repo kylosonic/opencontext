@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { deleteJob, getJob } from "@/server/jobs";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  errorResponse,
+  rateLimitDeniedResponse,
+  withErrorHandling,
+} from "@/server/api-helpers";
 import {
   applyRateLimitHeaders,
   consumeRateLimit,
@@ -29,10 +33,7 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
       RATE_LIMITS.jobRead.windowMs,
     );
     if (!limit.allowed) {
-      return applyRateLimitHeaders(
-        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
-        limit,
-      );
+      return rateLimitDeniedResponse(limit, "Job read");
     }
     const { id } = await context.params;
     const result = await getJob(id, session.user.id);
@@ -62,10 +63,7 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
       RATE_LIMITS.jobDelete.windowMs,
     );
     if (!limit.allowed) {
-      return applyRateLimitHeaders(
-        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
-        limit,
-      );
+      return rateLimitDeniedResponse(limit, "Job deletion");
     }
     const { id } = await context.params;
     const result = await deleteJob(id, session.user.id);

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { listJobs } from "@/server/jobs";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  errorResponse,
+  rateLimitDeniedResponse,
+  withErrorHandling,
+} from "@/server/api-helpers";
 import {
   applyRateLimitHeaders,
   consumeRateLimit,
@@ -29,10 +33,7 @@ export async function GET(): Promise<Response> {
       RATE_LIMITS.jobsRead.windowMs,
     );
     if (!limit.allowed) {
-      return applyRateLimitHeaders(
-        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
-        limit,
-      );
+      return rateLimitDeniedResponse(limit, "Job list");
     }
     const jobs = await listJobs(session.user.id);
     return applyRateLimitHeaders(NextResponse.json(jobs), limit);

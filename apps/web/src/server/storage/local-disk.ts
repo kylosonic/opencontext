@@ -3,7 +3,7 @@ import { copyFile, lstat, mkdir, readFile, rename, rm, stat } from "node:fs/prom
 import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import type { Storage, PutOptions } from "./types";
+import type { Storage, PutOptions, MoveOptions } from "./types";
 
 /**
  * Local-disk storage (dev default, ADR-0004). Objects live under
@@ -111,7 +111,11 @@ export class LocalDiskStorage implements Storage {
       if (!info.isFile()) {
         return null;
       }
-      return { sizeBytes: info.size, contentType: null, etag: null };
+      return {
+        sizeBytes: info.size,
+        contentType: null,
+        etag: `${info.size}-${info.mtimeMs}`,
+      };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         return null;
@@ -137,12 +141,23 @@ export class LocalDiskStorage implements Storage {
     return Readable.toWeb(createReadStream(target)) as ReadableStream<Uint8Array>;
   }
 
-  async move(fromKey: string, toKey: string): Promise<void> {
+  async move(
+    fromKey: string,
+    toKey: string,
+    options: MoveOptions = {},
+  ): Promise<void> {
     await this.ensureParent(toKey);
     const from = this.resolve(fromKey);
     const to = this.resolve(toKey);
     await this.assertNoSymlinks(from);
     await this.assertNoSymlinks(to);
+    if (options.etag) {
+      const current = await stat(from);
+      const currentEtag = `${current.size}-${current.mtimeMs}`;
+      if (currentEtag !== options.etag) {
+        throw new Error(`Cannot move ${fromKey}: object changed after validation`);
+      }
+    }
     try {
       await rename(from, to);
     } catch (error) {

@@ -199,3 +199,19 @@ export async function enforceRateLimit(
     result,
   );
 }
+
+/** Translate quota denial vs. a fail-closed limiter outage distinctly. */
+export function rateLimitDeniedResponse(
+  result: ConsumedRateLimitResult,
+  subject = "Request",
+): NextResponse {
+  return applyRateLimitHeaders(
+    errorResponse(
+      result.unavailable ? "INTERNAL" : "RATE_LIMITED",
+      result.unavailable
+        ? "Service temporarily unavailable — try again shortly"
+        : `${subject} limit reached — try again in ${result.retryAfterSec} seconds`,
+    ),
+    result,
+  );
+}

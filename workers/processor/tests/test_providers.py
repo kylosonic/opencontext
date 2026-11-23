@@ -101,6 +101,10 @@ def test_openai_audio_builder_uses_chat_provider() -> None:
     assert provider.model == "mimo-v2.6-pro"
 
 
+def test_ocr_off_disables_all_ocr_sources() -> None:
+    assert build_ocr(Settings(ocr_provider="off")) is None
+
+
 @pytest.mark.parametrize(
     ("field", "setting"),
     [

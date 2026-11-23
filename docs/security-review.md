@@ -1,6 +1,6 @@
 # Security Review
 
-Last reviewed: 2026-11-21
+Last reviewed: 2026-11-24
 
 This document records implementation-level controls and remaining deployment
 work. It is not a penetration-test report.
@@ -9,7 +9,9 @@ work. It is not a penetration-test report.
 
 - **Upload type and size:** filename, size, extension, MIME type, and
   extension/MIME agreement are checked before an upload intent is issued.
-  `complete` verifies stored-object metadata before creating a job.
+  `complete` verifies stored-object metadata before creating a job, and an
+  atomic intent claim prevents concurrent completion from creating duplicate
+  jobs. Source moves complete before a job becomes claimable.
 - **Media validity and duration:** the worker probes the actual file and
   rejects non-video or over-30-minute files before analysis.
 - **Ownership:** job read, delete, retry, export, evidence review, upload-body, and
@@ -34,8 +36,13 @@ work. It is not a penetration-test report.
   and platform/WAF limits remain useful. Fail-open mode now falls back to the
   in-process quota instead of disabling limits entirely; fail-closed mode maps
   an unavailable limiter to a service error rather than a misleading 429.
+  Address keys use platform identity on Vercel or an explicitly configured
+  trusted-proxy chain elsewhere; untrusted address headers are ignored.
 - **Temporary files:** worker jobs use isolated temporary directories and
   best-effort cleanup. Upload intents expire and are swept with their objects.
+- **Worker artifacts:** artifact writes are upload-unique and lease-fenced.
+  A worker that loses its lease cannot overwrite or delete a successor
+  worker's committed artifact, and deleting a job revokes its lease first.
 - **Direct transfer:** production media bytes go directly to object storage;
   the application does not proxy large upload bodies.
 - **Dependency advisories:** dependencies were refreshed on 2026-11-21,
@@ -51,8 +58,13 @@ work. It is not a penetration-test report.
   Rate-limited jobs have a separate 40-attempt ceiling with escalating
   cooldowns; ordinary crash/poison jobs retain the five-attempt ceiling.
 - **Browser mutation boundaries:** JSON and multipart bodies have incremental
-  byte caps, content types are enforced, and browser mutations require a
-  same-origin `Origin`/`Sec-Fetch-Site` request.
+  byte caps and content types are enforced. Cross-site and same-site mutations
+  are rejected; browser mutations without `Origin` require same-origin request
+  metadata or a non-simple JSON content type. Forwarded host headers are used
+  only on Vercel or behind an explicitly configured trusted proxy.
+- **Readiness disclosure:** the public health response reveals only aggregate
+  readiness and its timestamp. Per-subsystem diagnostics require the operations
+  bearer token, use constant-time comparison, and never contain credentials.
 
 ## Verified tests
 
@@ -61,6 +73,8 @@ work. It is not a penetration-test report.
 - job and evidence ownership;
 - worker token acceptance/rejection;
 - rate-limit windows, reset behavior, and multi-process PostgreSQL contention;
+- trusted-proxy key selection, spoof rejection, and immutable auth redirects;
+- concurrent upload completion and stale-worker artifact races;
 - S3 `HEAD` metadata and presigned `PUT` command wiring;
 - FFmpeg argument-list and option-like filename handling.
 

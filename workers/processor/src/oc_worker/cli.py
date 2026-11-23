@@ -8,6 +8,7 @@ database. It is intended for local analysis and CI fixtures.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import re
@@ -441,6 +442,12 @@ def analyze_file(
         probed = probe(str(source), settings.ffmpeg_path or None)
         if not probed.get("video_present"):
             raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
+        width = int(probed.get("width") or 0)
+        height = int(probed.get("height") or 0)
+        if width * height > 40_000_000:
+            raise PermanentFailure(
+                "Image dimensions are too large — the limit is 40 megapixels"
+            )
     else:
         probed = {"video_present": True, "audio_present": False}
 
@@ -457,6 +464,9 @@ def analyze_file(
         prefix="opencontext-cli-", ignore_cleanup_errors=True
     ) as tmp:
         workdir = Path(tmp)
+        session_id = "opencontext-" + hashlib.sha256(
+            str(source.resolve()).encode("utf-8")
+        ).hexdigest()[:16]
         audio_path = workdir / "audio.wav"
         segments = []
         if source_kind == "video" and probed.get("audio_present"):
@@ -518,6 +528,9 @@ def analyze_file(
                         "sourceKind": "video",
                         "sourceName": source.name,
                         "frameId": None,
+                        # extract_frames already enforced the detail cap at a
+                        # fractional fps; timestamp stride would drop most.
+                        "boundedSampling": True,
                     }
                 )
         selected_frames = aggregation.limit_frames(frames, settings.vision_max_frames)
@@ -527,6 +540,7 @@ def analyze_file(
             timestamp = float(frame["timestamp"])
             if (
                 frame.get("sourceKind") == "video"
+                and not frame.get("boundedSampling")
                 and not aggregation.frame_selected(timestamp, detail_level)
             ):
                 continue
@@ -548,18 +562,20 @@ def analyze_file(
             raw["provider"] = vision.name
             observation = VisualObservation.model_validate(raw)
             observations.append(observation)
-            if ocr_provider is None:
-                for line in str(frame.get("embeddedText") or "").splitlines():
-                    if line.strip():
-                        ocr.append(
-                            OCRObservation(
-                                timestampSec=timestamp,
-                                frameId=frame.get("frameId"),
-                                sourceIndex=frame.get("sourceIndex"),
-                                text=line.strip(),
-                                provider="pdf_text",
-                            )
+            for line in str(frame.get("embeddedText") or "").splitlines():
+                if line.strip():
+                    ocr.append(
+                        OCRObservation(
+                            timestampSec=timestamp,
+                            frameId=frame.get("frameId"),
+                            sourceIndex=frame.get("sourceIndex"),
+                            text=line.strip(),
+                            provider="pdf_text",
                         )
+                    )
+            if settings.ocr_provider.strip().lower() == "off":
+                pass
+            elif ocr_provider is None:
                 for text_item in observation.visibleText:
                     if text_item.strip():
                         ocr.append(
@@ -606,6 +622,7 @@ def analyze_file(
             timeline=timeline,
             audio_present=bool(probed.get("audio_present")),
             source_kind=source_kind,
+            session_id=session_id,
             source_assets=[
                 {
                     "name": frame.get("sourceName") or source.name,

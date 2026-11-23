@@ -69,7 +69,8 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       return errorResponse("NOT_FOUND", "Media object not found");
     }
 
-    const extension = key.slice(key.lastIndexOf(".") + 1).toLowerCase();
+    const dot = key.lastIndexOf(".");
+    const extension = (dot >= 0 ? key.slice(dot + 1) : "").toLowerCase();
     return new Response(body, {
       headers: {
         "Content-Type": MIME_BY_EXTENSION[extension] ?? "application/octet-stream",

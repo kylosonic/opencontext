@@ -23,10 +23,16 @@ from typing import Any
 from oc_worker.errors import PermanentFailure, TransientFailure
 
 _DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
-_RESOLUTION_RE = re.compile(r"\b(\d+)x(\d+)\b")
+# Resolution tokens in ffmpeg's stream summary are plain decimal dimensions
+# (for example ``320x180``). The codec/stream section also contains hex
+# identifiers such as ``[0x1]`` and ``(avc1 / 0x31637661)``; requiring a
+# non-zero first digit keeps those from being mistaken for ``width x height``.
+_RESOLUTION_RE = re.compile(r"(?<!\w)([1-9]\d{0,5})x([1-9]\d{0,5})(?!\w)")
+_MAX_SANE_DIMENSION = 100_000
 _STREAM_RE = re.compile(r"Stream #\d+:\d+")
 
 FFMPEG_TIMEOUT_SECONDS = 300
+MAX_MEDIA_DURATION_SECONDS = 1800
 
 
 def _ffmpeg_path(explicit: str | None = None) -> str:
@@ -91,6 +97,8 @@ def _probe_with_ffprobe(target: str, ffmpeg: str) -> dict[str, Any] | None:
             "stream=codec_type,width,height",
             "-of",
             "json",
+            "-protocol_whitelist",
+            "file,pipe",
             target,
         ]
     )
@@ -130,9 +138,20 @@ def _probe_with_ffmpeg_stderr(target: str, ffmpeg: str) -> dict[str, Any]:
         lower = line.lower()
         if " video:" in lower:
             video_present = True
-            resolution_match = _RESOLUTION_RE.search(line)
-            if resolution_match:
-                width, height = (int(v) for v in resolution_match.groups())
+            # Only inspect the post-"Video:" portion. This avoids matching
+            # stream indexes or other container fields that happen to contain
+            # an ``x`` token.
+            video_details = line.lower().split(" video:", 1)[1]
+            for resolution_match in _RESOLUTION_RE.finditer(video_details):
+                candidate_width, candidate_height = (
+                    int(value) for value in resolution_match.groups()
+                )
+                if (
+                    candidate_width <= _MAX_SANE_DIMENSION
+                    and candidate_height <= _MAX_SANE_DIMENSION
+                ):
+                    width, height = candidate_width, candidate_height
+                    break
         elif " audio:" in lower:
             audio_present = True
     return {
@@ -155,6 +174,8 @@ def extract_audio(
     src: str | Path,
     dst: str | Path,
     ffmpeg_path: str | None = None,
+    *,
+    max_duration_seconds: float = MAX_MEDIA_DURATION_SECONDS,
 ) -> bool:
     """Extract the audio stream to 16 kHz mono WAV.
 
@@ -171,6 +192,8 @@ def extract_audio(
             "-y",
             "-i",
             str(src),
+            "-t",
+            f"{max_duration_seconds:g}",
             "-vn",
             "-ac",
             "1",
@@ -207,6 +230,7 @@ def extract_frames(
     max_width: int = 1280,
     max_frames: int = 1800,
     ffmpeg_path: str | None = None,
+    max_duration_seconds: float = MAX_MEDIA_DURATION_SECONDS,
 ) -> list[dict[str, Any]]:
     """Extract JPEG frames at ``fps`` (max width ``max_width``).
 
@@ -229,6 +253,8 @@ def extract_frames(
             "file,pipe",
             "-i",
             str(src),
+            "-t",
+            f"{max_duration_seconds:g}",
             "-vf",
             f"fps={fps},{scale}",
             "-frames:v",

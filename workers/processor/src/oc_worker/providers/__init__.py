@@ -123,7 +123,7 @@ def build_vision(settings: Settings) -> VisionProvider | None:
 def build_ocr(settings: Settings) -> OcrProvider | None:
     """Build an independent OCR provider; None keeps vision-derived OCR."""
     provider = settings.ocr_provider.lower()
-    if provider in ("", "none", "vision"):
+    if provider in ("", "none", "vision", "off"):
         return None
     if provider == "fixture":
         return FixtureOcrProvider()

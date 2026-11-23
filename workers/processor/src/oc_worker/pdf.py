@@ -9,10 +9,11 @@ from typing import Any
 import pypdfium2 as pdfium
 from PIL import Image
 
-from oc_worker.errors import PermanentFailure
+from oc_worker.errors import PermanentFailure, check_abort
 
 MAX_PDF_PAGES = 30
 DEFAULT_MAX_WIDTH = 1600
+DEFAULT_MAX_HEIGHT = 4000
 MAX_PDF_PAGE_PIXELS = 40_000_000
 
 
@@ -22,6 +23,7 @@ def extract_pdf_pages(
     *,
     max_pages: int = MAX_PDF_PAGES,
     max_width: int = DEFAULT_MAX_WIDTH,
+    max_height: int = DEFAULT_MAX_HEIGHT,
     max_page_pixels: int = MAX_PDF_PAGE_PIXELS,
 ) -> list[dict[str, Any]]:
     """Render a bounded PDF to ordered JPEG pages and extract embedded text."""
@@ -33,7 +35,10 @@ def extract_pdf_pages(
         raise PermanentFailure("This file is not a valid PDF") from exc
 
     try:
-        page_count = len(document)
+        try:
+            page_count = len(document)
+        except Exception as exc:  # noqa: BLE001 - malformed PDF object graph
+            raise PermanentFailure("This file is not a valid PDF") from exc
         if page_count == 0:
             raise PermanentFailure("This PDF has no pages")
         if max_pages < 1 or page_count > max_pages:
@@ -43,13 +48,24 @@ def extract_pdf_pages(
 
         pages: list[dict[str, Any]] = []
         for index in range(page_count):
-            page = document[index]
+            check_abort()
+            try:
+                page = document[index]
+            except Exception as exc:  # noqa: BLE001 - malformed page tree
+                raise PermanentFailure(
+                    f"Could not load PDF page {index + 1}"
+                ) from exc
             try:
                 width, height = (float(value) for value in page.get_size())
                 if width <= 0 or height <= 0:
                     raise PermanentFailure(f"PDF page {index + 1} has invalid dimensions")
                 pixel_scale = math.sqrt(max_page_pixels / (width * height))
-                scale = min(3.0, max_width / width, pixel_scale)
+                scale = min(
+                    3.0,
+                    max_width / width,
+                    max_height / height,
+                    pixel_scale,
+                )
                 if scale <= 0:
                     raise PermanentFailure(f"PDF page {index + 1} is too large to render")
                 bitmap = page.render(scale=scale)

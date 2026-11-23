@@ -98,6 +98,28 @@ describe("operations alert snapshot", () => {
     expect(report.healthy).toBe(true);
   });
 
+  it("uses an expired heartbeat marker until the configured claim threshold", async () => {
+    const observedAt = new Date(now.getTime() - 3 * 60_000);
+    const report = await evaluateOperations(
+      now,
+      thresholds,
+      database(
+        [signal({ createdAt: new Date(now.getTime() - 60 * 60_000) })],
+        [
+          {
+            key: "worker-lease:worker-a",
+            // A two-minute lease that expired one minute ago; its observedAt
+            // remains three minutes ago rather than disappearing entirely.
+            resetAt: new Date(observedAt.getTime() + 2 * 60_000),
+          },
+        ],
+      ),
+    );
+
+    expect(Date.parse(report.lastWorkerClaimAt ?? "")).toBe(observedAt.getTime());
+    expect(report.alerts.map((alert) => alert.code)).toEqual(["QUEUE_OLDEST"]);
+  });
+
   it("records a heartbeat without creating a user or job", async () => {
     const token = process.env.WORKER_API_TOKEN;
     process.env.WORKER_API_TOKEN = "worker-test-token-at-least-16";

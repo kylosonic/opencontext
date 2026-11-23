@@ -52,6 +52,7 @@ from oc_worker.models import (
 )
 from oc_worker.pdf import MAX_PDF_PAGES, extract_pdf_pages
 from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
+from oc_worker.providers.http_status import provider_session
 from oc_worker.providers.ocr.base import OcrProvider
 from oc_worker.providers.text.base import TextProvider
 from oc_worker.providers.transcription.base import TranscriptionProvider
@@ -115,6 +116,7 @@ class Pipeline:
         self.ocr_provider = (
             ocr_provider if ocr_provider is not None else build_ocr(settings)
         )
+        self._ocr_disabled = settings.ocr_provider.strip().lower() == "off"
         self.text_provider = text_provider if text_provider is not None else build_text(settings)
         configured_ffmpeg = settings.ffmpeg_path or None
         self._probe = (
@@ -136,7 +138,9 @@ class Pipeline:
                 source, output_dir, ffmpeg_path=configured_ffmpeg
             )
         )
-        self._real_frame_extraction = extract_frames_fn is None
+        # A caller-provided extractor has no fps/max-frame arguments, so only
+        # the built-in path can guarantee bounded production extraction.
+        self._bounded_frame_extraction = extract_frames_fn is None
         self._extract_image = (
             extract_image_fn
             if extract_image_fn is not None
@@ -237,7 +241,11 @@ class Pipeline:
             text_provider=self.text_provider,
             probe_fn=self._probe,
             extract_audio_fn=self._extract_audio,
-            extract_frames_fn=self._extract_frames,
+            extract_frames_fn=(
+                None
+                if self._bounded_frame_extraction
+                else self._extract_frames
+            ),
             extract_image_fn=self._extract_image,
             extract_pdf_fn=self._extract_pdf,
             job_timeout_seconds=self.job_timeout_seconds,
@@ -398,7 +406,7 @@ class Pipeline:
                 for page in pages
             ]
         else:
-            if self._real_frame_extraction and duration and duration > 0:
+            if self._bounded_frame_extraction and duration and duration > 0:
                 frame_fps = max(
                     0.001,
                     min(1.0, self.settings.vision_max_frames / duration),
@@ -412,6 +420,11 @@ class Pipeline:
                         ffmpeg_path=self.settings.ffmpeg_path or None,
                     )
                 )
+                # These frames were already sampled evenly by FFmpeg under
+                # the provider cap. Reapplying the old 1-fps timestamp stride
+                # would discard almost every fractional-fps sample.
+                for frame in frames:
+                    frame["boundedSampling"] = True
             else:
                 frames = self._timed(
                     lambda: self._extract_frames(str(src), str(workdir / "frames"))
@@ -512,11 +525,12 @@ class Pipeline:
                 job_id, stage="TRANSCRIBING", stage_status="RUNNING", progress=10,
                 message="Transcribing audio",
             )
-        segments = self._timed(
-            lambda: run_with_retry(
-                lambda: self.transcription_provider.transcribe(str(audio_path))
+        with provider_session(f"opencontext-{job_id}"):
+            segments = self._timed(
+                lambda: run_with_retry(
+                    lambda: self.transcription_provider.transcribe(str(audio_path))
+                )
             )
-        )
         # Speech models can end past the media; the stored segments are the
         # source of truth for the results view, so bound them before sending.
         segments = clamp_segments_to_duration(segments, duration_sec)
@@ -549,6 +563,7 @@ class Pipeline:
             frame
             for frame in frames
             if frame.get("sourceKind") != "video"
+            or frame.get("boundedSampling")
             or aggregation.frame_selected(float(frame["timestamp"]), detail_level)
         ]
         selected = aggregation.limit_frames(selected, self.settings.vision_max_frames)
@@ -617,7 +632,9 @@ class Pipeline:
                                     "provider": "pdf_text",
                                 }
                             )
-                if self.ocr_provider is None:
+                if self._ocr_disabled:
+                    pass
+                elif self.ocr_provider is None:
                     for text_item in raw.get("visibleText") or []:
                         # canonical visibleText entries are strings; legacy
                         # providers may still send {text, confidence?} dicts.
@@ -812,22 +829,26 @@ class Pipeline:
     ) -> None:
         self._current_stage = "GENERATING_CONTEXT"
         job_id = job["id"]
+        self._check_deadline()
         self.api.progress(
             job_id, stage="GENERATING_CONTEXT", stage_status="RUNNING", progress=30,
             message="Generating developer context",
         )
-        markdown, payload = context.build_context(
-            source_name=job.get("displayName") or "Untitled recording",
-            duration_sec=float(probe_data.get("durationSec") or 0.0),
-            detail_level=detail_level,
-            segments=segments,
-            observations=observations,
-            ocr=ocr_items,
-            timeline=timeline,
-            audio_present=bool(probe_data.get("audioPresent")),
-            source_kind=self._source_kind(job),
-            source_assets=probe_data.get("sourceAssets") or [],
-            text_provider=self.text_provider,
+        markdown, payload = self._timed(
+            lambda: context.build_context(
+                source_name=job.get("displayName") or "Untitled recording",
+                duration_sec=float(probe_data.get("durationSec") or 0.0),
+                detail_level=detail_level,
+                segments=segments,
+                observations=observations,
+                ocr=ocr_items,
+                timeline=timeline,
+                audio_present=bool(probe_data.get("audioPresent")),
+                source_kind=self._source_kind(job),
+                source_assets=probe_data.get("sourceAssets") or [],
+                text_provider=self.text_provider,
+                session_id=f"opencontext-{job_id}",
+            )
         )
         self.api.stage_result(
             job_id,
@@ -872,6 +893,7 @@ class Pipeline:
                 self._generating_context(
                     job, probe_data, detail_level, segments, observations, ocr_items, timeline
                 )
+                self._check_deadline()
                 self.api.complete(job_id)
         except ProcessingCancelled as exc:
             self._fail(job_id, str(exc), "PERMANENT", retryable=False)
@@ -916,18 +938,19 @@ class Pipeline:
         retry_after_seconds: float | None = None,
         rate_limited: bool = False,
     ) -> None:
+        bounded_error = (error.strip() or "Unknown processing error")[:2_000]
         log.error(
             "job=%s stage=%s status=failed error=%r failure_kind=%s",
             job_id,
             self._current_stage,
-            error,
+            bounded_error,
             failure_kind,
         )
         try:
             self.api.fail(
                 job_id,
                 stage=self._current_stage,
-                error=error,
+                error=bounded_error,
                 failure_kind=failure_kind,
                 retryable=retryable,
                 retry_after_sec=retry_after_seconds,

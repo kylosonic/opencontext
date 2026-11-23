@@ -19,6 +19,8 @@ export WORKER_API_TOKEN='a-separate-long-random-secret'
 export APP_BASE_URL='https://your-app.example'
 export RATE_LIMIT_BACKEND='database'
 export RATE_LIMIT_FAILURE_MODE='open'
+export TRUST_PROXY='true'
+export TRUST_PROXY_HOPS='1'
 ```
 
 For any S3-compatible endpoint (Cloudflare R2, MinIO, S3Mock) use the static
@@ -39,6 +41,11 @@ are present. OIDC is Vercel-only; other hosts need static credentials.
 Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
 same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
 during a limiter outage is safer for your deployment than allowing it.
+Set `TRUST_PROXY=true` only when the app is behind a reverse proxy that overwrites
+or appends the address headers, and set `TRUST_PROXY_HOPS` to the number of
+trusted proxy hops. A single Nginx or load-balancer hop uses the default of one.
+Do not enable this for a directly exposed app whose clients can spoof those
+headers. Vercel's platform headers are recognized automatically.
 
 The application budgets 240 upload-intent requests per user per 10 minutes, so
 repeated maximum-size 10-image sets do not lock the account after one upload.
@@ -56,10 +63,19 @@ After deploying, verify the secret-safe readiness report:
 curl -fsS https://your-app.example/api/health/ready
 ```
 
-The endpoint returns HTTP 200 only when PostgreSQL, authentication, S3 storage,
-the worker token, the public HTTPS URL, and shared rate limiting are configured.
-It returns HTTP 503 with fixed blocker descriptions and never returns secret
-values. This is a configuration check, not a remote connectivity test.
+The public response contains only `ready` and `checkedAt`. The endpoint returns
+HTTP 200 only when PostgreSQL, authentication, S3 storage, the worker token, the
+public HTTPS URL, and shared rate limiting are configured; otherwise it returns
+HTTP 503. To see fixed per-subsystem blocker descriptions and the detected
+environment, authenticate with the operations token:
+
+```bash
+curl -fsS -H "Authorization: Bearer $OPS_API_TOKEN" \
+  https://your-app.example/api/health/ready
+```
+
+Detailed responses never return secret values. This is a configuration check,
+not a remote connectivity test.
 
 The repository includes a multi-process PostgreSQL contention test. Against a
 disposable database:
@@ -132,7 +148,23 @@ The bucket must allow browser `PUT` requests from the web origin and expose
 
 Keep the bucket private. The worker reads source media through a short-lived
 presigned GET URL. Upload completion verifies size and content type before
-moving the object to its final key.
+moving the object to its final key. Completion atomically claims each upload
+intent, so duplicate or concurrent completion requests cannot create duplicate
+jobs.
+
+## Retention
+
+The authenticated retention sweep deletes stored objects before deleting their
+rows. Configure the two windows independently for the deployment's data policy:
+
+```bash
+export RETENTION_COMPLETED_DAYS='14'
+export RETENTION_INCOMPLETE_DAYS='7'
+```
+
+Both values must be positive integers; invalid values fall back to the documented
+defaults. The sweep is idempotent and also removes expired upload intents and
+stale rate-limit buckets.
 
 For the real S3-compatible integration test, start the test-only S3Mock profile
 and run the web suite with the matching environment:
@@ -261,10 +293,10 @@ immediately. The repository ships `docker/worker-hosted.Dockerfile` for that
 purpose; see `docker/worker-hosted.env.example` for the environment contract.
 
 You can deploy the web app and worker together on a Docker-capable host with
-the deployment definition at `docker/compose.hosted.yml`. The bundle contains
-PostgreSQL, the web app, and the worker; S3-compatible object storage remains an
-external service. Run it from the repository root after configuring the
-required production variables:
+the deployment definition at `docker/compose.hosted.yml`. The default bundle
+contains PostgreSQL, the web app, and the worker; S3-compatible object storage
+remains an external service. Run it from the repository root after configuring
+the required production variables:
 
 ```bash
 docker compose -f docker/compose.hosted.yml up -d --build
@@ -272,18 +304,25 @@ docker compose -f docker/compose.hosted.yml up -d --build
 
 That stack uses PostgreSQL for the queue and the public GitHub OAuth settings.
 Set `STORAGE_S3_*`, `APP_BASE_URL`, `AUTH_GITHUB_*`, `AUTH_SECRET`, and
-`WORKER_API_TOKEN` before starting it. The worker model cache is a named volume
-owned by UID 10001, and both containers receive `SIGTERM` and drain before
-stopping. The Compose stack trusts its own request Host header so Auth.js can
-construct callback URLs; set `AUTH_TRUST_HOST=false` only when another proxy
-validates that header. `OPENCONTEXT_WEB_PORT` only changes the host publishing
-port; set `APP_BASE_URL` to the URL that users will actually visit.
+`WORKER_API_TOKEN`, `OPS_API_TOKEN`, and at least one supported AI provider key
+before starting it. The worker model cache is a named volume owned by UID 10001,
+and both containers receive `SIGTERM` and drain before stopping. The Compose
+stack trusts its own request Host header so Auth.js can construct callback URLs;
+set `AUTH_TRUST_HOST=false` only when another proxy validates that header.
+`OPENCONTEXT_WEB_PORT` only changes the host publishing port; set `APP_BASE_URL`
+to the URL that users will actually visit.
+
+For a local acceptance run without external object storage, add
+`--profile local-storage`; this starts S3Mock and creates the configured bucket
+before the web service. The S3 service and bucket-initializer are not started by
+the default production definition.
 
 `docker/web-hosted.Dockerfile` produces the PostgreSQL-only web image. It runs
-pending migrations on start, drops unused SQLite support, excludes local env
-files, and exposes `/api/health/ready` for the host health check. Vercel's
-serverless project remains a valid public web deployment, but it does not itself
-supply a persistent queue worker.
+pending migrations on start, removes unused SQLite packages, excludes local env
+files, and exposes the public readiness check for the host health check. It does
+not rewrite the Prisma schema at container start. Vercel's serverless project
+remains a valid public web deployment, but it does not itself supply a
+persistent queue worker.
 
 The GitHub Actions schedule remains the fallback when no always-on worker host
 is configured.

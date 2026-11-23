@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { DetailLevel } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
@@ -34,10 +35,11 @@ export interface CreateJobSourcesInput {
 }
 
 /**
- * Upload commit sequence (blueprint §3 B3): create Job + SOURCE Media and
- * move the temp object to its final key inside one transaction. Any failure
- * rolls the rows back and removes the temp object — partial data never
- * enters processing. Final key: `jobs/{jobId}/source.{ext}`.
+ * Upload commit sequence (blueprint §3 B3): move every temp object to its
+ * final key first, then create Job + SOURCE Media in one transaction. A
+ * worker can never observe a QUEUED row while the source is still missing.
+ * Any failure removes both the temp and already-finalized objects. Final
+ * key: `jobs/{jobId}/source.{ext}`.
  */
 export async function createJob(input: CreateJobInput) {
   return createJobSources({
@@ -69,12 +71,27 @@ export async function createJobSources(input: CreateJobSourcesInput) {
   }
   const stageStates = initialStageStates();
   const primary = input.sources[0];
+  // Generate the id before inserting the QUEUED row so final object keys are
+  // known and every source can be moved while the job remains unclaimable.
+  const jobId = randomUUID();
+  const finalKeys = input.sources.map((source, index) =>
+    input.sources.length === 1
+      ? `jobs/${jobId}/source.${source.extension}`
+      : `jobs/${jobId}/sources/${String(index + 1).padStart(2, "0")}.${source.extension}`,
+  );
   const finalizedKeys: string[] = [];
-  let createdJobId: string | null = null;
   try {
-    const job = await prisma.$transaction(async (tx) => {
+    for (let index = 0; index < input.sources.length; index += 1) {
+      await storage.move(input.sources[index].tempKey, finalKeys[index], {
+        etag: input.sources[index].etag,
+      });
+      finalizedKeys.push(finalKeys[index]);
+    }
+
+    return await prisma.$transaction(async (tx) => {
       const created = await tx.job.create({
         data: {
+          id: jobId,
           userId: input.userId,
           displayName: input.displayName,
           detailLevel: input.detailLevel,
@@ -86,42 +103,24 @@ export async function createJobSources(input: CreateJobSourcesInput) {
         },
       });
 
-      const finalKeys: string[] = [];
       for (let index = 0; index < input.sources.length; index += 1) {
         const source = input.sources[index];
-        const finalKey =
-          input.sources.length === 1
-            ? `jobs/${created.id}/source.${source.extension}`
-            : `jobs/${created.id}/sources/${String(index + 1).padStart(2, "0")}.${source.extension}`;
         await tx.media.create({
           data: {
             jobId: created.id,
             kind: "SOURCE",
-            key: finalKey,
+            key: finalKeys[index],
             mime: source.mime,
             sizeBytes: source.sizeBytes,
             timestampSec: index,
           },
         });
-        finalKeys.push(finalKey);
       }
       return tx.job.update({
         where: { id: created.id },
         data: { sourceKey: finalKeys[0] },
       });
     });
-    createdJobId = job.id;
-
-    for (let index = 0; index < input.sources.length; index += 1) {
-      const source = input.sources[index];
-      const finalKey =
-        input.sources.length === 1
-          ? `jobs/${job.id}/source.${source.extension}`
-          : `jobs/${job.id}/sources/${String(index + 1).padStart(2, "0")}.${source.extension}`;
-      await storage.move(source.tempKey, finalKey, { etag: source.etag });
-      finalizedKeys.push(finalKey);
-    }
-    return job;
   } catch (error) {
     // Best-effort cleanup for both unmoved intents and generated final keys.
     await Promise.all([
@@ -130,9 +129,9 @@ export async function createJobSources(input: CreateJobSourcesInput) {
       ),
       ...finalizedKeys.map((key) => storage.delete(key).catch(() => undefined)),
     ]);
-    if (createdJobId) {
-      await prisma.job.deleteMany({ where: { id: createdJobId } });
-    }
+    // If the transaction committed but a later operation failed, remove the
+    // row as well. deleteMany keeps cleanup idempotent when creation failed.
+    await prisma.job.deleteMany({ where: { id: jobId } });
     throw error;
   }
 }

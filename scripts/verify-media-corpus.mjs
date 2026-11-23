@@ -8,18 +8,30 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 
+const repoRoot = path.resolve(import.meta.dirname, "..");
 const corpusDir = path.resolve(process.argv[2] || ".artifacts/media-corpus");
 const outputDir = path.resolve(
   process.env.OPENCONTEXT_CORPUS_OUTPUT || ".artifacts/media-corpus-current",
 );
-const cli = path.resolve(
-  process.env.OPENCONTEXT_CLI || "workers/processor/.venv/bin/opencontext",
-);
+const configuredCli = process.env.OPENCONTEXT_CLI?.trim();
+const cli = configuredCli
+  ? configuredCli.includes(path.sep)
+    ? path.resolve(configuredCli)
+    : configuredCli
+  : path.join(repoRoot, "workers/processor/.venv/bin/opencontext");
 
 const manifest = JSON.parse(
   await readFile(path.join(corpusDir, "manifest.json"), "utf8"),
 );
 assert.ok(Array.isArray(manifest.assets) && manifest.assets.length >= 2);
+assert.ok(
+  manifest.assets.some((asset) => asset.kind === "image"),
+  "media corpus contains no images",
+);
+assert.ok(
+  manifest.assets.some((asset) => asset.kind === "video"),
+  "media corpus contains no videos",
+);
 await mkdir(outputDir, { recursive: true });
 
 function run(args, timeout = 300_000) {
@@ -46,7 +58,7 @@ function run(args, timeout = 300_000) {
 }
 
 const verified = [];
-for (const asset of manifest.assets) {
+for (const [assetIndex, asset] of manifest.assets.entries()) {
   const source = path.join(corpusDir, asset.fileName);
   const bytes = await readFile(source);
   assert.equal(bytes.length, asset.bytes, `${asset.fileName} size changed`);
@@ -57,7 +69,10 @@ for (const asset of manifest.assets) {
   );
 
   const stem = path.basename(asset.fileName, path.extname(asset.fileName));
-  const assetDir = path.join(outputDir, stem);
+  const assetDir = path.join(
+    outputDir,
+    `${String(assetIndex + 1).padStart(3, "0")}-${stem}`,
+  );
   await mkdir(assetDir, { recursive: true });
   const markdown = path.join(assetDir, "context.md");
   const json = path.join(assetDir, "context.json");

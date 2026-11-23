@@ -52,6 +52,7 @@ from oc_worker.models import (
     VisualObservation,
     clamp_segments_to_duration,
 )
+from oc_worker.providers.http_status import provider_session
 from oc_worker.providers.text.base import TextProvider, anchored_lines
 
 log = logging.getLogger("oc_worker.context")
@@ -584,6 +585,7 @@ def build_context(
     source_kind: str = "video",
     source_assets: list[dict[str, Any]] | None = None,
     text_provider: TextProvider | None = None,
+    session_id: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Build the developer context; returns (markdown, json payload)."""
     level = DetailLevel(detail_level)
@@ -607,7 +609,8 @@ def build_context(
     markdown = template_markdown(payload)
     if text_provider is not None:
         try:
-            refined_markdown = text_provider.refine(payload, markdown)
+            with provider_session(session_id):
+                refined_markdown = text_provider.refine(payload, markdown)
             if anchored_lines(refined_markdown) == anchored_lines(markdown):
                 markdown = refined_markdown
             else:

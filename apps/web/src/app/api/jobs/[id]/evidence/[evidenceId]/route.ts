@@ -97,7 +97,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
       return errorResponse("NOT_FOUND", "Evidence record not found");
     }
 
-    return NextResponse.json(updated);
+    return applyRateLimitHeaders(NextResponse.json(updated), limit);
   });
 }
 
@@ -221,5 +221,7 @@ function escapeMarkdown(value: string): string {
     .replace(/\\/g, "\\\\")
     .replace(/\[/g, "\\[")
     .replace(/\]/g, "\\]")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
     .replace(/[\r\n]+/g, " ");
 }

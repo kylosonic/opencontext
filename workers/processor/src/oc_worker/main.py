@@ -299,7 +299,7 @@ def _drain(
     stopper: WorkerStopper | None = None,
     *,
     exit_on_idle: bool = False,
-) -> None:
+) -> int:
     """Keep one Pipeline alive so model loading is not repeated per claim."""
     stopper = stopper or WorkerStopper()
     heartbeat_started = threading.Event()
@@ -317,21 +317,29 @@ def _drain(
     heartbeat_thread.start()
     heartbeat_started.wait(timeout=1.0)
     deadline = time.monotonic() + max(0.0, seconds)
+    last_error: Exception | None = None
     try:
         while not stopper.stop_event.is_set():
             try:
                 outcome = _process_once(api, pipeline, stopper)
-            except (PermanentFailure, TransientFailure) as exc:
+            except PermanentFailure as exc:
                 log.error("worker=%s status=claim_error error=%s", api.worker_id, exc)
+                return 1
+            except TransientFailure as exc:
+                log.error("worker=%s status=claim_error error=%s", api.worker_id, exc)
+                last_error = exc
                 outcome = "error"
+            else:
+                last_error = None
             if time.monotonic() >= deadline:
-                return
+                return 1 if last_error is not None else 0
             if outcome == "idle":
                 if exit_on_idle:
-                    return
+                    return 1 if last_error is not None else 0
                 stopper.sleep(IDLE_POLL_SECONDS)
             elif outcome == "error":
                 stopper.sleep(5.0)
+        return 0
     finally:
         stopper.request_stop()
         heartbeat_thread.join(timeout=2.0)
@@ -487,14 +495,14 @@ def main() -> None:
             settings.worker_api_url,
             args.drain_seconds,
         )
-        _drain(
+        exit_code = _drain(
             api,
             pipeline,
             args.drain_seconds,
             stopper,
             exit_on_idle=args.exit_on_idle,
         )
-        raise SystemExit(0)
+        raise SystemExit(exit_code)
     raise SystemExit(_run_supervisor(settings))
 
 

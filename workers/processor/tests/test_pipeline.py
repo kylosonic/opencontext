@@ -12,6 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import httpx
+import pytest
 
 from oc_worker import context as context_module
 from oc_worker import pipeline as pipeline_module
@@ -349,6 +350,63 @@ def _make_pipeline(
         extract_pdf_fn=extract_pdf or _extract_pdf_ok(),
         job_timeout_seconds=job_timeout_seconds,
     )
+
+
+def test_fork_preserves_bounded_production_frame_extraction(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def bounded_extract(
+        source: str,
+        output_dir: str,
+        *,
+        fps: float,
+        max_frames: int,
+        ffmpeg_path: str | None = None,
+    ) -> list[dict]:
+        captured.update(
+            {"source": source, "fps": fps, "max_frames": max_frames, "ffmpeg": ffmpeg_path}
+        )
+        directory = Path(output_dir)
+        directory.mkdir(parents=True, exist_ok=True)
+        frames = []
+        for index, timestamp in enumerate((0.0, 7.5, 15.0, 22.5), start=1):
+            path = directory / f"frame_{index:06d}.jpg"
+            path.write_bytes(b"fake-jpeg")
+            frames.append({"timestamp": timestamp, "path": str(path)})
+        return frames
+
+    monkeypatch.setattr(pipeline_module, "extract_frames", bounded_extract)
+    vision = FakeVision()
+    settings = Settings(
+        worker_api_url=API_BASE,
+        worker_id="worker-1",
+        vision_concurrency=1,
+        vision_max_frames=4,
+    )
+    pipeline = Pipeline(
+        _api(_Handler()),
+        settings,
+        transcription_provider=FakeTranscription(),
+        vision_provider=vision,
+        text_provider=FakeText(),
+        probe_fn=_probe_ok(duration=30.0),
+        extract_audio_fn=_extract_audio_ok(),
+        extract_image_fn=_extract_image_ok(),
+        extract_pdf_fn=_extract_pdf_ok(),
+    )
+    child = pipeline.fork()
+
+    assert child is not pipeline
+    assert child._bounded_frame_extraction is True
+    assert child.run_job(_job(detail_level="LOW")) == "completed"
+    assert captured["max_frames"] == 4
+    assert float(captured["fps"]) == pytest.approx(4 / 30)
+    assert [call[1]["timestampSec"] for call in vision.calls] == [
+        0.0,
+        7.5,
+        15.0,
+        22.5,
+    ]
 
 
 def test_pipeline_uses_configured_ffmpeg_path(monkeypatch) -> None:

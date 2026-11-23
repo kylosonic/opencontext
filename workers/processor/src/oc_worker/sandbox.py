@@ -45,13 +45,17 @@ class WorkspaceSandbox:
         candidate = Path(value).expanduser()
         if not candidate.is_absolute():
             candidate = self.default_root / candidate
-        try:
-            resolved = candidate.resolve(strict=True)
-        except OSError as exc:
-            raise ValueError(f"Path does not exist: {candidate}") from exc
+        # Normalize and resolve existing symlinks without requiring the final
+        # path to exist. Authorize the normalized path before touching the
+        # filesystem so existing and nonexistent outside paths return the
+        # same error (no host-file existence oracle).
+        resolved = candidate.resolve(strict=False)
         if not any(_is_relative_to(resolved, root) for root in self.roots):
             raise ValueError("Path is outside the configured workspace roots")
-        info = resolved.stat()
+        try:
+            info = resolved.stat()
+        except OSError as exc:
+            raise ValueError(f"Path does not exist: {candidate}") from exc
         if kind == "file" and not stat.S_ISREG(info.st_mode):
             raise ValueError(f"Path is not a regular file: {resolved}")
         if kind == "directory" and not stat.S_ISDIR(info.st_mode):

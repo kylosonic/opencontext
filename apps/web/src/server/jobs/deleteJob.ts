@@ -8,31 +8,48 @@ export type DeleteJobResult =
 
 /**
  * Delete a job (jobs.md B10): remove every stored object (source,
- * artifacts, frames) then cascade-delete the rows. Storage removal is
+ * artifacts, frames) then cascade-delete the rows. We first revoke any
+ * active worker lease in a transaction, so late artifact/stage mutations are
+ * fenced before their objects can be collected. Storage removal is
  * best-effort — the database rows always go.
  */
 export async function deleteJob(jobId: string, userId: string): Promise<DeleteJobResult> {
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
-    include: { media: { select: { key: true } } },
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  if (!job) return { kind: "NOT_FOUND" };
+  if (job.userId !== userId) return { kind: "FORBIDDEN" };
+
+  const deletion = await prisma.$transaction(async (tx) => {
+    const revoked = await tx.job.updateMany({
+      where: { id: jobId, userId },
+      data: {
+        status: "FAILED",
+        failureKind: "PERMANENT",
+        error: "This job is being deleted",
+        claimedBy: null,
+        leaseUntil: null,
+        availableAt: null,
+      },
+    });
+    if (revoked.count === 0) return null;
+    return tx.job.findUnique({
+      where: { id: jobId },
+      include: { media: { select: { key: true } } },
+    });
   });
-  if (!job) {
-    return { kind: "NOT_FOUND" };
-  }
-  if (job.userId !== userId) {
-    return { kind: "FORBIDDEN" };
-  }
+  if (!deletion) return { kind: "NOT_FOUND" };
 
   const keys = new Set<string>();
-  if (job.sourceKey) {
-    keys.add(job.sourceKey);
+  if (deletion.sourceKey) {
+    keys.add(deletion.sourceKey);
   }
-  for (const media of job.media) {
+  for (const media of deletion.media) {
     keys.add(media.key);
   }
 
   await storage.deleteMany([...keys]).catch(() => undefined);
-  await prisma.job.delete({ where: { id: jobId } });
+  // deleteMany makes concurrent/replayed deletion idempotent instead of
+  // surfacing Prisma P2025 as a 500.
+  await prisma.job.deleteMany({ where: { id: jobId, userId } });
 
   return { kind: "OK" };
 }

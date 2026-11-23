@@ -6,7 +6,7 @@
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
     container_name: opencontext-db
     environment:
       POSTGRES_USER: opencontext
@@ -91,7 +91,7 @@ services:
       OPENAI_API_KEY: ${OPENCONTEXT_DEMO_OPENAI_API_KEY:-}
       OPENCODE_API_KEY: ${OPENCONTEXT_DEMO_OPENCODE_API_KEY:-}
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEY: ${OPENCONTEXT_DEMO_GEMINI_API_KEY:-${GEMINI_API_KEY:-}}
       OPENCODE_SESSION_ID: ${OPENCODE_SESSION_ID:-opencontext-demo}
       VISION_MODEL: ${OPENCONTEXT_DEMO_MODEL:-gpt-4o-mini}
       VISION_FALLBACK_MODELS: ${VISION_FALLBACK_MODELS:-}
@@ -145,7 +145,7 @@ services:
     restart: "no"
 
   s3mock:
-    image: adobe/s3mock:5
+    image: adobe/s3mock:5@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92
     profiles: ["storage-test"]
     container_name: opencontext-s3mock
     ports:

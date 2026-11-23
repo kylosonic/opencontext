@@ -3,6 +3,10 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { config as loadEnv } from "dotenv";
+import {
+  parseDemoInvocation,
+  selectDemoProvider,
+} from "./real-vision-demo-config.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const composeFile = path.join(repoRoot, "docker-compose.yml");
@@ -11,21 +15,10 @@ if (existsSync(localEnvFile)) {
   loadEnv({ path: localEnvFile, override: false, quiet: true });
 }
 const args = process.argv.slice(2);
-const dockerArgs = args[0] === "--" ? args.slice(1) : args;
-let mode =
-  process.env.OPENCONTEXT_DEMO_VISION ||
-  (process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY ? "real" : "");
-mode ||= "fixture";
-let explicitMode = Boolean(mode);
-if (dockerArgs[0] === "real") {
-  mode = "real";
-  explicitMode = true;
-  dockerArgs.shift();
-} else if (dockerArgs[0] === "fixture") {
-  mode = "fixture";
-  explicitMode = true;
-  dockerArgs.shift();
-}
+const { dockerArgs, mode, explicitMode } = parseDemoInvocation(
+  process.env,
+  args,
+);
 
 function fail(message) {
   console.error(`real-vision-demo: ${message}`);
@@ -88,7 +81,7 @@ function checkConfiguration(values) {
       stdio: "inherit",
       env: {
         ...process.env,
-      ...sanitizedProviderEnvironment,
+        ...sanitizedProviderEnvironment,
         ...values,
       },
     },
@@ -117,24 +110,28 @@ const fixtureValues = {
   VISION_PROVIDER: "fixture",
   TEXT_PROVIDER: "template",
 };
-if (!explicitMode && dockerArgs.length === 0) {
-  console.error("real-vision-demo: real settings are incomplete; starting fixture mode");
-  process.exit(runDocker(fixtureValues));
-}
 if (mode !== "real") {
   checkConfiguration(fixtureValues);
   const upArgs = dockerArgs[0] === "up" ? dockerArgs : ["up", "--build"];
   process.exit(runDocker(fixtureValues, upArgs));
 }
 
-const useGemini = Boolean(process.env.GEMINI_API_KEY?.trim());
-const geminiModel = process.env.OPENCONTEXT_DEMO_MODEL || "gemini-4-hydrogen";
+const {
+  useGemini,
+  useOpenAI,
+  useOpenCode,
+  geminiApiKey,
+  openaiApiKey,
+  opencodeApiKey,
+  geminiModel,
+  openaiBaseUrl,
+} = selectDemoProvider(process.env);
 const missing = [
   ...(useGemini ? [] : ["OPENCONTEXT_DEMO_MODEL"]),
 ].filter(
   (name) => !present(name),
 );
-if (!useGemini && !process.env.OPENAI_API_KEY && !process.env.OPENCODE_API_KEY) {
+if (!useGemini && !useOpenAI && !useOpenCode) {
   missing.push("GEMINI_API_KEY, OPENAI_API_KEY, or OPENCODE_API_KEY");
 }
 if (missing.length > 0) {
@@ -148,7 +145,7 @@ const realValues = {
     : process.env.OPENCONTEXT_DEMO_MODEL,
   ...(useGemini
     ? {
-        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        GEMINI_API_KEY: geminiApiKey,
         GEMINI_BASE_URL:
           process.env.GEMINI_BASE_URL ||
           "https://generativelanguage.googleapis.com/v1beta",
@@ -156,11 +153,10 @@ const realValues = {
       }
     : {
         OPENCONTEXT_DEMO_OPENAI_BASE_URL:
-          process.env.OPENAI_BASE_URL ||
-          "https://opencode.ai/inference/go/openai/v1",
-        ...(process.env.OPENAI_API_KEY
-          ? { OPENCONTEXT_DEMO_OPENAI_API_KEY: process.env.OPENAI_API_KEY }
-          : { OPENCONTEXT_DEMO_OPENCODE_API_KEY: process.env.OPENCODE_API_KEY }),
+          openaiBaseUrl,
+        ...(useOpenAI
+          ? { OPENCONTEXT_DEMO_OPENAI_API_KEY: openaiApiKey }
+          : { OPENCONTEXT_DEMO_OPENCODE_API_KEY: opencodeApiKey }),
         VISION_PROVIDER: "openai_compatible",
       }),
   OPENCONTEXT_TRANSCRIPTION_PROVIDER: "none",

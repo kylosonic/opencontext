@@ -150,9 +150,7 @@ export async function validateStoredMedia(
   if (!(ext in IMAGE_FORMAT_BY_EXTENSION)) {
     if (["mp4", "mov", "webm", "mkv"].includes(ext)) {
       const head = Buffer.from(bytes.subarray(0, 16));
-      const isIsoBase =
-        head.length >= 12 &&
-        head.subarray(4, 8).toString("ascii") === "ftyp";
+      const isIsoBase = isIsoBmffHead(Buffer.from(bytes));
       const isEbml =
         head.length >= 4 &&
         head[0] === 0x1a &&
@@ -186,6 +184,12 @@ export async function validateStoredMedia(
     if (metadata.format !== expected || !metadata.width || !metadata.height) {
       return { ok: false, message: "The uploaded image cannot be decoded" };
     }
+    if ((metadata.pages ?? 1) > 1) {
+      return {
+        ok: false,
+        message: "Animated images are not supported — upload a still image",
+      };
+    }
     if (
       metadata.width * metadata.height >
       UPLOAD_LIMITS.maxImagePixels
@@ -202,6 +206,22 @@ export async function validateStoredMedia(
       message: "The uploaded image is corrupt or exceeds the 40-megapixel limit",
     };
   }
+}
+
+function isIsoBmffHead(bytes: Buffer): boolean {
+  // ISO base media and QuickTime files may legally begin with `wide`,
+  // `mdat`, `moov`, or `free` instead of putting `ftyp` first. Validate the
+  // advertised box size/type rather than requiring one fixed atom ordering.
+  const allowed = new Set(["ftyp", "moov", "mdat", "wide", "free", "skip"]);
+  for (let offset = 0; offset + 8 <= bytes.length; offset += 8) {
+    const size = bytes.readUInt32BE(offset);
+    const type = bytes.subarray(offset + 4, offset + 8).toString("ascii");
+    if (allowed.has(type) && (size === 0 || size === 1 || size >= 8)) {
+      return true;
+    }
+    break;
+  }
+  return false;
 }
 
 function hasImageSignature(
