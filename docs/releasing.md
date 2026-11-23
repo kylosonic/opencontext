@@ -5,8 +5,8 @@ The repository has two publishable artifacts:
 - Python distribution `opencontext-video`, including the `opencontext` CLI.
 - npm package `@kylosonic/opencontext-schemas`.
 
-Versions are currently `0.1.0` in both package manifests. A Git tag must be
-`v0.1.0` (without extra text), and the release workflow verifies that the tag,
+Versions are currently `0.1.1` in both package manifests. A Git tag must be
+`v0.1.1` (without extra text), and the release workflow verifies that the tag,
 npm version, and Python version match before building.
 
 ## Protected publishing
@@ -19,7 +19,7 @@ the release without publishing until an environment is approved manually.
 - npm uses Trusted Publishing through GitHub OIDC; no npm publish token is
   stored.
 
-The `0.1.0` artifacts are published. Their trusted publishers are configured as
+The `0.1.1` artifacts are published. Their trusted publishers are configured as
 follows:
 
 1. In PyPI, the Trusted Publisher for `opencontext-video` uses
@@ -36,14 +36,14 @@ registry, so rerunning a tag remains safe and idempotent.
 
 The temporary npm publish and GitHub Actions tokens used during the first
 release have been revoked. A tokenless prerelease publish validated the npm
-trusted publisher and generated npm provenance. Both stable `0.1.0` versions
-install successfully, and `latest` still points to `0.1.0`.
+trusted publisher and generated npm provenance. Both stable package versions
+install successfully, and `latest` points to `0.1.1`.
 
 ## Release checklist
 
 1. Update `CHANGELOG.md` and both package versions.
 2. Run the full local verification commands from `CONTRIBUTING.md`.
 3. Commit and merge the release changes.
-4. Create and push a matching tag, for example `git tag v0.1.0 && git push origin v0.1.0`.
+4. Create and push a matching tag, for example `git tag v0.1.1 && git push origin v0.1.1`.
 5. Approve the `pypi` and `npm` environments after the verification job passes.
 6. Confirm both package pages and install the published artifacts in a clean environment.

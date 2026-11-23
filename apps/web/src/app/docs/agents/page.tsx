@@ -22,7 +22,7 @@ export default function AgentsPage() {
             <CodeBlock
               wrap
               label="Install with the agent extra"
-              code={`python -m pip install "opencontext-video[agent]==0.1.0"`}
+              code={`python -m pip install "opencontext-video[agent]==0.1.1"`}
             />
           </div>
           <p className="mt-4">

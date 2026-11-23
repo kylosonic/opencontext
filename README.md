@@ -145,8 +145,6 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   or speech accuracy.
 - Docker Compose is verified through a real upload and completed
   PostgreSQL-backed web/worker job in CI.
-- Published `0.1.0` packages are available, but the next release has not been
-  cut for the unreleased fixes and Gemini provider.
 - A broader real-world evaluation set with conversational speech, noisy
   recordings, and dense UI remains pending.
 - The default demo fixture has no audio track, so the production smoke job
@@ -180,14 +178,14 @@ Video/image/PDF → Upload intent → Object storage → Queue → FFmpeg/PDFium
 The worker includes a standalone CLI:
 
 ```bash
-python -m pip install "opencontext-video[local]==0.1.0"
+python -m pip install "opencontext-video[local]==0.1.1"
 opencontext analyze video.mp4 --out context.md --json context.json
 opencontext analyze mockup.png --out image.md --json image.json
 opencontext analyze reference.pdf --out pdf.md --json pdf.json
 ```
 
-The Python package is published as `opencontext-video==0.1.0`. The TypeScript
-contracts are available as `@kylosonic/opencontext-schemas@0.1.0` with ESM and
+The Python package is published as `opencontext-video==0.1.1`. The TypeScript
+contracts are available as `@kylosonic/opencontext-schemas@0.1.1` with ESM and
 declarations. See
 [docs/installable-packages.md](docs/installable-packages.md) and
 [docs/releasing.md](docs/releasing.md).
