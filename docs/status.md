@@ -143,8 +143,8 @@ the non-root worker container and the Compose upload-to-export flow.
 - The live media acceptance corpus contains downloaded photographs and trailer
   footage, not a long real application walkthrough or a representative sample
   of user-uploaded codecs.
-- `opencontext-video==0.1.0` is published on PyPI and
-  `@kylosonic/opencontext-schemas@0.1.0` is published on npm. Both use Trusted
+- `opencontext-video==0.1.1` is published on PyPI and
+  `@kylosonic/opencontext-schemas@0.1.1` is published on npm. Both use Trusted
   Publishing through their protected release workflows.
 - The full npm audit still reports development-toolchain findings; the
   production dependency audit reports none.

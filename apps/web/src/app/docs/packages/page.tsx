@@ -25,7 +25,7 @@ export default function PackagesPage() {
             <CodeBlock
               wrap
               label="Install the Python package"
-              code={`python -m pip install "opencontext-video[local]==0.1.0"`}
+              code={`python -m pip install "opencontext-video[local]==0.1.1"`}
             />
           </div>
           <p className="mt-4">The TypeScript schemas are available from npm.</p>
@@ -33,7 +33,7 @@ export default function PackagesPage() {
             <CodeBlock
               wrap
               label="Install the npm schemas"
-              code={`npm install @kylosonic/opencontext-schemas@0.1.0`}
+              code={`npm install @kylosonic/opencontext-schemas@0.1.1`}
             />
           </div>
         </section>

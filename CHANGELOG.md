@@ -3,7 +3,7 @@
 All notable changes are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.1.1 - 2026-11-23
 
 - Fixed the upload 429 lockout: a single 10-image set previously consumed all
   10 upload-intent slots for 10 minutes. The per-user intent budget is now 120
