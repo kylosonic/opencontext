@@ -43,7 +43,7 @@ jobs:
           TRANSCRIPTION_PROVIDER: faster_whisper
           TRANSCRIPTION_MODEL: ${{ vars.TRANSCRIPTION_MODEL || 'base' }}
           VISION_PROVIDER: openai_compatible
-          VISION_MODEL: ${{ vars.VISION_MODEL || 'glm-5.3-flash' }}
+          VISION_MODEL: ${{ vars.VISION_MODEL || 'hy4-flash-free' }}
           VISION_CONCURRENCY: "1"
           VISION_MAX_FRAMES: "60"
           OCR_PROVIDER: vision

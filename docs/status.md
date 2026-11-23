@@ -1,6 +1,6 @@
 # Project Status
 
-Last verified: 2026-11-18
+Last verified: 2026-11-21
 
 This page describes the repository and verification evidence, not a guarantee
 about the current Vercel deployment or future releases.
@@ -8,9 +8,9 @@ about the current Vercel deployment or future releases.
 ## Verified in the repository
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
-  local suite reports 149 passed plus one opt-in S3 integration skip; CI runs
+  local suite reports 158 passed plus one opt-in S3 integration skip; CI runs
   that integration and passes all web tests.
-- Worker Ruff and all 262 local tests pass, with three environment-dependent
+- Worker Ruff and all 306 local tests pass, with four environment-dependent
   skips. Real Tesseract and OpenCode Go vision/audio smoke tests run when their
   binaries or stored credentials and opt-in flags are present.
 - A manual local smoke test produced a real Faster Whisper transcript from
@@ -31,6 +31,12 @@ about the current Vercel deployment or future releases.
   0.31% CER.
   The source audio, generated video script, context, score, attribution, and
   limits are published under `docs/evaluation/`.
+- The hosted worker uses the current free, image-capable `hy4-flash-free`
+  OpenCode Go model. A live production run on 2026-11-21 accepted a ten-image
+  JPEG/PNG/WebP set, a standalone JPEG, a 5.06-second audio-bearing video, and
+  a 52.21-second audio-bearing trailer after repeated `glm-5.3-flash` requests
+  returned 429. All four jobs completed, produced 182 evidence records and
+  nonempty Markdown/JSON exports, and passed `opencontext replay`.
 - Cross-language contract test validates Python payloads with the shared Zod
   schemas.
 - Generated-video test performs direct upload, queue claim, worker HTTP calls,
@@ -104,7 +110,7 @@ The deployment at
 [opencontext-swart.vercel.app](https://opencontext-swart.vercel.app) runs the
 full upload-to-export path: GitHub OAuth, Neon PostgreSQL, S3 through a
 Vercel-managed OIDC role, and a Python worker. `/api/health/ready` returned
-HTTP 200 with all six configuration checks on 2026-11-09.
+HTTP 200 with all six configuration checks on 2026-11-21.
 
 On 2026-11-09 job `cmw9naxem000108ic8u0nvfyr` completed all five stages at
 100% in production, producing evidence IDs, source timestamps, certainty
@@ -116,6 +122,14 @@ The worker currently drains the queue from
 `.github/workflows/worker-schedule.yml` every five minutes. It is a real worker,
 not a simulation, but job start latency is up to one cron interval.
 
+The 2026-11-21 production smoke covered ten ordered source images with 10
+visual observations, a standalone JPEG with one observation, a 5.06-second
+video with audio, transcript segments, and one visual observation, and the
+52.21-second trailer with audio, four transcript segments, and six sampled
+visual observations. Live result ledgers contained 84, 8, 14, and 76 evidence
+records respectively. Every exported ledger replayed successfully without
+provider credentials or source media.
+
 The worker renews each claimed job's lease every minute so long stages do not
 lose their claim between progress updates. CI verifies the heartbeat through
 the non-root worker container and the Compose upload-to-export flow.
@@ -126,6 +140,9 @@ the non-root worker container and the Compose upload-to-export flow.
   English read-speech sample. It does not establish broad vision or speech
   accuracy, noisy audio performance, or behavior on real application
   recordings.
+- The live media acceptance corpus contains downloaded photographs and trailer
+  footage, not a long real application walkthrough or a representative sample
+  of user-uploaded codecs.
 - `opencontext-video==0.1.0` is published on PyPI and
   `@kylosonic/opencontext-schemas@0.1.0` is published on npm. Both use Trusted
   Publishing through their protected release workflows.

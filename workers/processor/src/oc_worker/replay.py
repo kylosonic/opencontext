@@ -18,6 +18,7 @@ _EVIDENCE_COLLECTIONS = {
     "visibleText",
     "stateTransitions",
     "implementationObservations",
+    "crossImageFindings",
 }
 _TIMESTAMP_TOLERANCE = 0.001
 
@@ -48,7 +49,7 @@ def _collection_text(collection: str, item: Any) -> str | None:
         return None
     key = (
         "change"
-        if collection == "stateTransitions"
+        if collection in {"stateTransitions", "crossImageFindings"}
         else "note"
         if collection == "implementationObservations"
         else "text"

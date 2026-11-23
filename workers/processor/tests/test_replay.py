@@ -157,6 +157,29 @@ def test_validate_context_accepts_zero_duration_still_source() -> None:
     assert report["ok"] is True, report["errors"]
 
 
+def test_validate_context_accepts_cross_image_findings() -> None:
+    payload = _still_payload()
+    change = "Visible text added from photo-01.jpg to photo-02.jpg: Save"
+    payload["crossImageFindings"] = [
+        {"from": "photo-01.jpg", "to": "photo-02.jpg", "change": change}
+    ]
+    payload["evidence"].append(
+        {
+            "id": 2,
+            "kind": "VISUAL",
+            "timestampSec": 0,
+            "certainty": "OBSERVED",
+            "text": change,
+            "source": {"collection": "crossImageFindings", "index": 0},
+        }
+    )
+
+    report = validate_context(payload)
+
+    assert report["ok"] is True, report["errors"]
+    assert report["counts"]["evidence"] == 2
+
+
 def test_validate_context_rejects_negative_and_nonzero_video_duration() -> None:
     negative = _still_payload()
     negative["source"]["durationSec"] = -1

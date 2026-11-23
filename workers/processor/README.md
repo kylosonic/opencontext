@@ -175,7 +175,7 @@ The hosted vision test is opt-in because it calls an external API:
 ```bash
 export OPENCODE_API_KEY=...
 export OPENAI_BASE_URL=https://opencode.ai/inference/go/openai/v1
-export VISION_MODEL=glm-5.3-flash
+export VISION_MODEL=hy4-flash-free
 OPENCONTEXT_OPENCODE_E2E=1 pytest tests/test_opencode_vision_smoke.py -q
 ```
 

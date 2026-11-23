@@ -82,7 +82,7 @@ def test_real_opencode_vision_smoke(tmp_path: Path) -> None:
         "OPENAI_BASE_URL",
         "https://opencode.ai/inference/go/openai/v1",
     ).rstrip("/")
-    model = os.getenv("VISION_MODEL", "glm-5.3-flash")
+    model = os.getenv("VISION_MODEL", "hy4-flash-free")
     session_id = os.getenv("OPENCODE_SESSION_ID", "opencontext-vision-smoke")
 
     try:
