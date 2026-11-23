@@ -11,6 +11,13 @@ from pathlib import Path
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
+    ref_type = os.getenv("GITHUB_REF_TYPE", "")
+    if ref_type and ref_type != "tag":
+        print(
+            f"Release publishing requires a tag ref, got {ref_type!r}",
+            file=sys.stderr,
+        )
+        return 1
     tag = os.getenv("GITHUB_REF_NAME", "")
     if not tag.startswith("v"):
         print(f"Expected a v-prefixed release tag, got {tag!r}", file=sys.stderr)

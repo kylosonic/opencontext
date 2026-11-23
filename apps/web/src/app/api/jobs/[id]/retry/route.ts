@@ -25,7 +25,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     const { id } = await context.params;
     const limit = await consumeRateLimit(
-      `job-retry:${session.user.id}:${id}`,
+      `job-retry:${session.user.id}`,
       RATE_LIMITS.jobRetry.limit,
       RATE_LIMITS.jobRetry.windowMs,
     );

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from typing import Any
 
 from oc_worker.agent import build_implementation_brief
@@ -31,7 +32,7 @@ def _number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     number = float(value)
-    return number if number == number else None
+    return number if math.isfinite(number) else None
 
 
 def _collection_text(collection: str, item: Any) -> str | None:

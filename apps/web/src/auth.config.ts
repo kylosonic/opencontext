@@ -14,8 +14,12 @@ const github = authGithub();
 
 export const authConfig = {
   secret: authSecret(),
-  trustHost: true,
-  session: { strategy: "jwt" },
+  // Vercel is a trusted proxy. Standalone deployments must opt in rather
+  // than allowing arbitrary Host/X-Forwarded-Host values to determine URLs.
+  trustHost:
+    process.env.VERCEL === "1" ||
+    process.env.AUTH_TRUST_HOST?.trim().toLowerCase() === "true",
+  session: { strategy: "jwt", maxAge: 24 * 60 * 60, updateAge: 15 * 60 },
   pages: {
     signIn: "/auth/signin",
     signOut: "/auth/signout",
@@ -25,7 +29,6 @@ export const authConfig = {
         GitHub({
           clientId: github.clientId,
           clientSecret: github.clientSecret,
-          allowDangerousEmailAccountLinking: true,
         }),
       ]
     : [],

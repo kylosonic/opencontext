@@ -43,8 +43,8 @@ export function ResultViewer({
     job.status === "FAILED" ||
     (job.status === "PARTIAL" && result.observations.length === 0);
 
-  const seekToSource = (timestampSec: number) => {
-    onSeek?.(timestampSec);
+  const seekToSource = (timestampSec: number, sourceAssetIndex?: number) => {
+    onSeek?.(timestampSec, sourceAssetIndex);
     document
       .getElementById("source-video")
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -136,6 +136,7 @@ export function ResultViewer({
               <ContextPanel
                 markdown={currentResult.markdown}
                 demo={demo}
+                evidence={evidence}
                 onSeek={onSeek ? seekToSource : undefined}
               />
             </TabPanel>

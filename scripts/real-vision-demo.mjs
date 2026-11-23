@@ -2,17 +2,27 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { config as loadEnv } from "dotenv";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const composeFile = path.join(repoRoot, "docker-compose.yml");
+const localEnvFile = path.join(repoRoot, ".env.local");
+if (existsSync(localEnvFile)) {
+  loadEnv({ path: localEnvFile, override: false, quiet: true });
+}
 const args = process.argv.slice(2);
 const dockerArgs = args[0] === "--" ? args.slice(1) : args;
 let mode =
   process.env.OPENCONTEXT_DEMO_VISION ||
   (process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY ? "real" : "");
+mode ||= "fixture";
 let explicitMode = Boolean(mode);
 if (dockerArgs[0] === "real") {
   mode = "real";
+  explicitMode = true;
+  dockerArgs.shift();
+} else if (dockerArgs[0] === "fixture") {
+  mode = "fixture";
   explicitMode = true;
   dockerArgs.shift();
 }
@@ -27,9 +37,16 @@ function present(name) {
 }
 
 function envFileArgs() {
-  const local = path.join(repoRoot, ".env.local");
-  return existsSync(local) ? ["--env-file", local] : [];
+  return existsSync(localEnvFile) ? ["--env-file", localEnvFile] : [];
 }
+
+const sanitizedProviderEnvironment = {
+  OPENAI_API_KEY: "",
+  OPENCODE_API_KEY: "",
+  OPENCONTEXT_DEMO_OPENAI_API_KEY: "",
+  OPENCONTEXT_DEMO_OPENCODE_API_KEY: "",
+  GEMINI_API_KEY: "",
+};
 
 function runDocker(values, selectedArgs = dockerArgs) {
   const command = ["compose", "-f", composeFile, ...envFileArgs()];
@@ -39,8 +56,7 @@ function runDocker(values, selectedArgs = dockerArgs) {
     stdio: "inherit",
     env: {
       ...process.env,
-      OPENAI_API_KEY: "",
-      OPENCODE_API_KEY: "",
+      ...sanitizedProviderEnvironment,
       ...values,
     },
   });
@@ -72,8 +88,7 @@ function checkConfiguration(values) {
       stdio: "inherit",
       env: {
         ...process.env,
-        OPENAI_API_KEY: "",
-        OPENCODE_API_KEY: "",
+      ...sanitizedProviderEnvironment,
         ...values,
       },
     },
@@ -86,13 +101,19 @@ function checkConfiguration(values) {
   }
 }
 
+// Preserve normal Compose lifecycle commands verbatim (down, logs, config,
+// stop, and so on). Mode configuration applies only to an implicit/up run.
+if (!explicitMode && dockerArgs.length > 0) {
+  process.exit(runDocker({}));
+}
+
 if (!new Set(["fixture", "real"]).has(mode)) {
   fail("OPENCONTEXT_DEMO_VISION must be fixture or real");
 }
 
 const fixtureValues = {
   OPENCONTEXT_DEMO_VISION: "fixture",
-  TRANSCRIPTION_PROVIDER: "none",
+  OPENCONTEXT_TRANSCRIPTION_PROVIDER: "none",
   VISION_PROVIDER: "fixture",
   TEXT_PROVIDER: "template",
 };
@@ -110,12 +131,8 @@ const useGemini = Boolean(process.env.GEMINI_API_KEY?.trim());
 const geminiModel = process.env.OPENCONTEXT_DEMO_MODEL || "gemini-4-hydrogen";
 const missing = [
   ...(useGemini ? [] : ["OPENCONTEXT_DEMO_MODEL"]),
-  ...(useGemini ? ["GEMINI_BASE_URL"] : ["OPENAI_BASE_URL"]),
 ].filter(
-  (name) =>
-    !present(name) &&
-    (name !== "GEMINI_BASE_URL" ||
-      (!process.env.GEMINI_BASE_URL && !present("GEMINI_API_KEY"))),
+  (name) => !present(name),
 );
 if (!useGemini && !process.env.OPENAI_API_KEY && !process.env.OPENCODE_API_KEY) {
   missing.push("GEMINI_API_KEY, OPENAI_API_KEY, or OPENCODE_API_KEY");
@@ -138,13 +155,15 @@ const realValues = {
         VISION_PROVIDER: "gemini",
       }
     : {
-        OPENCONTEXT_DEMO_OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+        OPENCONTEXT_DEMO_OPENAI_BASE_URL:
+          process.env.OPENAI_BASE_URL ||
+          "https://opencode.ai/inference/go/openai/v1",
         ...(process.env.OPENAI_API_KEY
           ? { OPENCONTEXT_DEMO_OPENAI_API_KEY: process.env.OPENAI_API_KEY }
           : { OPENCONTEXT_DEMO_OPENCODE_API_KEY: process.env.OPENCODE_API_KEY }),
         VISION_PROVIDER: "openai_compatible",
       }),
-  TRANSCRIPTION_PROVIDER: "none",
+  OPENCONTEXT_TRANSCRIPTION_PROVIDER: "none",
   TEXT_PROVIDER: useGemini ? "template" : "openai_compatible",
 };
 checkConfiguration(realValues);

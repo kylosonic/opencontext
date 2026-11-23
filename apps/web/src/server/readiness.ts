@@ -52,11 +52,12 @@ export function evaluateReadiness(
     strict ? databaseKind === "postgres" : databaseKind !== "invalid";
 
   const authSecret =
-    present(env, "AUTH_SECRET") &&
-    (!strict || isStrongSecret(env.AUTH_SECRET, 32));
+    present(env, "AUTH_SECRET") && isStrongSecret(env.AUTH_SECRET, strict ? 32 : 1);
   const github = present(env, "AUTH_GITHUB_ID") && present(env, "AUTH_GITHUB_SECRET");
-  const devAuth = !strict && env.DEV_AUTH_ENABLED?.toLowerCase() === "true";
-  const authOk = authSecret && (github || devAuth);
+  const devAuthRequested = env.DEV_AUTH_ENABLED?.trim().toLowerCase() === "true";
+  const devAuth = !strict && devAuthRequested;
+  const devAuthMisconfigured = strict && devAuthRequested;
+  const authOk = authSecret && !devAuthMisconfigured && (github || devAuth);
 
   const provider = storageProviderKind(env);
   const storageOk = strict
@@ -64,8 +65,7 @@ export function evaluateReadiness(
     : provider === "local" ||
       (provider === "s3" && s3ConfigFromEnv(env) !== undefined);
   const publicUrlOk = strict ? httpsUrl(env) : true;
-  const workerToken = env.WORKER_API_TOKEN?.trim() ?? "";
-  const workerOk = workerToken.length >= 16 && workerToken !== "change-me";
+  const workerOk = isStrongSecret(env.WORKER_API_TOKEN, 16);
   const rateLimitOk =
     !strict || env.RATE_LIMIT_BACKEND?.trim().toLowerCase() === "database";
 
@@ -82,8 +82,10 @@ export function evaluateReadiness(
     {
       id: "auth",
       ok: authOk,
-      detail: !authSecret
-        ? "AUTH_SECRET is missing, too short, or still a placeholder"
+      detail: devAuthMisconfigured
+        ? "DEV_AUTH_ENABLED must be disabled outside development"
+        : !authSecret
+          ? "AUTH_SECRET is missing, too short, or still a placeholder"
         : !github && !devAuth
           ? "GitHub OAuth credentials are not configured"
           : "Session authentication configured",

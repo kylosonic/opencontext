@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getWorkerSourceInfo } from "@/server/worker";
 import {
   checkClaim,
+  enforceRateLimit,
   errorResponse,
   verifyWorkerToken,
   withErrorHandling,
   workerIdOf,
 } from "@/server/api-helpers";
+import { RATE_LIMITS } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -29,6 +31,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (claim.kind === "NOT_CLAIMED") {
       return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
     }
+    const limited = await enforceRateLimit(
+      `worker-source:${claim.job.claimedBy}`,
+      RATE_LIMITS.workerSource.limit,
+      RATE_LIMITS.workerSource.windowMs,
+    );
+    if (limited) return limited;
     const source = await getWorkerSourceInfo(claim.job);
     return NextResponse.json(source);
   });

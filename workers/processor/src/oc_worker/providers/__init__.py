@@ -83,6 +83,7 @@ def build_vision(settings: Settings) -> VisionProvider | None:
             base_url=settings.ollama_base_url,
             model=settings.vision_model,
             session_id=settings.opencode_session_id,
+            timeout=settings.vision_timeout_seconds,
         )
     if provider == "gemini":
         if not settings.gemini_api_key:
@@ -105,6 +106,13 @@ def build_vision(settings: Settings) -> VisionProvider | None:
             api_key=settings.openai_api_key,
             model=settings.vision_model,
             session_id=settings.opencode_session_id,
+            timeout=settings.vision_timeout_seconds,
+            fallback_models=tuple(
+                model.strip()
+                for model in settings.vision_fallback_models.split(",")
+                if model.strip()
+            ),
+            min_request_interval_seconds=settings.vision_request_interval_seconds,
         )
     raise ProviderConfigurationError(
         f"Unknown VISION_PROVIDER={settings.vision_provider!r}; "
@@ -133,7 +141,7 @@ def build_ocr(settings: Settings) -> OcrProvider | None:
 def build_text(settings: Settings) -> TextProvider:
     """Build the text provider; template (deterministic) fallback otherwise."""
     provider = settings.text_provider.lower()
-    if provider in ("", "template"):
+    if provider in ("", "template", "none", "off"):
         return TemplateTextProvider()
     if provider == "ollama":
         return OllamaTextProvider(

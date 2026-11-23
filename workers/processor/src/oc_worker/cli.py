@@ -460,13 +460,18 @@ def analyze_file(
         audio_path = workdir / "audio.wav"
         segments = []
         if source_kind == "video" and probed.get("audio_present"):
-            extract_audio(str(source), str(audio_path), settings.ffmpeg_path or None)
-            if transcription is None:
+            if not extract_audio(
+                str(source), str(audio_path), settings.ffmpeg_path or None
+            ):
+                probed["audio_present"] = False
+                audio_path = None
+            elif transcription is None:
                 raise PermanentFailure(
                     "Audio is present but no transcription provider is configured "
                     f"(TRANSCRIPTION_PROVIDER={settings.transcription_provider})"
                 )
-            segments = transcription.transcribe(str(audio_path))
+            if audio_path is not None:
+                segments = transcription.transcribe(str(audio_path))
 
         if source_kind == "image":
             frames = [
@@ -477,6 +482,7 @@ def analyze_file(
                         ffmpeg_path=settings.ffmpeg_path or None,
                     ),
                     "sourceKind": "image",
+                    "sourceIndex": 0,
                     "sourceName": source.name,
                     "frameId": "image-01",
                 }
@@ -487,6 +493,7 @@ def analyze_file(
                     "timestamp": 0.0,
                     "path": page["path"],
                     "sourceKind": "pdf",
+                    "sourceIndex": int(page["pageNumber"]) - 1,
                     "sourceName": f"PDF page {page['pageNumber']}",
                     "frameId": f"pdf-page-{int(page['pageNumber']):02d}",
                     "embeddedText": page.get("text") or "",
@@ -494,9 +501,15 @@ def analyze_file(
                 for page in extract_pdf_pages(source, workdir / "pages")
             ]
         else:
+            frame_fps = max(
+                0.001,
+                min(1.0, settings.vision_max_frames / max(duration, 1.0)),
+            )
             frames = extract_frames(
                 str(source),
                 workdir / "frames",
+                fps=frame_fps,
+                max_frames=settings.vision_max_frames,
                 ffmpeg_path=settings.ffmpeg_path or None,
             )
             for frame in frames:
@@ -507,9 +520,10 @@ def analyze_file(
                         "frameId": None,
                     }
                 )
+        selected_frames = aggregation.limit_frames(frames, settings.vision_max_frames)
         observations = []
         ocr = []
-        for frame in frames:
+        for frame in selected_frames:
             timestamp = float(frame["timestamp"])
             if (
                 frame.get("sourceKind") == "video"
@@ -529,6 +543,8 @@ def analyze_file(
             aggregation.mark_interaction_certainty(raw)
             raw["timestampSec"] = timestamp
             raw["frameId"] = frame.get("frameId")
+            if frame.get("sourceKind") in ("image", "pdf"):
+                raw["sourceIndex"] = frame.get("sourceIndex")
             raw["provider"] = vision.name
             observation = VisualObservation.model_validate(raw)
             observations.append(observation)
@@ -539,6 +555,7 @@ def analyze_file(
                             OCRObservation(
                                 timestampSec=timestamp,
                                 frameId=frame.get("frameId"),
+                                sourceIndex=frame.get("sourceIndex"),
                                 text=line.strip(),
                                 provider="pdf_text",
                             )
@@ -549,6 +566,7 @@ def analyze_file(
                             OCRObservation(
                                 timestampSec=timestamp,
                                 frameId=frame.get("frameId"),
+                                sourceIndex=frame.get("sourceIndex"),
                                 text=text_item.strip(),
                                 provider=vision.name,
                             )
@@ -570,6 +588,7 @@ def analyze_file(
                         OCRObservation(
                             timestampSec=timestamp,
                             frameId=frame.get("frameId"),
+                            sourceIndex=frame.get("sourceIndex"),
                             text=text_value,
                             confidence=item.get("confidence"),
                             provider=ocr_provider.name,
@@ -609,6 +628,11 @@ def _parser() -> argparse.ArgumentParser:
         "--version",
         action="version",
         version=f"%(prog)s {package_version()}",
+    )
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        help="Load configuration from this explicit .env file (trusted path only).",
     )
     commands = parser.add_subparsers(dest="command", required=True)
     analyze = commands.add_parser(
@@ -716,7 +740,11 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    load_local_env()
+    try:
+        load_local_env(args.env_file)
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     base = Settings.from_env()
     if args.command == "brief":
         try:

@@ -111,10 +111,7 @@ def test_json_payload_collects_observations_and_ocr() -> None:
     _, payload = _build()
     assert payload["uiHierarchy"] == ["Export button"]
     assert payload["interactions"] == ["The user clicks Export"]
-    assert payload["visibleText"] == [
-        "Export",
-        {"text": "Export", "confidence": 0.95, "timestampSec": 0.0},
-    ]
+    assert payload["visibleText"] == ["Export"]
     assert payload["stateTransitions"] == [
         {"timestampSec": 0.0, "change": "Saved state appears"}
     ]
@@ -258,9 +255,9 @@ def test_markdown_canonical_collection_sections_render_strings() -> None:
     # UI Hierarchy: string element verbatim
     ui_section = markdown.split("## UI Hierarchy", 1)[1].split("## Navigation", 1)[0]
     assert "- Export button" in ui_section
-    # Visible Text: the observation string plus the OCR row (both present)
+    # A duplicate OCR row is suppressed by frame/timestamp/text.
     visible_section = markdown.split("## Visible Text", 1)[1].split("## State Transitions", 1)[0]
-    assert visible_section.count("- Export") == 2
+    assert visible_section.count("- Export") == 1
     # State Transitions: canonical change strings render verbatim
     assert "- `[00:00]` Saved state appears" in markdown
     # Implementation Observations: "key: value" notes render verbatim

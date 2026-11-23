@@ -40,10 +40,11 @@ Use `RATE_LIMIT_BACKEND=database` when more than one web instance can serve the
 same users. Choose `RATE_LIMIT_FAILURE_MODE=closed` when rejecting traffic
 during a limiter outage is safer for your deployment than allowing it.
 
-The application budgets 120 upload-intent requests per user per 10 minutes, so
+The application budgets 240 upload-intent requests per user per 10 minutes, so
 repeated maximum-size 10-image sets do not lock the account after one upload.
-Completion allows 60 requests per minute, cancellation permits 120, job retry
-permits 10 per job per minute, and evidence review permits 60 per job per
+Completion allows 120 requests per minute, cancellation and upload-body writes
+permit 240, job retry permits 30 per job per minute, and evidence review permits
+120 per job per
 minute. Responses expose `X-RateLimit-*` metadata and genuine quota exhaustion
 includes `Retry-After`. With `open`, a database limiter outage falls back to a
 bounded in-process quota; with `closed`, it returns a service error instead of
@@ -196,11 +197,13 @@ Heap memory and CPU quotas are host policy; they cannot be enforced portably
 inside the existing worker process.
 
 Provider throttles do not hold a worker for a long `Retry-After` window. When
-an upstream service asks for more than 30 seconds, the worker reports a
-transient failure with the bounded reset delay; the queue defers that job for
-up to 15 minutes and immediately continues with other work. Long videos also
-use `VISION_MAX_FRAMES` evenly sampled frames (default 60) so provider latency
-has a predictable upper bound.
+an OpenAI-compatible model returns 429, the worker cools that model down, tries
+`VISION_FALLBACK_MODELS`, and reports a transient failure if every model is
+exhausted. The queue applies an escalating cooldown of up to 15 minutes and
+continues with other work. Provider-limited jobs have a bounded 40-attempt
+budget, separate from the five-attempt crash budget. Long videos use
+`VISION_MAX_FRAMES` evenly sampled frames (default 60), and
+`VISION_REQUEST_INTERVAL_SECONDS` paces calls from each worker process.
 
 The worker renews each claimed job's lease every minute, independently of
 stage progress reports. If the API is temporarily unavailable, it retries the
@@ -271,8 +274,10 @@ That stack uses PostgreSQL for the queue and the public GitHub OAuth settings.
 Set `STORAGE_S3_*`, `APP_BASE_URL`, `AUTH_GITHUB_*`, `AUTH_SECRET`, and
 `WORKER_API_TOKEN` before starting it. The worker model cache is a named volume
 owned by UID 10001, and both containers receive `SIGTERM` and drain before
-stopping. `OPENCONTEXT_WEB_PORT` only changes the host publishing port; set
-`APP_BASE_URL` to the URL that users will actually visit.
+stopping. The Compose stack trusts its own request Host header so Auth.js can
+construct callback URLs; set `AUTH_TRUST_HOST=false` only when another proxy
+validates that header. `OPENCONTEXT_WEB_PORT` only changes the host publishing
+port; set `APP_BASE_URL` to the URL that users will actually visit.
 
 `docker/web-hosted.Dockerfile` produces the PostgreSQL-only web image. It runs
 pending migrations on start, drops unused SQLite support, excludes local env

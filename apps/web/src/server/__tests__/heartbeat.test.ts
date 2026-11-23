@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/server/db/prisma";
-import { claimJob, LEASE_MS } from "@/server/queue";
+import { claimJob, LEASE_MS, LeaseLostError } from "@/server/queue";
 import { applyHeartbeat, applyProgress } from "@/server/worker";
 import { createQueuedJob, createUser, resetDatabase } from "./helpers";
 
@@ -15,10 +15,6 @@ describe("worker lease heartbeat", () => {
     const claimed = await claimJob({ workerId: "worker-a" });
     expect(claimed?.id).toBe(queued.id);
 
-    await prisma.job.update({
-      where: { id: queued.id },
-      data: { leaseUntil: new Date(Date.now() - 1_000) },
-    });
     const before = await prisma.job.findUniqueOrThrow({ where: { id: queued.id } });
     const renewed = await applyHeartbeat(before);
 
@@ -44,8 +40,22 @@ describe("worker lease heartbeat", () => {
       data: { leaseUntil: new Date(Date.now() - 1_000) },
     });
     const expired = await prisma.job.findUniqueOrThrow({ where: { id: queued.id } });
-    await applyHeartbeat(expired);
+    await expect(applyHeartbeat(expired)).rejects.toBeInstanceOf(LeaseLostError);
 
-    await expect(claimJob({ workerId: "worker-b" })).resolves.toBeNull();
+    const replacement = await claimJob({ workerId: "worker-b" });
+    expect(replacement?.claimedBy).toBe("worker-b");
+
+    // The old worker still has a row object carrying its id, but the
+    // conditional fence prevents it from overwriting the new claim.
+    await expect(
+      applyProgress(expired, {
+        stage: "ANALYZING",
+        stageStatus: "RUNNING",
+        progress: 99,
+      }),
+    ).rejects.toBeInstanceOf(LeaseLostError);
+    const after = await prisma.job.findUniqueOrThrow({ where: { id: queued.id } });
+    expect(after.claimedBy).toBe("worker-b");
+    expect(after.progress).toBe(expired.progress);
   });
 });

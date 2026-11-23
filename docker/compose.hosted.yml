@@ -5,10 +5,9 @@
 services:
   db:
     image: postgres:17-alpine
-    profiles: ["compose-check"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-opencontext}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opencontext}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-opencontext}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -20,7 +19,6 @@ services:
 
   s3mock:
     image: adobe/s3mock:5
-    profiles: ["compose-check"]
     healthcheck:
       test:
         [
@@ -35,7 +33,6 @@ services:
 
   storage-init:
     image: amazon/aws-cli:2.32.7
-    profiles: ["compose-check"]
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
@@ -73,15 +70,15 @@ services:
     restart: "no"
 
   web:
-    profiles: ["compose-check"]
     build:
       context: ..
       dockerfile: docker/web-hosted.Dockerfile
     environment:
       NODE_ENV: production
       OPENCONTEXT_ENV: ${OPENCONTEXT_ENV:-production}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-opencontext}:${POSTGRES_PASSWORD:-opencontext}@db:5432/${POSTGRES_DB:-opencontext}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-opencontext}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-opencontext}?schema=public
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:?set AUTH_GITHUB_ID}
       AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:?set AUTH_GITHUB_SECRET}
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-false}
@@ -97,7 +94,7 @@ services:
       RATE_LIMIT_BACKEND: database
       OPS_API_TOKEN: ${OPS_API_TOKEN:?set OPS_API_TOKEN}
     ports:
-      - "${OPENCONTEXT_WEB_PORT:-3000}:3000"
+      - "${OPENCONTEXT_WEB_BIND:-0.0.0.0}:${OPENCONTEXT_WEB_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -119,7 +116,6 @@ services:
     stop_grace_period: 30s
 
   worker:
-    profiles: ["compose-check"]
     build:
       context: ..
       dockerfile: docker/worker-hosted.Dockerfile
@@ -133,6 +129,10 @@ services:
       TRANSCRIPTION_MODEL: ${TRANSCRIPTION_MODEL:-base}
       VISION_PROVIDER: ${VISION_PROVIDER:-openai_compatible}
       VISION_MODEL: ${VISION_MODEL:-hy4-flash-free}
+      VISION_FALLBACK_MODELS: ${VISION_FALLBACK_MODELS:-glm-5.3-flash}
+      VISION_REQUEST_INTERVAL_SECONDS: ${VISION_REQUEST_INTERVAL_SECONDS:-5}
+      VISION_CONCURRENCY: ${VISION_CONCURRENCY:-1}
+      VISION_MAX_FRAMES: ${VISION_MAX_FRAMES:-60}
       OCR_PROVIDER: ${OCR_PROVIDER:-vision}
       OCR_LANGUAGE: ${OCR_LANGUAGE:-eng}
       TEXT_PROVIDER: template

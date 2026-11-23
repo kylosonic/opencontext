@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from oc_worker.config import resolve_ffmpeg_path
 from oc_worker.errors import PermanentFailure
 from oc_worker.providers.ocr.fixture import FixtureOcrProvider
 from oc_worker.providers.ocr.tesseract import (
@@ -47,7 +48,9 @@ def test_missing_tesseract_is_a_permanent_failure() -> None:
 
 
 @pytest.mark.skipif(
-    shutil.which("tesseract") is None or shutil.which("ffmpeg") is None,
+    shutil.which("tesseract") is None
+    or not Path(resolve_ffmpeg_path()).is_file()
+    and shutil.which(resolve_ffmpeg_path()) is None,
     reason="tesseract and ffmpeg are required for the real OCR smoke test",
 )
 def test_tesseract_reads_generated_text_frame(tmp_path: Path) -> None:
@@ -55,7 +58,7 @@ def test_tesseract_reads_generated_text_frame(tmp_path: Path) -> None:
     try:
         subprocess.run(
             [
-                shutil.which("ffmpeg") or "ffmpeg",
+                resolve_ffmpeg_path(),
                 "-y",
                 "-hide_banner",
                 "-loglevel",

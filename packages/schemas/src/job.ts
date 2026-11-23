@@ -168,17 +168,17 @@ export const StageStateSchema = z.object({
 
 export type StageState = z.infer<typeof StageStateSchema>;
 
-export const StageStatesSchema = z.array(StageStateSchema);
+export const StageStatesSchema = z.array(StageStateSchema).length(5);
 
 /** Job-level source metadata produced by the EXTRACTING probe. */
 export const SourceMetaSchema = z.object({
-  durationSec: z.number().nonnegative().optional(),
-  width: z.number().int().positive().optional(),
-  height: z.number().int().positive().optional(),
+  durationSec: z.number().finite().nonnegative().max(86_400).optional(),
+  width: z.number().int().nonnegative().max(100_000).optional(),
+  height: z.number().int().nonnegative().max(100_000).optional(),
   audioPresent: z.boolean().optional(),
-  frameCount: z.number().int().nonnegative().optional(),
-  assetCount: z.number().int().positive().optional(),
-  pageCount: z.number().int().positive().optional(),
+  frameCount: z.number().int().nonnegative().max(100_000).optional(),
+  assetCount: z.number().int().positive().max(10).optional(),
+  pageCount: z.number().int().positive().max(30).optional(),
 });
 
 export type SourceMeta = z.infer<typeof SourceMetaSchema>;

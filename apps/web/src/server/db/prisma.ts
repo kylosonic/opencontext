@@ -1,6 +1,7 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { deploymentEnvironment } from "@opencontext/config";
+import { postgresAdapter } from "./postgres-adapter";
 
 /**
  * Single PrismaClient per process (Next.js dev hot-reload safe).
@@ -8,9 +9,19 @@ import { PrismaClient } from "@prisma/client";
  * PostgreSQL in production.
  */
 function createPrismaClient(): PrismaClient {
-  const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
-  const adapter = url.startsWith("postgres")
-    ? new PrismaPg(url)
+  const configured = process.env.DATABASE_URL?.trim();
+  const url =
+    configured ||
+    (deploymentEnvironment() === "development" ? "file:./prisma/dev.db" : "");
+  if (!url) {
+    throw new Error("DATABASE_URL is required outside local development");
+  }
+  const isPostgres = /^postgres(?:ql)?:\/\//i.test(url);
+  if (!isPostgres && !url.startsWith("file:")) {
+    throw new Error("DATABASE_URL must use PostgreSQL or a SQLite file URL");
+  }
+  const adapter = isPostgres
+    ? postgresAdapter(url)
     : new PrismaBetterSqlite3({ url });
   return new PrismaClient({ adapter });
 }
@@ -19,10 +30,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrismaClient(): PrismaClient {
+  const client = globalForPrisma.prisma ?? createPrismaClient();
+  globalForPrisma.prisma = client;
+  return client;
 }
+
+// Next.js evaluates route modules while collecting build configuration. Resolve
+// the database only when code actually queries it so credential-free builds do
+// not weaken the runtime requirement or open a connection during compilation.
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = getPrismaClient();
+    const value = Reflect.get(client, property, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 export type { Job, Media, User } from "@prisma/client";

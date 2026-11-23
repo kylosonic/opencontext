@@ -28,10 +28,12 @@ Other HTTP errors are PermanentFailure (never retried).
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -66,6 +68,13 @@ def run_with_retry[T](
             return fn()
         except TransientFailure as exc:
             last_exc = exc
+            if exc.rate_limited:
+                log.info(
+                    "transient_failure=%s rate_limited=true deferred_retry_after=%.1fs",
+                    exc,
+                    exc.retry_after_seconds or 60.0,
+                )
+                raise
             if (
                 exc.retry_after_seconds is not None
                 and exc.retry_after_seconds > max_inline_retry_after_seconds
@@ -151,8 +160,11 @@ class ApiClient:
         json: Any = None,
         files: Any = None,
         data: Any = None,
+        prepare: Callable[[], None] | None = None,
     ) -> Any:
         def call() -> Any:
+            if prepare is not None:
+                prepare()
             try:
                 response = self._client.request(
                     method,
@@ -166,10 +178,15 @@ class ApiClient:
                 raise TransientFailure(f"API transport error on {path}: {exc}") from exc
             if response.status_code == 204:
                 return None
+            if 300 <= response.status_code < 400:
+                raise PermanentFailure(
+                    f"API {path} returned unexpected redirect {response.status_code}"
+                )
             if response.status_code == 429 or response.status_code >= 500:
                 raise TransientFailure(
                     f"API {path} returned {response.status_code}",
                     retry_after_seconds=retry_after_seconds(response),
+                    rate_limited=response.status_code == 429,
                 )
             if response.status_code >= 400:
                 raise _error_from_response(response, path)
@@ -193,50 +210,99 @@ class ApiClient:
     def get_source(self, job_id: str) -> dict[str, Any]:
         return self._request("GET", f"/api/worker/jobs/{job_id}/source")
 
-    def _download_uri(self, uri: str, dest: Path) -> None:
+    def _same_origin(self, url: str) -> bool:
+        try:
+            base = urlsplit(self.base_url)
+            target = urlsplit(url)
+            return (
+                base.scheme.lower(),
+                (base.hostname or "").lower(),
+                base.port,
+            ) == (
+                target.scheme.lower(),
+                (target.hostname or "").lower(),
+                target.port,
+            )
+        except ValueError:
+            return False
+
+    def _download_uri(self, uri: str, dest: Path, max_bytes: int) -> None:
         """Download one source URI (local rel path → app base)."""
+        max_bytes = max_bytes or 500 * 1024 * 1024
 
         def call() -> None:
             url = uri if uri.startswith(("http://", "https://")) else f"{self.base_url}{uri}"
             # Presigned object-storage URLs carry their own signature; sending
             # the worker Bearer token makes S3 reject the request with 400.
-            same_origin = url.startswith(self.base_url)
+            same_origin = self._same_origin(url)
             headers = self._headers() if same_origin else None
             try:
                 with self._client.stream("GET", url, headers=headers) as response:
+                    if 300 <= response.status_code < 400:
+                        raise PermanentFailure(
+                            f"source download returned unexpected redirect {response.status_code}"
+                        )
                     if response.status_code == 429 or response.status_code >= 500:
                         raise TransientFailure(
                             f"source download returned {response.status_code}",
                             retry_after_seconds=retry_after_seconds(response),
+                            rate_limited=response.status_code == 429,
                         )
                     if response.status_code >= 400:
                         raise _error_from_response(response, "source")
+                    declared = response.headers.get("content-length")
+                    try:
+                        declared_bytes = int(declared) if declared is not None else None
+                    except ValueError:
+                        declared_bytes = None
+                    if declared_bytes is not None and declared_bytes > max_bytes:
+                        raise PermanentFailure("source media exceeds its declared byte limit")
+                    received = 0
                     with dest.open("wb") as out:
                         for chunk in response.iter_bytes():
+                            received += len(chunk)
+                            if received > max_bytes:
+                                raise PermanentFailure(
+                                    "source media exceeds its declared byte limit"
+                                )
                             out.write(chunk)
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 raise TransientFailure(f"source download failed: {exc}") from exc
+            except (PermanentFailure, TransientFailure):
+                dest.unlink(missing_ok=True)
+                raise
+            except Exception:
+                dest.unlink(missing_ok=True)
+                raise
 
         run_with_retry(call)
 
     def download_source(self, job_id: str, dest: Path) -> None:
         """Download the legacy primary source media to ``dest``."""
         info = self.get_source(job_id)
-        self._download_uri(str(info["uri"]), dest)
+        self._download_uri(str(info["uri"]), dest, int(info.get("sizeBytes") or 0))
 
     def download_sources(self, job_id: str, workdir: Path) -> list[dict[str, Any]]:
         """Download every ordered source asset for a video/image/PDF job."""
         info = self.get_source(job_id)
         raw_assets = info.get("assets")
         assets = raw_assets if isinstance(raw_assets, list) and raw_assets else [info]
+        if len(assets) > 10:
+            raise PermanentFailure("source set exceeds the 10-asset limit")
         downloaded: list[dict[str, Any]] = []
         for index, asset in enumerate(assets):
             if not isinstance(asset, dict):
                 continue
             ext = str(asset.get("ext") or Path(str(asset.get("filename") or "")).suffix)
             ext = ext.lower().lstrip(".")
+            if not re.fullmatch(r"[a-z0-9]{1,16}", ext):
+                ext = "bin"
             destination = workdir / f"source_{index + 1:02d}.{ext or 'bin'}"
-            self._download_uri(str(asset["uri"]), destination)
+            self._download_uri(
+                str(asset["uri"]),
+                destination,
+                int(asset.get("sizeBytes") or 0),
+            )
             downloaded.append(
                 {
                     **asset,
@@ -288,7 +354,11 @@ class ApiClient:
         with path.open("rb") as handle:
             files = {"file": (path.name, handle, "application/octet-stream")}
             return self._request(
-                "POST", f"/api/worker/jobs/{job_id}/artifacts", files=files, data=data
+                "POST",
+                f"/api/worker/jobs/{job_id}/artifacts",
+                files=files,
+                data=data,
+                prepare=lambda: handle.seek(0),
             )
 
     def stage_result(
@@ -323,6 +393,7 @@ class ApiClient:
         failure_kind: str,
         retryable: bool,
         retry_after_sec: float | None = None,
+        rate_limited: bool = False,
     ) -> dict[str, Any]:
         payload = {
             "stage": stage,
@@ -332,4 +403,6 @@ class ApiClient:
         }
         if retry_after_sec is not None:
             payload["retryAfterSec"] = min(900, max(0, round(retry_after_sec)))
+        if rate_limited:
+            payload["rateLimited"] = True
         return self._request("POST", f"/api/worker/jobs/{job_id}/fail", json=payload)

@@ -104,7 +104,7 @@ def test_claim_transient_server_error_retries_with_backoff(monkeypatch) -> None:
     assert delays == [2.0, 8.0, 20.0]
 
 
-def test_claim_transient_then_success_returns_payload(monkeypatch) -> None:
+def test_claim_rate_limit_defers_without_inline_retry(monkeypatch) -> None:
     delays: list[float] = []
     _patch_sleep(monkeypatch, delays)
     recorder = _Recorder(
@@ -114,13 +114,14 @@ def test_claim_transient_then_success_returns_payload(monkeypatch) -> None:
         ]
     )
     api = _make_client(recorder.handler)
-    claimed = api.claim()
-    assert claimed == {"job": {"id": "j1"}, "source": {}}
-    assert len(recorder.requests) == 2
-    assert delays == [2.0]
+    with pytest.raises(TransientFailure) as exc_info:
+        api.claim()
+    assert exc_info.value.rate_limited is True
+    assert len(recorder.requests) == 1
+    assert delays == []
 
 
-def test_retry_after_header_overrides_the_shorter_default_backoff(monkeypatch) -> None:
+def test_retry_after_header_is_preserved_on_rate_limit(monkeypatch) -> None:
     delays: list[float] = []
     _patch_sleep(monkeypatch, delays)
     recorder = _Recorder(
@@ -131,11 +132,13 @@ def test_retry_after_header_overrides_the_shorter_default_backoff(monkeypatch) -
     )
     api = _make_client(recorder.handler)
 
-    claimed = api.claim()
+    with pytest.raises(TransientFailure) as exc_info:
+        api.claim()
 
-    assert claimed == {"job": {"id": "j1"}, "source": {}}
-    assert len(recorder.requests) == 2
-    assert delays == [12.0]
+    assert exc_info.value.retry_after_seconds == 12.0
+    assert exc_info.value.rate_limited is True
+    assert len(recorder.requests) == 1
+    assert delays == []
 
 
 def test_long_retry_after_defers_without_blocking_worker(monkeypatch) -> None:
@@ -150,6 +153,7 @@ def test_long_retry_after_defers_without_blocking_worker(monkeypatch) -> None:
         api.claim()
 
     assert exc_info.value.retry_after_seconds == 120.0
+    assert exc_info.value.rate_limited is True
     assert len(recorder.requests) == 1
     assert delays == []
 
@@ -286,6 +290,23 @@ def test_fail_includes_bounded_provider_retry_after() -> None:
     assert _json_body(recorder.requests[1])["retryAfterSec"] == 900
 
 
+def test_fail_marks_provider_rate_limits_for_an_extended_queue_budget() -> None:
+    recorder = _Recorder([httpx.Response(200, json={})])
+    api = _make_client(recorder.handler)
+
+    api.fail(
+        "j1",
+        stage="ANALYZING",
+        error="vision provider returned 429",
+        failure_kind="TRANSIENT",
+        retryable=True,
+        retry_after_sec=60,
+        rate_limited=True,
+    )
+
+    assert _json_body(recorder.requests[0])["rateLimited"] is True
+
+
 # -- x-worker-id identity header (regression: NOT_CLAIMED on live API) ---
 #
 # The web API derives worker identity per-request via workerIdOf()
@@ -380,6 +401,22 @@ def test_download_source_omits_worker_auth_for_external_presigned_url(tmp_path) 
     assert "x-worker-id" not in media_headers[0]
 
 
+def test_prefix_matching_external_host_never_receives_worker_credentials(tmp_path) -> None:
+    seen_headers: list[httpx.Headers] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/worker/jobs/j1/source":
+            return httpx.Response(200, json={"uri": "http://api.test.evil.example/media"})
+        seen_headers.append(request.headers)
+        return httpx.Response(200, content=b"media")
+
+    api = _make_client(handler)
+    api.download_source("j1", tmp_path / "source.bin")
+
+    assert "authorization" not in seen_headers[0]
+    assert "x-worker-id" not in seen_headers[0]
+
+
 def test_download_source_relative_uri_resolves_against_base(tmp_path) -> None:
     paths: list[str] = []
 
@@ -446,6 +483,39 @@ def test_download_source_retries_on_server_error(tmp_path, monkeypatch) -> None:
         api.download_source("j1", dest)
     assert len(media_requests) == 4
     assert delays == [2.0, 8.0, 20.0]
+
+
+def test_download_rejects_redirects_and_removes_a_partial_file(tmp_path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/worker/jobs/j1/source":
+            return httpx.Response(200, json={"uri": "/media/video.mp4", "sizeBytes": 3})
+        return httpx.Response(302, headers={"Location": "https://evil.example/file"})
+
+    api = _make_client(handler)
+    dest = tmp_path / "source.bin"
+    with pytest.raises(PermanentFailure, match="redirect"):
+        api.download_source("j1", dest)
+    assert not dest.exists()
+
+
+def test_upload_artifact_rewinds_the_file_for_each_retry(tmp_path, monkeypatch) -> None:
+    delays: list[float] = []
+    _patch_sleep(monkeypatch, delays)
+    bodies: list[bytes] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(request.read())
+        return httpx.Response(500) if len(bodies) == 1 else httpx.Response(200, json={"ok": True})
+
+    media = tmp_path / "frame.jpg"
+    media.write_bytes(b"artifact-frame")
+    api = _make_client(handler)
+    api.upload_artifact("j1", kind="FRAME", file_path=media, timestamp_sec=1)
+
+    assert len(bodies) == 2
+    assert b"artifact-frame" in bodies[0]
+    assert b"artifact-frame" in bodies[1]
+    assert delays == [2.0]
 
 
 def test_error_envelope_parsed_from_body() -> None:

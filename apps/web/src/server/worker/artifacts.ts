@@ -2,7 +2,7 @@ import type { Job } from "@prisma/client";
 import type { MediaKind } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
-import { LEASE_MS } from "@/server/queue";
+import { activeLease, LeaseLostError, renewedLease } from "@/server/queue";
 
 export interface StoreArtifactInput {
   kind: MediaKind;
@@ -32,40 +32,62 @@ export async function storeArtifact(
 ): Promise<StoredArtifact> {
   const extension = sanitizeExtension(input.filename) ?? "bin";
   const timestamp = input.timestampSec ?? 0;
+  const timestampSec = input.timestampSec ?? null;
   const key = `jobs/${job.id}/artifacts/${input.kind.toLowerCase()}/${timestamp}.${extension}`;
+  const workerId = job.claimedBy;
+  if (!workerId) {
+    throw new LeaseLostError(job.id);
+  }
+
+  // Renew before touching the blob, then fence again after the transfer.
+  // A stalled worker must not write into a job reclaimed by another one.
+  const initialNow = new Date();
+  const renewed = await prisma.job.updateMany({
+    where: { id: job.id, ...activeLease(workerId, initialNow) },
+    data: { leaseUntil: renewedLease(initialNow) },
+  });
+  if (renewed.count === 0) {
+    throw new LeaseLostError(job.id);
+  }
 
   await storage.put(key, input.body, {
     contentType: input.mime,
     sizeBytes: input.sizeBytes,
   });
 
-  const existing = await prisma.media.findFirst({
-    where: { jobId: job.id, kind: input.kind, timestampSec: input.timestampSec ?? null },
-  });
-
-  const media = existing
-    ? await prisma.media.update({
-        where: { id: existing.id },
-        data: { key, mime: input.mime, sizeBytes: input.sizeBytes },
-      })
-    : await prisma.media.create({
-        data: {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const fenced = await tx.job.updateMany({
+        where: { id: job.id, ...activeLease(workerId, now) },
+        data: { leaseUntil: renewedLease(now) },
+      });
+      if (fenced.count === 0) {
+        throw new LeaseLostError(job.id);
+      }
+      const media = await tx.media.upsert({
+        where: { jobId_key: { jobId: job.id, key } },
+        create: {
           jobId: job.id,
           kind: input.kind,
           key,
           mime: input.mime,
           sizeBytes: input.sizeBytes,
-          timestampSec: input.timestampSec,
+          timestampSec,
+        },
+        update: {
+          kind: input.kind,
+          mime: input.mime,
+          sizeBytes: input.sizeBytes,
+          timestampSec,
         },
       });
-
-  // Renew the lease: artifact uploads happen inside active stage work.
-  await prisma.job.update({
-    where: { id: job.id },
-    data: { leaseUntil: new Date(Date.now() + LEASE_MS) },
-  });
-
-  return { key, mediaId: media.id };
+      return { key, mediaId: media.id };
+    });
+  } catch (error) {
+    await storage.delete(key).catch(() => undefined);
+    throw error;
+  }
 }
 
 function sanitizeExtension(filename: string): string | undefined {

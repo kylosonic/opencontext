@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, signIn } from "@/auth";
 import { authGithubConfigured, devAuthEnabled } from "@opencontext/config";
+import { safeCallbackUrl as parseSafeCallbackUrl } from "./callback-url";
 
 /**
  * Custom sign-in page (Auth.js v5). Offers "Sign in with GitHub" when the
@@ -18,11 +19,7 @@ export default async function SignInPage({
   const configured = authGithubConfigured();
   const localDev = devAuthEnabled();
 
-  // Open-redirect guard: only allow same-origin relative destinations.
-  const safeCallbackUrl =
-    callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
-      ? callbackUrl
-      : "/app";
+  const safeCallbackUrl = parseSafeCallbackUrl(callbackUrl);
 
   if (session?.user) {
     // Already signed in — send them where they were going.

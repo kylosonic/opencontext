@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,9 +66,16 @@ class RepositoryProfile:
 
 def _read_small_json(path: Path) -> dict[str, Any]:
     try:
-        if path.stat().st_size > _MAX_TEXT_FILE_BYTES:
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_size > _MAX_TEXT_FILE_BYTES:
             return {}
-        value = json.loads(path.read_text(encoding="utf-8"))
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
+        with os.fdopen(descriptor, "rb") as handle:
+            raw = handle.read(_MAX_TEXT_FILE_BYTES + 1)
+        if len(raw) > _MAX_TEXT_FILE_BYTES:
+            return {}
+        value = json.loads(raw.decode("utf-8"))
     except (OSError, ValueError):
         return {}
     return value if isinstance(value, dict) else {}
@@ -122,9 +130,11 @@ def detect_repository_profile(repository: str | Path | None) -> RepositoryProfil
         language_counts["JavaScript"] += 1
     for manifest in package_manifests[:20]:
         package = _read_small_json(root / manifest)
+        runtime = package.get("dependencies")
+        development = package.get("devDependencies")
         dependencies = {
-            **(package.get("dependencies") or {}),
-            **(package.get("devDependencies") or {}),
+            **(runtime if isinstance(runtime, dict) else {}),
+            **(development if isinstance(development, dict) else {}),
         }
         if "next" in dependencies:
             technologies.add("Next.js")

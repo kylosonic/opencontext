@@ -63,7 +63,6 @@ class GeminiVisionProvider:
             "generationConfig": {
                 "temperature": 0,
                 "responseMimeType": "application/json",
-                "thinkingConfig": {"thinkingLevel": "low"},
             },
         }
         try:
@@ -76,8 +75,16 @@ class GeminiVisionProvider:
             raise TransientFailure(f"Gemini vision request failed: {exc}") from exc
         raise_for_provider_status("Gemini vision", response)
         try:
-            text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            parts = response.json()["candidates"][0]["content"]["parts"]
+            text = next(
+                str(part["text"])
+                for part in parts
+                if isinstance(part, dict)
+                and not part.get("thought")
+                and isinstance(part.get("text"), str)
+                and part["text"].strip()
+            )
+        except (ValueError, KeyError, IndexError, TypeError, StopIteration) as exc:
             raise TransientFailure("Gemini returned no image analysis") from exc
         observation = _normalize(_parse_json_object(str(text)))
         observation["provider"] = "gemini"

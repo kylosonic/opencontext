@@ -68,9 +68,12 @@ export function storageProviderKind(
   return "invalid";
 }
 
-export function storageProvider(): "local" | "s3" {
-  const kind = storageProviderKind();
-  return kind === "s3" ? "s3" : "local";
+export function storageProvider(env: EnvRecord = process.env): "local" | "s3" {
+  const kind = storageProviderKind(env);
+  if (kind === "invalid") {
+    throw new Error('STORAGE_PROVIDER must be either "local" or "s3"');
+  }
+  return kind;
 }
 
 /** Database connection string. Dev default is a local SQLite file. */
@@ -171,31 +174,28 @@ export function workerApiToken(): string | undefined {
 }
 
 /**
- * Auth.js session secret. A fixed dev fallback keeps the app bootable
- * (and buildable) without env. In production a missing AUTH_SECRET logs
- * a one-time warning — deployments MUST set it (session tokens are only
- * as strong as this secret), but nothing crashes so builds and local
- * runs work out of the box.
+ * Auth.js session secret. Development keeps a fixed local fallback so a
+ * fresh checkout boots without configuration. Non-development deployments
+ * fail closed when the secret is missing, weak, or a placeholder: a public
+ * fallback would permit forged sessions for any user id.
  */
 export function authSecret(): string {
-  const value = getEnv("AUTH_SECRET");
-  if (value) {
+  const value = getEnv("AUTH_SECRET")?.trim();
+  if (value && isStrongSecret(value, 32)) {
     return value;
   }
-  if (process.env.NODE_ENV === "production") {
-    warnOnce(
-      "AUTH_SECRET is not set — using an insecure dev fallback. Set AUTH_SECRET in production.",
-    );
+  if (!value && process.env.NEXT_PHASE === "phase-production-build") {
+    // Next.js evaluates Auth.js while collecting route configuration. This
+    // value exists only in the build process; runtime initialization still
+    // requires a real secret and readiness reports a missing one.
+    return "opencontext-build-only-auth-secret-not-for-runtime";
   }
-  return "opencontext-dev-auth-secret-do-not-use-in-production";
-}
-
-const warned: Record<string, true> = {};
-function warnOnce(message: string): void {
-  if (!warned[message]) {
-    warned[message] = true;
-    console.warn(`[opencontext] ${message}`);
+  if (deploymentEnvironment() === "development") {
+    return "opencontext-dev-auth-secret-do-not-use-in-production";
   }
+  throw new Error(
+    "AUTH_SECRET must be a non-placeholder secret of at least 32 characters outside development",
+  );
 }
 
 export interface GitHubAuthConfig {
@@ -228,7 +228,12 @@ export function authGithubConfigured(): boolean {
  * requiring a GitHub OAuth app for the first upload.
  */
 export function devAuthEnabled(): boolean {
-  return getEnvBoolean("DEV_AUTH_ENABLED", false);
+  // The passwordless provider is a local-convenience boundary. It must not
+  // become active merely because a deployment inherited a stale value.
+  return (
+    deploymentEnvironment() === "development" &&
+    getEnvBoolean("DEV_AUTH_ENABLED", false)
+  );
 }
 
 export function devAuthEmail(): string {

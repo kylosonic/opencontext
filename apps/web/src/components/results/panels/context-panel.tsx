@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
+import type { EvidenceRecord } from "@kylosonic/opencontext-schemas";
 import { EmptyState } from "./empty-state";
 
 export interface ContextPanelProps {
   markdown: string;
   demo?: boolean;
-  onSeek?: (timestampSec: number) => void;
+  evidence?: EvidenceRecord[];
+  onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
 }
 
 const CONTEXT_REFERENCE =
@@ -12,7 +14,8 @@ const CONTEXT_REFERENCE =
 
 function renderEvidenceMarkers(
   markdown: string,
-  onSeek?: (timestampSec: number) => void,
+  evidenceById: Map<number, EvidenceRecord>,
+  onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void,
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
   let offset = 0;
@@ -33,13 +36,19 @@ function renderEvidenceMarkers(
       nodes.push(marker);
     } else if (id && timestamp && certainty) {
       const [minutes, seconds] = timestamp.split(":").map(Number);
+      const evidenceId = Number(id.slice(1));
+      const assetIndex = evidenceById.get(evidenceId)?.source.assetIndex;
       nodes.push(
         <button
           key={`evidence-${key++}`}
           type="button"
           title={`Jump to ${timestamp} in the source video (${certainty.toLowerCase()})`}
           aria-label={`Jump to evidence ${id} at ${timestamp}, ${certainty.toLowerCase()}`}
-          onClick={() => onSeek(minutes * 60 + seconds)}
+          onClick={() =>
+            assetIndex === undefined
+              ? onSeek(minutes * 60 + seconds)
+              : onSeek(minutes * 60 + seconds, assetIndex)
+          }
           className="mx-1 inline-flex rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 align-baseline font-sans text-[0.7rem] text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {id} · {timestamp} · {certainty}
@@ -72,7 +81,12 @@ function renderEvidenceMarkers(
  * as monospace text (no external markdown renderer): it is what gets copied
  * and downloaded verbatim.
  */
-export function ContextPanel({ markdown, demo = false, onSeek }: ContextPanelProps) {
+export function ContextPanel({
+  markdown,
+  demo = false,
+  evidence = [],
+  onSeek,
+}: ContextPanelProps) {
   if (!markdown) {
     return (
       <EmptyState
@@ -81,6 +95,8 @@ export function ContextPanel({ markdown, demo = false, onSeek }: ContextPanelPro
       />
     );
   }
+
+  const evidenceById = new Map(evidence.map((item) => [item.id, item]));
 
   return (
     <div className="space-y-3">
@@ -96,7 +112,7 @@ export function ContextPanel({ markdown, demo = false, onSeek }: ContextPanelPro
         aria-label="Developer context document (Markdown)"
         className="max-h-[70vh] overflow-auto rounded-lg border border-line bg-code-bg p-4 font-mono text-[0.8rem] leading-relaxed text-ink whitespace-pre-wrap break-words"
       >
-        {renderEvidenceMarkers(markdown, onSeek)}
+        {renderEvidenceMarkers(markdown, evidenceById, onSeek)}
       </pre>
     </div>
   );

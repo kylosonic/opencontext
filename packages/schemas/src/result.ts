@@ -11,10 +11,15 @@ import {
  * required pair are pass-through so the Python aggregation contract can
  * evolve without breaking the web schema.
  */
-export const TimelineEntrySchema = z.looseObject({
-  start: z.number().nonnegative(),
-  end: z.number().nonnegative(),
-});
+export const TimelineEntrySchema = z
+  .looseObject({
+    start: z.number().finite().nonnegative(),
+    end: z.number().finite().nonnegative(),
+  })
+  .refine((entry) => entry.end >= entry.start, {
+    message: "timeline end must be greater than or equal to start",
+    path: ["end"],
+  });
 
 export type TimelineEntry = z.infer<typeof TimelineEntrySchema>;
 
@@ -24,15 +29,16 @@ export type TimelinePayload = z.infer<typeof TimelinePayloadSchema>;
 
 /** AGGREGATING stage-result data: the merged chronological timeline. */
 export const AggregateDataSchema = z.object({
-  timeline: TimelinePayloadSchema,
+  timeline: TimelinePayloadSchema.max(10_000),
 });
 
 export type AggregateData = z.infer<typeof AggregateDataSchema>;
 
 /** Points an evidence claim back to its source collection item. */
 export const EvidenceSourceSchema = z.object({
-  collection: z.string().min(1),
+  collection: z.string().min(1).max(128),
   index: z.number().int().nonnegative(),
+  assetIndex: z.number().int().nonnegative().max(30).optional(),
 });
 
 export type EvidenceSource = z.infer<typeof EvidenceSourceSchema>;
@@ -51,10 +57,10 @@ export type EvidenceReview = z.infer<typeof EvidenceReviewSchema>;
 export const EvidenceRecordSchema = z.object({
   id: z.number().int().positive(),
   kind: z.enum(["TRANSCRIPT", "VISUAL", "OCR"]),
-  timestampSec: z.number().nonnegative(),
-  endSec: z.number().nonnegative().optional(),
+  timestampSec: z.number().finite().nonnegative(),
+  endSec: z.number().finite().nonnegative().optional(),
   certainty: CertaintySchema,
-  text: z.string(),
+  text: z.string().min(1).max(20_000),
   source: EvidenceSourceSchema,
   confidence: z.number().min(0).max(1).optional(),
   review: EvidenceReviewSchema.optional(),
@@ -65,14 +71,15 @@ export type EvidenceRecord = z.infer<typeof EvidenceRecordSchema>;
 /** Additive evidence-ledger fields in worker context JSON. */
 export const EvidenceLedgerSchema = z.object({
   evidenceVersion: z.literal(1),
-  evidence: z.array(EvidenceRecordSchema),
+  evidence: z.array(EvidenceRecordSchema).max(20_000),
 });
 
 export type EvidenceLedger = z.infer<typeof EvidenceLedgerSchema>;
 
 const ContextJsonSchema = z.looseObject({
+  formatVersion: z.number().int().nonnegative().optional(),
   evidenceVersion: z.literal(1).optional(),
-  evidence: z.array(EvidenceRecordSchema).optional(),
+  evidence: z.array(EvidenceRecordSchema).max(20_000).optional(),
 });
 
 /**
@@ -81,21 +88,21 @@ const ContextJsonSchema = z.looseObject({
  */
 export const ResultPayloadSchema = z.looseObject({
   formatVersion: z.number().int().nonnegative().default(1),
-  markdown: z.string(),
+  markdown: z.string().max(10_000_000),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  transcript: z.array(TranscriptSegmentSchema).optional(),
-  observations: z.array(VisualObservationSchema).optional(),
-  ocr: z.array(OCRObservationSchema).optional(),
-  timeline: TimelinePayloadSchema.optional(),
+  transcript: z.array(TranscriptSegmentSchema).max(20_000).optional(),
+  observations: z.array(VisualObservationSchema).max(300).optional(),
+  ocr: z.array(OCRObservationSchema).max(10_000).optional(),
+  timeline: TimelinePayloadSchema.max(10_000).optional(),
   evidenceVersion: z.literal(1).optional(),
-  evidence: z.array(EvidenceRecordSchema).optional(),
+  evidence: z.array(EvidenceRecordSchema).max(20_000).optional(),
 });
 
 export type ResultPayload = z.infer<typeof ResultPayloadSchema>;
 
 /** GENERATING_CONTEXT stage-result data. */
 export const ContextDataSchema = z.object({
-  markdown: z.string(),
+  markdown: z.string().min(1).max(10_000_000),
   json: ContextJsonSchema,
 });
 
@@ -105,7 +112,7 @@ export type ContextData = z.infer<typeof ContextDataSchema>;
 export const ProcessingResultSchema = z.object({
   id: z.string(),
   jobId: z.string(),
-  markdown: z.string(),
+  markdown: z.string().min(1).max(10_000_000),
   json: ContextJsonSchema,
   formatVersion: z.number().int().nonnegative(),
   generatedAt: z.string(),

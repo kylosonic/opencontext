@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import subprocess
 from collections import OrderedDict
 from typing import Any
 
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import PermanentFailure, ProviderConfigurationError, TransientFailure
+
+_LANGUAGE_RE = re.compile(r"^[A-Za-z0-9_+.-]{1,64}$")
 
 
 def parse_tesseract_tsv(output: str) -> list[dict[str, Any]]:
@@ -56,6 +59,10 @@ class TesseractOcrProvider:
         timeout_seconds: int = 30,
     ) -> None:
         self.executable = executable
+        if not _LANGUAGE_RE.fullmatch(language):
+            raise ProviderConfigurationError(
+                "OCR_LANGUAGE may contain only letters, numbers, _, +, ., or -"
+            )
         self.language = language
         self.timeout_seconds = timeout_seconds
 

@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { completeJob } from "@/server/queue";
 import { jobToDetail } from "@/server/jobs";
 import {
-  checkClaim,
+  enforceRateLimit,
   errorResponse,
   verifyWorkerToken,
   withErrorHandling,
   workerIdOf,
 } from "@/server/api-helpers";
+import { RATE_LIMITS } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -22,18 +23,28 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     const { id } = await context.params;
     const workerId = workerIdOf(request);
+    if (!workerId) {
+      return errorResponse("WORKER_UNAUTHORIZED", "Missing or invalid x-worker-id header");
+    }
+    const limited = await enforceRateLimit(
+      `worker-complete:${workerId}`,
+      RATE_LIMITS.workerMutation.limit,
+      RATE_LIMITS.workerMutation.windowMs,
+    );
+    if (limited) return limited;
 
-    const claim = await checkClaim(id, workerId);
-    if (claim.kind === "NOT_FOUND") {
+    const result = await completeJob(id, workerId);
+    if (result.kind === "NOT_FOUND") {
       return errorResponse("NOT_FOUND", "Job not found");
     }
-    if (claim.kind === "NOT_CLAIMED") {
-      return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
-    }
-
-    const result = await completeJob(id, workerId ?? "");
     if (result.kind === "NOT_CLAIMED") {
       return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
+    }
+    if (result.kind === "STAGES_FAILED") {
+      return errorResponse(
+        "VALIDATION_ERROR",
+        "Cannot complete: one or more stages failed",
+      );
     }
     if (result.kind === "STAGES_NOT_TERMINAL") {
       return errorResponse(

@@ -141,6 +141,7 @@ def _build_json_payload(
         certainty: str,
         end_sec: float | None = None,
         confidence: float | None = None,
+        asset_index: int | None = None,
     ) -> None:
         nonlocal evidence_order
         if not text.strip():
@@ -150,7 +151,11 @@ def _build_json_payload(
             "timestampSec": float(timestamp_sec),
             "certainty": certainty,
             "text": text,
-            "source": {"collection": collection, "index": index},
+            "source": {
+                "collection": collection,
+                "index": index,
+                **({"assetIndex": asset_index} if asset_index is not None else {}),
+            },
             "_order": evidence_order,
         }
         if end_sec is not None:
@@ -197,6 +202,7 @@ def _build_json_payload(
                     text=claim,
                     timestamp_sec=obs.timestampSec,
                     certainty=obs.certainty.value,
+                    asset_index=obs.sourceIndex,
                 )
 
         for element in obs.uiElements:
@@ -209,6 +215,7 @@ def _build_json_payload(
                 text=element,
                 timestamp_sec=obs.timestampSec,
                 certainty=obs.certainty.value,
+                asset_index=obs.sourceIndex,
             )
 
         for interaction in obs.interactions:
@@ -221,6 +228,7 @@ def _build_json_payload(
                 text=interaction,
                 timestamp_sec=obs.timestampSec,
                 certainty="INFERRED",
+                asset_index=obs.sourceIndex,
             )
 
         for text in obs.visibleText:
@@ -233,6 +241,7 @@ def _build_json_payload(
                 text=text,
                 timestamp_sec=obs.timestampSec,
                 certainty=obs.certainty.value,
+                asset_index=obs.sourceIndex,
             )
 
         for change in obs.importantChanges:
@@ -245,6 +254,7 @@ def _build_json_payload(
                 text=change,
                 timestamp_sec=obs.timestampSec,
                 certainty=obs.certainty.value,
+                asset_index=obs.sourceIndex,
             )
         # deterministic key order: implementation notes are sorted by key
         for key in sorted(obs.designObservations):
@@ -260,6 +270,7 @@ def _build_json_payload(
                 text=note,
                 timestamp_sec=obs.timestampSec,
                 certainty=obs.certainty.value,
+                asset_index=obs.sourceIndex,
             )
 
     if source_kind in ("image", "pdf"):
@@ -305,9 +316,20 @@ def _build_json_payload(
                         text=text,
                         timestamp_sec=0.0,
                         certainty="OBSERVED",
+                        asset_index=current.sourceIndex,
                     )
             previous = current
+    seen_visible = {
+        (obs.frameId, obs.timestampSec, text.strip().casefold())
+        for obs in observations
+        for text in obs.visibleText
+        if text.strip()
+    }
     for item in ocr:
+        key = (item.frameId, item.timestampSec, item.text.strip().casefold())
+        if key in seen_visible:
+            continue
+        seen_visible.add(key)
         index = len(visible_text)
         ocr_text = {
             "text": item.text,
@@ -325,6 +347,7 @@ def _build_json_payload(
             timestamp_sec=item.timestampSec,
             certainty="OBSERVED",
             confidence=item.confidence,
+            asset_index=item.sourceIndex,
         )
 
     evidence: list[dict[str, Any]] = []

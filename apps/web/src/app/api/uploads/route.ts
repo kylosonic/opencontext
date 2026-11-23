@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { UploadIntentRequestSchema } from "@kylosonic/opencontext-schemas";
 import { auth } from "@/auth";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import { errorResponse, readJsonBody, withErrorHandling } from "@/server/api-helpers";
 import {
   applyRateLimitHeaders,
   consumeRateLimit,
@@ -33,21 +33,17 @@ export async function POST(request: Request): Promise<Response> {
       return applyRateLimitHeaders(response, limit);
     }
 
-    const contentLength = Number(request.headers.get("content-length") ?? "0");
-    if (Number.isFinite(contentLength) && contentLength > 10_000) {
-      return errorResponse("VALIDATION_ERROR", "Upload request is too large");
-    }
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const body = await readJsonBody(request, 10_000);
+    if (!body.ok) {
+      if (body.reason === "TOO_LARGE") {
+        return errorResponse("VALIDATION_ERROR", "Upload request is too large");
+      }
       return errorResponse("VALIDATION_ERROR", "Request body must be valid JSON");
     }
-    const parsed = UploadIntentRequestSchema.safeParse(body);
+    const parsed = UploadIntentRequestSchema.safeParse(body.value);
     if (!parsed.success) {
       return errorResponse("VALIDATION_ERROR", "Upload intent data is invalid");
     }
-
     const result = await createUploadIntent({
       userId: session.user.id,
       ...parsed.data,

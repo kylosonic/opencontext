@@ -2,9 +2,15 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { config as loadEnv } from "dotenv";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const webDir = path.join(repoRoot, "apps", "web");
+for (const envFile of [path.join(webDir, ".env.local"), path.join(webDir, ".env")]) {
+  if (existsSync(envFile)) {
+    loadEnv({ path: envFile, override: false, quiet: true });
+  }
+}
 const prismaEntry = [
   path.join(webDir, "node_modules", "prisma", "build", "index.js"),
   path.join(repoRoot, "node_modules", "prisma", "build", "index.js"),

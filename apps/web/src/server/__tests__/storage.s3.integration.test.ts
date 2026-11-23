@@ -18,8 +18,10 @@ import { resetRateLimits } from "@/server/security/rate-limit";
 import { S3Storage, setStorage } from "@/server/storage";
 import { getWorkerSourceInfo } from "@/server/worker";
 import { createUser, resetDatabase } from "./helpers";
+import { findFixtureFfmpeg } from "./python-process";
 
 const enabled = process.env.OPENCONTEXT_S3_E2E === "1";
+const ffmpeg = findFixtureFfmpeg();
 
 function s3Config() {
   const endpoint = process.env.STORAGE_S3_ENDPOINT;
@@ -44,8 +46,9 @@ function s3Config() {
 }
 
 function generateFixture(output: string): void {
+  if (!ffmpeg) throw new Error("FFmpeg with libx264 is required");
   execFileSync(
-    "ffmpeg",
+    ffmpeg,
     [
       "-y",
       "-hide_banner",

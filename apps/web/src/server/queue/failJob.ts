@@ -3,6 +3,7 @@ import { type StageState } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
 import { computeProgress } from "@/server/jobs/progress";
 import { requeueJob, transientBudgetExhausted } from "./requeueJob";
+import { activeLease, LeaseLostError } from "./lease";
 
 export interface FailInput {
   stage: string;
@@ -10,6 +11,7 @@ export interface FailInput {
   failureKind: "NONE" | "TRANSIENT" | "PERMANENT";
   retryable: boolean;
   retryAfterSec?: number;
+  rateLimited?: boolean;
 }
 
 export type FailResult =
@@ -27,20 +29,27 @@ export type FailResult =
  */
 export async function failJob(jobId: string, workerId: string, input: FailInput): Promise<FailResult> {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
-  if (!job || job.claimedBy !== workerId) {
+  if (
+    !job ||
+    job.claimedBy !== workerId ||
+    !job.leaseUntil ||
+    job.leaseUntil.getTime() <= Date.now()
+  ) {
     return { kind: "NOT_CLAIMED" };
   }
 
   const transientRequeue =
     input.failureKind === "TRANSIENT" &&
     input.retryable &&
-    !transientBudgetExhausted(job.attempts);
+    !transientBudgetExhausted(job.attempts, input.rateLimited === true);
 
   if (transientRequeue) {
     const requeued = await requeueJob(jobId, {
       stage: input.stage,
       attempts: job.attempts,
       retryAfterSec: input.retryAfterSec,
+      rateLimited: input.rateLimited,
+      workerId,
     });
     return { kind: "REQUEUED", job: requeued };
   }
@@ -59,8 +68,9 @@ export async function failJob(jobId: string, workerId: string, input: FailInput)
   const anySucceeded = stageStates.some((state) => state.status === "SUCCEEDED");
   const status = anySucceeded ? "PARTIAL" : "FAILED";
 
-  const updated = await prisma.job.update({
-    where: { id: jobId },
+  const now = new Date();
+  const updated = await prisma.job.updateMany({
+    where: { id: jobId, ...activeLease(workerId, now) },
     data: {
       status,
       progress: computeProgress(stageStates),
@@ -74,5 +84,12 @@ export async function failJob(jobId: string, workerId: string, input: FailInput)
     },
   });
 
-  return { kind: "TERMINAL", job: updated };
+  if (updated.count === 0) {
+    throw new LeaseLostError(jobId);
+  }
+
+  return {
+    kind: "TERMINAL",
+    job: await prisma.job.findUniqueOrThrow({ where: { id: jobId } }),
+  };
 }

@@ -78,6 +78,7 @@ export function JobDetailClient({
 }: JobDetailClientProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const pollEpochRef = useRef(0);
   const [job, setJob] = useState<JobDetail>(initialDetail);
   // Constant per mount: the parent remounts this island (via `key`) when
   // a refreshed terminal payload with results arrives.
@@ -92,6 +93,7 @@ export function JobDetailClient({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [sourceBroken, setSourceBroken] = useState(false);
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
+  const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [now, setNow] = useState<number | null>(() => Date.now());
 
   const active = isActiveStatus(job.status);
@@ -104,14 +106,29 @@ export function JobDetailClient({
     return () => window.clearInterval(timer);
   }, [active]);
 
+  // A server refresh can occasionally lose a navigation. Retry after a
+  // bounded delay without tying the timer to the polling effect cleanup.
+  useEffect(() => {
+    if (!preparing) return;
+    const timer = window.setTimeout(() => {
+      setPreparing(false);
+      router.refresh();
+    }, POLL_INTERVAL_MS * 4);
+    return () => window.clearTimeout(timer);
+  }, [preparing, router]);
+
   // Poll every 3s while the job is active (jobs.md B3).
   useEffect(() => {
     if (!active || preparing || signedOut) return;
     let stopped = false;
+    let inFlight = false;
     const tick = async () => {
-      if (stopped) return;
+      if (stopped || inFlight) return;
+      inFlight = true;
+      const epoch = pollEpochRef.current;
       try {
         const next = await fetchJobDetail(job.id);
+        if (stopped || epoch !== pollEpochRef.current) return;
         setJob(next);
         setReconnecting(false);
         if (next.status === "COMPLETED" || next.status === "PARTIAL") {
@@ -120,19 +137,17 @@ export function JobDetailClient({
           // (the parent remounts this island via its key).
           setPreparing(true);
           router.refresh();
-          // If the refresh does not land (network blip), resume polling so
-          // the transition is retried instead of stalling forever.
-          window.setTimeout(() => {
-            if (!stopped) setPreparing(false);
-          }, POLL_INTERVAL_MS * 4);
         }
       } catch (error) {
+        if (stopped || epoch !== pollEpochRef.current) return;
         if (isSignInError(error)) {
           setSignedOut(true);
           return;
         }
         // B3: connection problems never change the displayed state.
         setReconnecting(true);
+      } finally {
+        inFlight = false;
       }
     };
     void tick();
@@ -178,13 +193,15 @@ export function JobDetailClient({
   const sourceKind = job.source?.kind ?? "video";
   const sourceAssets = job.source?.assets ?? [];
 
-  const seekTo = useCallback((timestampSec: number) => {
+  const seekTo = useCallback((timestampSec: number, sourceAssetIndex?: number) => {
     setSelectedTimestamp(timestampSec);
+    if (sourceAssetIndex !== undefined) setSelectedAssetIndex(sourceAssetIndex);
+    if (sourceKind !== "video") return;
     const video = videoRef.current;
     if (!video) return;
     video.currentTime = timestampSec;
     void video.play().catch(() => undefined);
-  }, []);
+  }, [sourceKind]);
 
   const elapsedNow = useMemo(() => {
     if (!active) return elapsedSeconds(job);
@@ -219,6 +236,7 @@ export function JobDetailClient({
     setDeleteError(null);
     try {
       await deleteJobRequest(job.id);
+      pollEpochRef.current += 1;
       router.push("/app/jobs");
     } catch (error) {
       setDeleteError(
@@ -244,7 +262,9 @@ export function JobDetailClient({
           sourceUrl={sourceUrl}
           sourceKind="image"
           displayName={job.displayName}
-          assetCount={sourceAssets.length}
+          assetCount={Math.max(1, sourceAssets.length)}
+          selectedIndex={selectedAssetIndex}
+          onSelectedIndexChange={setSelectedAssetIndex}
           onError={() => setSourceBroken(true)}
         />
       ) : sourceKind === "pdf" ? (
@@ -252,6 +272,9 @@ export function JobDetailClient({
           sourceUrl={sourceUrl}
           sourceKind="pdf"
           displayName={job.displayName}
+          assetCount={Math.max(1, job.source?.pageCount ?? 1)}
+          selectedIndex={selectedAssetIndex}
+          onSelectedIndexChange={setSelectedAssetIndex}
           onError={() => setSourceBroken(true)}
         />
       ) : (
@@ -392,9 +415,13 @@ export function JobDetailClient({
             stages={checklist}
             progress={job.progress}
             elapsedSec={elapsedNow}
-            onSeek={sourceKind === "video" ? seekTo : undefined}
+            onSeek={seekTo}
             selectedTimestamp={selectedTimestamp}
             sourceSlot={sourceSlot}
+          />
+          <ManageCard
+            onDelete={() => setConfirmDeleteOpen(true)}
+            error={actionError}
           />
         </>
       )}

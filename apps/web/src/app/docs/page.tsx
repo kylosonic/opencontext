@@ -76,8 +76,8 @@ export default function DocsPage() {
               code={`# Checkout flow
 
 ## Sequence
-- [E-001] 00:12 - The cart shows three line items (observed)
-- [E-008] 00:31 - The primary button reads "Pay now" (observed)
+- [E0001 · 00:12 · Observed] The cart shows three line items
+- [E0008 · 00:31 · Observed] The primary button reads "Pay now"
 `}
             />
           </div>

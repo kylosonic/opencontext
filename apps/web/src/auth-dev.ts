@@ -1,5 +1,5 @@
 import Credentials from "next-auth/providers/credentials";
-import { devAuthEmail, devAuthEnabled } from "@opencontext/config";
+import { deploymentEnvironment, devAuthEmail, devAuthEnabled } from "@opencontext/config";
 import { prisma } from "@/server/db/prisma";
 
 /**
@@ -11,10 +11,10 @@ export function devAuthProviders() {
   if (!devAuthEnabled()) {
     return [];
   }
-  if (process.env.NODE_ENV === "production") {
-    console.warn(
-      "[opencontext] DEV_AUTH_ENABLED is active in production mode. Disable it outside local development.",
-    );
+  // devAuthEnabled() already enforces this; keep the provider itself
+  // fail-closed if its implementation changes later.
+  if (deploymentEnvironment() !== "development") {
+    return [];
   }
   return [
     Credentials({

@@ -10,13 +10,50 @@ const baseUrl = (process.env.OPENCONTEXT_BASE_URL ?? "http://localhost:3000").re
 const videoPath = path.resolve(
   process.env.OPENCONTEXT_FIXTURE ?? ".artifacts/opencontext-fixture.mp4",
 );
+const videoPaths = (
+  process.env.OPENCONTEXT_VIDEOS
+    ? process.env.OPENCONTEXT_VIDEOS.split(",")
+    : [videoPath]
+).map((entry) => path.resolve(entry.trim()));
 const stillImagePath = path.resolve(
   process.env.OPENCONTEXT_IMAGE ?? ".artifacts/real-vision-checkout.png",
 );
+const imagePaths = (
+  process.env.OPENCONTEXT_IMAGE_SET
+    ? process.env.OPENCONTEXT_IMAGE_SET.split(",")
+    : [stillImagePath]
+).map((entry) => path.resolve(entry.trim()));
+const standaloneImagePaths = (
+  process.env.OPENCONTEXT_STANDALONE_IMAGES
+    ? process.env.OPENCONTEXT_STANDALONE_IMAGES.split(",")
+    : []
+)
+  .map((entry) => entry.trim())
+  .filter(Boolean)
+  .map((entry) => path.resolve(entry));
 const outputDir = path.resolve(
   process.env.OPENCONTEXT_COMPOSE_OUTPUT ?? ".artifacts/compose-smoke",
 );
 const cookies = new Map();
+
+function rememberCookieHeader(value) {
+  for (const part of value.split(";")) {
+    const pair = part.trim();
+    const separator = pair.indexOf("=");
+    if (separator > 0) {
+      cookies.set(pair.slice(0, separator), pair.slice(separator + 1));
+    }
+  }
+}
+
+if (process.env.OPENCONTEXT_SESSION_COOKIE) {
+  rememberCookieHeader(process.env.OPENCONTEXT_SESSION_COOKIE);
+}
+if (process.env.OPENCONTEXT_SESSION_COOKIE_FILE) {
+  rememberCookieHeader(
+    (await readFile(process.env.OPENCONTEXT_SESSION_COOKIE_FILE, "utf8")).trim(),
+  );
+}
 
 function rememberCookies(response) {
   const values =
@@ -34,13 +71,14 @@ function rememberCookies(response) {
 
 async function request(url, options = {}) {
   const headers = new Headers(options.headers);
-  if (cookies.size > 0) {
+  const target = new URL(url, baseUrl);
+  if (cookies.size > 0 && target.origin === new URL(baseUrl).origin) {
     headers.set(
       "Cookie",
       [...cookies].map(([name, value]) => `${name}=${value}`).join("; "),
     );
   }
-  const response = await fetch(new URL(url, baseUrl), {
+  const response = await fetch(target, {
     ...options,
     headers,
     redirect: options.redirect ?? "manual",
@@ -58,6 +96,16 @@ async function expectOk(response, label) {
 }
 
 async function signIn() {
+  if (cookies.size > 0) {
+    const sessionResponse = await expectOk(
+      await request("/api/auth/session", { headers: { Accept: "application/json" } }),
+      "Session request",
+    );
+    const session = await sessionResponse.json();
+    assert.ok(session?.user?.id, "The supplied session cookie is not authenticated");
+    return session.user.id;
+  }
+
   const csrfResponse = await expectOk(
     await request("/api/auth/csrf", { headers: { Accept: "application/json" } }),
     "CSRF request",
@@ -116,7 +164,7 @@ async function pollJob(jobId) {
   throw new Error(`Job did not complete before timeout; last status ${lastStatus}`);
 }
 
-async function upload(source, filename, mime) {
+async function createIntent(source, filename, mime) {
   const intentResponse = await expectOk(
     await request("/api/uploads", {
       method: "POST",
@@ -144,6 +192,10 @@ async function upload(source, filename, mime) {
     "Upload body",
   );
 
+  return intent;
+}
+
+async function completeSingle(intent) {
   const completeResponse = await expectOk(
     await request(`/api/uploads/${encodeURIComponent(intent.uploadId)}/complete`, {
       method: "POST",
@@ -153,6 +205,59 @@ async function upload(source, filename, mime) {
   );
   const summary = await completeResponse.json();
   return pollJob(summary.id);
+}
+
+async function upload(source, filename, mime) {
+  return completeSingle(await createIntent(source, filename, mime));
+}
+
+async function uploadImageSet(files) {
+  const intents = [];
+  for (const file of files) {
+    intents.push(
+      await createIntent(
+        await readFile(file.path),
+        path.basename(file.path),
+        mimeForPath(file.path),
+      ),
+    );
+  }
+  const response = await expectOk(
+    await request("/api/uploads/batch/complete", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        uploadIds: intents.map((intent) => intent.uploadId),
+        detailLevel: "MEDIUM",
+      }),
+    }),
+    "Image-set completion",
+  );
+  const summary = await response.json();
+  const job = await pollJob(summary.id);
+  assert.equal(job.source?.assets?.length, files.length, "Image-set source asset count differs");
+  assert.equal(job.source?.frameCount, files.length, "Image-set frame count differs");
+  return job;
+}
+
+function mimeForPath(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  return (
+    {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+      ".mp4": "video/mp4",
+      ".mov": "video/quicktime",
+      ".webm": "video/webm",
+      ".mkv": "video/x-matroska",
+      ".pdf": "application/pdf",
+    }[extension] ?? "application/octet-stream"
+  );
 }
 
 async function saveContext(job, directory) {
@@ -190,13 +295,33 @@ async function saveContext(job, directory) {
 }
 
 async function main() {
-  const image = await readFile(stillImagePath);
   const userId = await signIn();
   const mode = process.env.OPENCONTEXT_DEMO_VISION === "real" ? "real" : "fixture";
+  const imageSetJob =
+    imagePaths.length === 1
+      ? await upload(
+          await readFile(imagePaths[0]),
+          path.basename(imagePaths[0]),
+          mimeForPath(imagePaths[0]),
+        )
+      : await uploadImageSet(imagePaths.map((filePath) => ({ path: filePath })));
   const imageResult = await saveContext(
-    await upload(image, path.basename(stillImagePath), "image/png"),
-    path.join(outputDir, "image"),
+    imageSetJob,
+    path.join(outputDir, imagePaths.length === 1 ? "image" : "image-set"),
   );
+  const standaloneImageResults = [];
+  for (const [index, filePath] of standaloneImagePaths.entries()) {
+    standaloneImageResults.push(
+      await saveContext(
+        await upload(
+          await readFile(filePath),
+          path.basename(filePath),
+          mimeForPath(filePath),
+        ),
+        path.join(outputDir, `standalone-image-${index + 1}`),
+      ),
+    );
+  }
   if (mode === "real") {
     const expected = ["checkout", "1042", "42", "pay now", "4242"];
     const imagePayload = JSON.parse(
@@ -212,14 +337,43 @@ async function main() {
       `Real vision output did not contain enough reference terms: ${visibleText}`,
     );
   }
-  const videoResult = await saveContext(
-    await upload(await readFile(videoPath), path.basename(videoPath), "video/mp4"),
-    path.join(outputDir, "video"),
-  );
+  const videoResults = [];
+  for (const [index, filePath] of videoPaths.entries()) {
+    const job = await upload(
+      await readFile(filePath),
+      path.basename(filePath),
+      mimeForPath(filePath),
+    );
+    assert.ok(
+      Number(job.source?.durationSec) > 0,
+      `${path.basename(filePath)} has no probed duration`,
+    );
+    assert.ok(
+      Number(job.source?.frameCount) > 0,
+      `${path.basename(filePath)} produced no frames`,
+    );
+    videoResults.push(
+      await saveContext(
+        job,
+        path.join(
+          outputDir,
+          videoPaths.length === 1 ? "video" : `video-${index + 1}`,
+        ),
+      ),
+    );
+  }
 
   console.log(
     JSON.stringify(
-      { ok: true, userId, mode, video: videoResult, image: imageResult },
+      {
+        ok: true,
+        userId,
+        mode,
+        videos: videoResults,
+        image: imageResult,
+        standaloneImages: standaloneImageResults,
+        imageCount: imagePaths.length,
+      },
       null,
       2,
     ),

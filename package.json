@@ -15,6 +15,7 @@
     "compose:demo": "node scripts/real-vision-demo.mjs",
     "fixture": "node scripts/generate-fixture.mjs",
     "media:corpus": "node scripts/download-media-corpus.mjs",
+    "media:verify": "node scripts/verify-media-corpus.mjs",
     "evaluation:video": "node scripts/generate-measured-evaluation-video.mjs",
     "evaluation:hearing-video": "node scripts/generate-hearing-evaluation-video.mjs",
     "vision:fixture": "node scripts/generate-vision-reference.mjs",

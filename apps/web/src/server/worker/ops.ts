@@ -1,5 +1,4 @@
-import type { Job } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
+import type { Job, Prisma } from "@prisma/client";
 import {
   AnalyzeDataSchema,
   ContextDataSchema,
@@ -17,7 +16,7 @@ import {
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
 import { computeProgress } from "@/server/jobs/progress";
-import { LEASE_MS } from "@/server/queue";
+import { activeLease, LeaseLostError, renewedLease } from "@/server/queue";
 
 /**
  * Worker-side job operations (ADR-0005): the Python worker reports stage
@@ -40,47 +39,49 @@ export async function applyProgress(
   job: Job,
   input: WorkerProgressRequest,
 ): Promise<Job> {
+  const workerId = requireWorker(job);
   const now = new Date().toISOString();
-  const stageStates = (job.stageStates as StageState[]).map((state) => {
-    if (state.stage !== input.stage) {
-      return state;
-    }
-    const updated: StageState = {
-      ...state,
-      status: input.stageStatus,
-      progress: input.progress,
-      message: input.message ?? state.message,
-    };
-    if (input.stageStatus === "RUNNING" && state.status !== "RUNNING") {
-      updated.startedAt = now;
-    }
-    if (input.stageStatus === "SUCCEEDED" || input.stageStatus === "FAILED") {
-      updated.completedAt = now;
-    }
-    return updated;
-  });
+  return prisma.$transaction(async (tx) => {
+    const current = await renewLease(tx, job.id, workerId);
+    const stageStates = (current.stageStates as StageState[]).map((state) => {
+      if (state.stage !== input.stage) {
+        return state;
+      }
+      const updated: StageState = {
+        ...state,
+        status: input.stageStatus,
+        progress: input.progress,
+        message: input.message ?? state.message,
+      };
+      if (input.stageStatus === "RUNNING" && state.status !== "RUNNING") {
+        updated.startedAt = now;
+      }
+      if (
+        state.status !== input.stageStatus &&
+        (input.stageStatus === "SUCCEEDED" || input.stageStatus === "FAILED")
+      ) {
+        updated.completedAt = now;
+      }
+      return updated;
+    });
 
-  return prisma.job.update({
-    where: { id: job.id },
-    data: {
-      stageStates,
-      progress: computeProgress(stageStates),
-      ...(input.stageStatus === "RUNNING"
-        ? { status: STAGE_TO_JOB_STATUS[input.stage] }
-        : {}),
-      leaseUntil: new Date(Date.now() + LEASE_MS),
-    },
+    return tx.job.update({
+      where: { id: job.id },
+      data: {
+        stageStates,
+        progress: computeProgress(stageStates),
+        ...(input.stageStatus === "RUNNING"
+          ? { status: STAGE_TO_JOB_STATUS[input.stage] }
+          : {}),
+      },
+    });
   });
 }
 
 /** POST /api/worker/jobs/[id]/heartbeat — renew the lease without rewriting stage state. */
 export async function applyHeartbeat(job: Job): Promise<Job> {
-  return prisma.job.update({
-    where: { id: job.id },
-    data: {
-      leaseUntil: new Date(Date.now() + LEASE_MS),
-    },
-  });
+  const workerId = requireWorker(job);
+  return prisma.$transaction((tx) => renewLease(tx, job.id, workerId));
 }
 
 /**
@@ -95,58 +96,60 @@ export async function applyStageResult(
   job: Job,
   input: WorkerStageResultRequest,
 ): Promise<Job> {
+  const workerId = requireWorker(job);
   const now = new Date().toISOString();
-
-  if (input.outcome === "SUCCEEDED" && input.data !== undefined) {
-    await routeStageData(job.id, input.stage, input.data);
-  }
-
-  const stageStates = (job.stageStates as StageState[]).map((state) => {
-    if (state.stage !== input.stage) {
-      return state;
+  return prisma.$transaction(async (tx) => {
+    const current = await renewLease(tx, job.id, workerId);
+    if (input.outcome === "SUCCEEDED" && input.data !== undefined) {
+      await routeStageData(tx, job.id, input.stage, input.data);
     }
-    return {
-      ...state,
-      status: input.outcome,
-      attempt: input.attempt,
-      completedAt: now,
-      error:
-        input.outcome === "SKIPPED"
-          ? input.reason ?? SKIP_REASON_NO_AUDIO
-          : input.error ?? null,
-    };
-  });
 
-  const extra: Record<string, unknown> = {
-    stageStates,
-    progress: computeProgress(stageStates),
-    leaseUntil: new Date(Date.now() + LEASE_MS),
-  };
-  if (input.stage === "EXTRACTING" && input.outcome === "SUCCEEDED" && input.data) {
-    const probe = SourceMetaSchema.safeParse(input.data);
-    if (probe.success) {
-      const meta = probe.data;
-      if (meta.durationSec !== undefined) extra.durationSec = meta.durationSec;
-      if (meta.width !== undefined) extra.width = meta.width;
-      if (meta.height !== undefined) extra.height = meta.height;
-      if (meta.audioPresent !== undefined) extra.audioPresent = meta.audioPresent;
-      if (meta.frameCount !== undefined) extra.frameCount = meta.frameCount;
-      if (meta.assetCount !== undefined) extra.assetCount = meta.assetCount;
-      if (meta.pageCount !== undefined) extra.pageCount = meta.pageCount;
-    }
-  }
-  if (input.stage === "AGGREGATING" && input.outcome === "SUCCEEDED" && input.data) {
-    const parsed = (input.data as { timeline?: unknown }).timeline;
-    if (parsed !== undefined) {
-      const timeline = TimelineEntrySchema.array().safeParse(parsed);
-      if (!timeline.success) {
-        throw new ZodStageDataError("AGGREGATING", "timeline payload is invalid");
+    const stageStates = (current.stageStates as StageState[]).map((state) => {
+      if (state.stage !== input.stage) {
+        return state;
       }
-      extra.timeline = timeline.data;
-    }
-  }
+      return {
+        ...state,
+        status: input.outcome,
+        attempt: input.attempt,
+        completedAt: now,
+        error:
+          input.outcome === "SKIPPED"
+            ? input.reason ?? SKIP_REASON_NO_AUDIO
+            : input.error ?? null,
+      };
+    });
 
-  return prisma.job.update({ where: { id: job.id }, data: extra });
+    const extra: Prisma.JobUpdateInput = {
+      stageStates: stageStates as Prisma.InputJsonValue,
+      progress: computeProgress(stageStates),
+    };
+    if (input.stage === "EXTRACTING" && input.outcome === "SUCCEEDED" && input.data) {
+      const probe = SourceMetaSchema.safeParse(input.data);
+      if (probe.success) {
+        const meta = probe.data;
+        if (meta.durationSec !== undefined) extra.durationSec = meta.durationSec;
+        if (meta.width !== undefined) extra.width = meta.width;
+        if (meta.height !== undefined) extra.height = meta.height;
+        if (meta.audioPresent !== undefined) extra.audioPresent = meta.audioPresent;
+        if (meta.frameCount !== undefined) extra.frameCount = meta.frameCount;
+        if (meta.assetCount !== undefined) extra.assetCount = meta.assetCount;
+        if (meta.pageCount !== undefined) extra.pageCount = meta.pageCount;
+      }
+    }
+    if (input.stage === "AGGREGATING" && input.outcome === "SUCCEEDED" && input.data) {
+      const parsed = (input.data as { timeline?: unknown }).timeline;
+      if (parsed !== undefined) {
+        const timeline = TimelineEntrySchema.array().safeParse(parsed);
+        if (!timeline.success) {
+          throw new ZodStageDataError("AGGREGATING", "timeline payload is invalid");
+        }
+        extra.timeline = timeline.data as Prisma.InputJsonValue;
+      }
+    }
+
+    return tx.job.update({ where: { id: job.id }, data: extra });
+  });
 }
 
 class ZodStageDataError extends Error {
@@ -159,7 +162,12 @@ class ZodStageDataError extends Error {
   }
 }
 
-async function routeStageData(jobId: string, stage: StageName, data: unknown): Promise<void> {
+async function routeStageData(
+  tx: Prisma.TransactionClient,
+  jobId: string,
+  stage: StageName,
+  data: unknown,
+): Promise<void> {
   switch (stage) {
     case "TRANSCRIBING": {
       const payload = data as { segments?: unknown };
@@ -169,18 +177,16 @@ async function routeStageData(jobId: string, stage: StageName, data: unknown): P
       const segments = payload.segments.map((segment) =>
         TranscriptSegmentSchema.parse(segment),
       );
-      await prisma.$transaction([
-        prisma.transcriptSegment.deleteMany({ where: { jobId } }),
-        prisma.transcriptSegment.createMany({
-          data: segments.map((segment) => ({
-            jobId,
-            start: segment.start,
-            end: segment.end,
-            text: segment.text,
-            provider: segment.provider,
-          })),
-        }),
-      ]);
+      await tx.transcriptSegment.deleteMany({ where: { jobId } });
+      await tx.transcriptSegment.createMany({
+        data: segments.map((segment) => ({
+          jobId,
+          start: segment.start,
+          end: segment.end,
+          text: segment.text,
+          provider: segment.provider,
+        })),
+      });
       return;
     }
     case "ANALYZING": {
@@ -189,38 +195,36 @@ async function routeStageData(jobId: string, stage: StageName, data: unknown): P
         throw new ZodStageDataError("ANALYZING", "expected { observations, ocr }");
       }
       const { observations, ocr } = parsed.data;
-      await prisma.$transaction([
-        prisma.visualObservation.deleteMany({ where: { jobId } }),
-        prisma.ocrObservation.deleteMany({ where: { jobId } }),
-        prisma.visualObservation.createMany({
-          data: observations.map((observation) => ({
-            jobId,
-            frameId: observation.frameId ?? null,
-            timestampSec: observation.timestampSec,
-            certainty: observation.certainty,
-            sceneTitle: observation.sceneTitle,
-            visualDescription: observation.visualDescription,
-            uiElements: observation.uiElements as Prisma.InputJsonValue,
-            visibleText: observation.visibleText as Prisma.InputJsonValue,
-            interactions: observation.interactions as Prisma.InputJsonValue,
-            layoutDescription: observation.layoutDescription,
-            designObservations:
-              observation.designObservations as Prisma.InputJsonValue,
-            importantChanges: observation.importantChanges as Prisma.InputJsonValue,
-            provider: observation.provider,
-          })),
-        }),
-        prisma.ocrObservation.createMany({
-          data: ocr.map((entry) => ({
-            jobId,
-            frameId: entry.frameId ?? null,
-            timestampSec: entry.timestampSec,
-            text: entry.text,
-            confidence: entry.confidence,
-            provider: entry.provider,
-          })),
-        }),
-      ]);
+      await tx.visualObservation.deleteMany({ where: { jobId } });
+      await tx.ocrObservation.deleteMany({ where: { jobId } });
+      await tx.visualObservation.createMany({
+        data: observations.map((observation) => ({
+          jobId,
+          frameId: observation.frameId ?? null,
+          timestampSec: observation.timestampSec,
+          certainty: observation.certainty,
+          sceneTitle: observation.sceneTitle,
+          visualDescription: observation.visualDescription,
+          uiElements: observation.uiElements as Prisma.InputJsonValue,
+          visibleText: observation.visibleText as Prisma.InputJsonValue,
+          interactions: observation.interactions as Prisma.InputJsonValue,
+          layoutDescription: observation.layoutDescription,
+          designObservations:
+            observation.designObservations as Prisma.InputJsonValue,
+          importantChanges: observation.importantChanges as Prisma.InputJsonValue,
+          provider: observation.provider,
+        })),
+      });
+      await tx.ocrObservation.createMany({
+        data: ocr.map((entry) => ({
+          jobId,
+          frameId: entry.frameId ?? null,
+          timestampSec: entry.timestampSec,
+          text: entry.text,
+          confidence: entry.confidence,
+          provider: entry.provider,
+        })),
+      });
       return;
     }
     case "GENERATING_CONTEXT": {
@@ -228,17 +232,19 @@ async function routeStageData(jobId: string, stage: StageName, data: unknown): P
       if (!parsed.success) {
         throw new ZodStageDataError("GENERATING_CONTEXT", "expected { markdown, json }");
       }
-      await prisma.processingResult.upsert({
+      const formatVersion = parsed.data.json.formatVersion ?? 1;
+      await tx.processingResult.upsert({
         where: { jobId },
         create: {
           jobId,
           markdown: parsed.data.markdown,
           json: parsed.data.json as Prisma.InputJsonValue,
-          formatVersion: 1,
+          formatVersion,
         },
         update: {
           markdown: parsed.data.markdown,
           json: parsed.data.json as Prisma.InputJsonValue,
+          formatVersion,
         },
       });
       return;
@@ -315,4 +321,27 @@ export async function getWorkerSourceInfo(job: Job): Promise<WorkerSourceInfo> {
     kind,
     ...(assets.length > 0 ? { assets } : {}),
   };
+}
+
+function requireWorker(job: Job): string {
+  if (!job.claimedBy) {
+    throw new LeaseLostError(job.id);
+  }
+  return job.claimedBy;
+}
+
+async function renewLease(
+  tx: Prisma.TransactionClient,
+  jobId: string,
+  workerId: string,
+): Promise<Job> {
+  const now = new Date();
+  const renewed = await tx.job.updateMany({
+    where: { id: jobId, ...activeLease(workerId, now) },
+    data: { leaseUntil: renewedLease(now) },
+  });
+  if (renewed.count === 0) {
+    throw new LeaseLostError(jobId);
+  }
+  return tx.job.findUniqueOrThrow({ where: { id: jobId } });
 }

@@ -46,7 +46,14 @@ def test_mcp_server_lists_and_calls_tools(tmp_path: Path) -> None:
         }
         params = StdioServerParameters(
             command=sys.executable,
-            args=["-m", "oc_worker.mcp_server"],
+            args=[
+                "-m",
+                "oc_worker.mcp_server",
+                "--workspace",
+                str(tmp_path),
+                "--workspace",
+                str(Path(__file__).resolve().parents[3]),
+            ],
             env=env,
         )
         async with stdio_client(params) as (read_stream, write_stream):

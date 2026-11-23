@@ -9,6 +9,7 @@ export default defineConfig({
     environment: "node",
     // Serial execution: all files share one SQLite test database.
     fileParallelism: false,
+    maxWorkers: 1,
     globalSetup: ["./vitest.global-setup.ts"],
     setupFiles: ["./vitest.setup.ts"],
     include: [

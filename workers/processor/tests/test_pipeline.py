@@ -836,6 +836,7 @@ def test_pdf_renders_pages_and_extracts_embedded_text() -> None:
     assert stage_results[2]["data"]["ocr"][0] == {
         "timestampSec": 0.0,
         "frameId": "pdf-page-01",
+            "sourceIndex": 0,
         "text": "Embedded line 1",
         "provider": "pdf_text",
     }
@@ -1213,14 +1214,7 @@ def test_canonical_vision_payload_flows_through_untouched() -> None:
         {"timestampSec": 0.0, "note": "layout: Centered card"},
         {"timestampSec": 0.0, "note": "spacing: 8px grid"},
     ]
-    assert json_payload["visibleText"] == [
-        "Email",
-        "Password",
-        "Sign in",
-        {"text": "Email", "confidence": None, "timestampSec": 0.0},
-        {"text": "Password", "confidence": None, "timestampSec": 0.0},
-        {"text": "Sign in", "confidence": None, "timestampSec": 0.0},
-    ]
+    assert json_payload["visibleText"] == ["Email", "Password", "Sign in"]
     # GENERATING_CONTEXT json embeds the same canonical timeline rows
     assert json_payload["timeline"] == [
         {

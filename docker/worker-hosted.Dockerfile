@@ -24,5 +24,5 @@ RUN ln -s /app /home/worker/app
 USER worker
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import os, urllib.request; urllib.request.urlopen(os.environ['WORKER_API_URL'] + '/api/health/ready', timeout=5)"
+    CMD python -c "from pathlib import Path; cmd=Path('/proc/1/cmdline').read_bytes(); assert b'oc_worker.main' in cmd"
 CMD ["python", "-m", "oc_worker.main"]

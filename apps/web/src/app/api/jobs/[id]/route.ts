@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { deleteJob, getJob } from "@/server/jobs";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,6 +23,17 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
+    const limit = await consumeRateLimit(
+      `job-read:${session.user.id}`,
+      RATE_LIMITS.jobRead.limit,
+      RATE_LIMITS.jobRead.windowMs,
+    );
+    if (!limit.allowed) {
+      return applyRateLimitHeaders(
+        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
+        limit,
+      );
+    }
     const { id } = await context.params;
     const result = await getJob(id, session.user.id);
     if (result.kind === "NOT_FOUND") {
@@ -26,7 +42,7 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
     if (result.kind === "FORBIDDEN") {
       return errorResponse("FORBIDDEN", "You don't have access to this job");
     }
-    return NextResponse.json(result.job);
+    return applyRateLimitHeaders(NextResponse.json(result.job), limit);
   });
 }
 
@@ -40,6 +56,17 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
+    const limit = await consumeRateLimit(
+      `job-delete:${session.user.id}`,
+      RATE_LIMITS.jobDelete.limit,
+      RATE_LIMITS.jobDelete.windowMs,
+    );
+    if (!limit.allowed) {
+      return applyRateLimitHeaders(
+        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
+        limit,
+      );
+    }
     const { id } = await context.params;
     const result = await deleteJob(id, session.user.id);
     if (result.kind === "NOT_FOUND") {
@@ -48,6 +75,6 @@ export async function DELETE(_request: Request, context: RouteContext): Promise<
     if (result.kind === "FORBIDDEN") {
       return errorResponse("FORBIDDEN", "You don't have access to this job");
     }
-    return new NextResponse(null, { status: 204 });
+    return applyRateLimitHeaders(new NextResponse(null, { status: 204 }), limit);
   });
 }

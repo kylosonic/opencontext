@@ -3,6 +3,11 @@ import { errorResponse, withErrorHandling } from "@/server/api-helpers";
 import { getJob } from "@/server/jobs";
 import { buildResultView } from "@/server/jobs/jobViews";
 import { loadJobResultsData } from "@/server/jobs/loadJobResults";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +19,17 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
     const session = await auth();
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
+    }
+    const limit = await consumeRateLimit(
+      `export:${session.user.id}`,
+      RATE_LIMITS.export.limit,
+      RATE_LIMITS.export.windowMs,
+    );
+    if (!limit.allowed) {
+      return applyRateLimitHeaders(
+        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
+        limit,
+      );
     }
 
     const format = new URL(request.url).searchParams.get("format") ?? "markdown";
@@ -43,20 +59,24 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
       if (!view.markdown) {
         return errorResponse("NOT_FOUND", "This job has no Markdown export");
       }
-      return new Response(view.markdown, {
+      return applyRateLimitHeaders(new Response(view.markdown, {
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
           "Content-Disposition": `attachment; filename="opencontext-${filename}.md"`,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
         },
-      });
+      }), limit);
     }
 
-    return new Response(JSON.stringify(view.json, null, 2), {
+    return applyRateLimitHeaders(new Response(JSON.stringify(view.json, null, 2), {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
         "Content-Disposition": `attachment; filename="opencontext-${filename}.json"`,
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
       },
-    });
+    }), limit);
   });
 }
 

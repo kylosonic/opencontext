@@ -25,6 +25,12 @@ describe("validateUpload (upload.md B1 — authoritative server gate)", () => {
     expect(validateUpload("video.mkv", 1000, "video/x-matroska").ok).toBe(true);
   });
 
+  it("normalizes browser codec parameters and generic video media types", () => {
+    expect(validateUpload("clip.webm", 1000, "video/webm;codecs=vp9").ok).toBe(true);
+    expect(validateUpload("clip.mkv", 1000, "application/octet-stream").ok).toBe(true);
+    expect(validateUpload("clip.mov", 1000, "application/octet-stream").ok).toBe(true);
+  });
+
   it("accepts supported images and returns their source kind", () => {
     const png = validateUpload("mockup.png", 1000, "image/png");
     const jpeg = validateUpload("reference.jpeg", 1000, "image/jpeg");

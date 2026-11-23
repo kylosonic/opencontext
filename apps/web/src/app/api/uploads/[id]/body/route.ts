@@ -3,6 +3,11 @@ import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
 import { storage } from "@/server/storage";
 import { getUploadIntent, storeLocalUpload } from "@/server/uploads";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -17,6 +22,17 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
     const session = await auth();
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
+    }
+    const limit = await consumeRateLimit(
+      `upload-body:${session.user.id}`,
+      RATE_LIMITS.uploadBody.limit,
+      RATE_LIMITS.uploadBody.windowMs,
+    );
+    if (!limit.allowed) {
+      return applyRateLimitHeaders(
+        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
+        limit,
+      );
     }
     if (storage.provider !== "local") {
       return errorResponse(
@@ -55,6 +71,6 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
         "Upload size or media type did not match the declared file",
       );
     }
-    return new NextResponse(null, { status: 204 });
+    return applyRateLimitHeaders(new NextResponse(null, { status: 204 }), limit);
   });
 }

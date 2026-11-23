@@ -1,8 +1,8 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import { errorResponse, readJsonBody, withErrorHandling } from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
 import { getJob } from "@/server/jobs";
 import {
@@ -50,7 +50,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
       return errorResponse("VALIDATION_ERROR", "Evidence id must be a positive integer");
     }
     const limit = await consumeRateLimit(
-      `evidence-review:${session.user.id}:${id}`,
+      `evidence-review:${session.user.id}`,
       RATE_LIMITS.evidenceReview.limit,
       RATE_LIMITS.evidenceReview.windowMs,
     );
@@ -74,73 +74,28 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
       return errorResponse("FORBIDDEN", "You don't have access to this job");
     }
 
-    const contentLength = Number(request.headers.get("content-length") ?? "0");
-    if (Number.isFinite(contentLength) && contentLength > 10_000) {
-      return errorResponse("VALIDATION_ERROR", "Review request is too large");
-    }
-
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const body = await readJsonBody(request, 10_000);
+    if (!body.ok) {
+      if (body.reason === "TOO_LARGE") {
+        return errorResponse("VALIDATION_ERROR", "Review request is too large");
+      }
       return errorResponse("VALIDATION_ERROR", "Request body must be valid JSON");
     }
-    const parsed = ReviewUpdateSchema.safeParse(body);
+    const parsed = ReviewUpdateSchema.safeParse(body.value);
     if (!parsed.success) {
       return errorResponse("VALIDATION_ERROR", "Review data is invalid");
     }
 
-    const result = await prisma.processingResult.findUnique({ where: { jobId: id } });
-    if (!result) {
+    const updated = await updateEvidenceReview(id, evidenceId, parsed.data);
+    if (updated === "NO_RESULT") {
       return errorResponse("NOT_FOUND", "This job has no generated context to review");
     }
-
-    const json = asRecord(result.json);
-    if (!json) {
+    if (updated === "NO_LEDGER") {
       return errorResponse("NOT_FOUND", "This result has no evidence ledger");
     }
-    const records = Array.isArray(json.evidence) ? json.evidence : null;
-    if (!records) {
-      return errorResponse("NOT_FOUND", "This result has no evidence ledger");
-    }
-
-    let evidenceFound = false;
-    const evidence = records.map((record) => {
-      const current = asRecord(record);
-      if (!current || current.id !== evidenceId) {
-        return record;
-      }
-      evidenceFound = true;
-      const updated: Record<string, unknown> = { ...current };
-      if (parsed.data.status === "UNREVIEWED") {
-        delete updated.review;
-      } else {
-        updated.review = {
-          status: parsed.data.status,
-          ...(parsed.data.note ? { note: parsed.data.note } : {}),
-          ...(parsed.data.correctedText
-            ? { correctedText: parsed.data.correctedText }
-            : {}),
-          reviewedAt: new Date().toISOString(),
-        };
-      }
-      return updated;
-    });
-
-    if (!evidenceFound) {
+    if (updated === "NO_EVIDENCE") {
       return errorResponse("NOT_FOUND", "Evidence record not found");
     }
-
-    const updatedJson = { ...json, evidence };
-    const markdown = withReviewAppendix(result.markdown, evidence);
-    const updated = await prisma.processingResult.update({
-      where: { jobId: id },
-      data: {
-        json: updatedJson as Prisma.InputJsonValue,
-        markdown,
-      },
-      select: { markdown: true, json: true },
-    });
 
     return NextResponse.json(updated);
   });
@@ -148,8 +103,79 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
 
 const REVIEW_APPENDIX_MARKER = "<!-- OpenContext human review -->";
 
+interface ReviewUpdate {
+  status: "CONFIRMED" | "FLAGGED" | "UNREVIEWED";
+  note?: string;
+  correctedText?: string;
+}
+
+async function updateEvidenceReview(
+  jobId: string,
+  evidenceId: number,
+  review: ReviewUpdate,
+): Promise<
+  | { markdown: string; json: Prisma.JsonValue }
+  | "NO_RESULT"
+  | "NO_LEDGER"
+  | "NO_EVIDENCE"
+> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const result = await tx.processingResult.findUnique({ where: { jobId } });
+          if (!result) return "NO_RESULT" as const;
+
+          const json = asRecord(result.json);
+          const records = json && Array.isArray(json.evidence) ? json.evidence : null;
+          if (!json || !records) return "NO_LEDGER" as const;
+
+          let evidenceFound = false;
+          const evidence = records.map((record) => {
+            const current = asRecord(record);
+            if (!current || current.id !== evidenceId) return record;
+            evidenceFound = true;
+            const updated: Record<string, unknown> = { ...current };
+            if (review.status === "UNREVIEWED") {
+              delete updated.review;
+            } else {
+              updated.review = {
+                status: review.status,
+                ...(review.note ? { note: review.note } : {}),
+                ...(review.correctedText
+                  ? { correctedText: review.correctedText }
+                  : {}),
+                reviewedAt: new Date().toISOString(),
+              };
+            }
+            return updated;
+          });
+          if (!evidenceFound) return "NO_EVIDENCE" as const;
+
+          return tx.processingResult.update({
+            where: { jobId },
+            data: {
+              json: { ...json, evidence } as Prisma.InputJsonValue,
+              markdown: withReviewAppendix(result.markdown, evidence),
+            },
+            select: { markdown: true, json: true },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      const retryable =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034";
+      if (!retryable || attempt === 2) throw error;
+    }
+  }
+  throw new Error("Evidence review update exhausted retries");
+}
+
 function withReviewAppendix(markdown: string, evidence: unknown[]): string {
-  const base = markdown.split(REVIEW_APPENDIX_MARKER, 1)[0].trimEnd();
+  const generatedAt = markdown.lastIndexOf(REVIEW_APPENDIX_MARKER);
+  const base = (generatedAt >= 0 ? markdown.slice(0, generatedAt) : markdown).trimEnd();
   const reviewed = evidence
     .map(asRecord)
     .filter((record): record is Record<string, unknown> => record !== null)

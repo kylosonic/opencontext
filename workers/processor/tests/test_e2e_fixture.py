@@ -18,14 +18,17 @@ import httpx
 import pytest
 
 from oc_worker.api_client import ApiClient
-from oc_worker.config import Settings
+from oc_worker.config import Settings, resolve_ffmpeg_path
 from oc_worker.pipeline import Pipeline
 from oc_worker.providers.text.template import TemplateTextProvider
 from oc_worker.providers.transcription.fixture import FixtureTranscriptionProvider
 from oc_worker.providers.vision.fixture import FixtureVisionProvider
 
-FFMPEG = shutil.which("ffmpeg")
-pytestmark = pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")
+FFMPEG = resolve_ffmpeg_path()
+pytestmark = pytest.mark.skipif(
+    not Path(FFMPEG).is_file() and shutil.which(FFMPEG) is None,
+    reason="ffmpeg is not installed",
+)
 
 
 class RecordingHandler:
@@ -92,7 +95,6 @@ class RecordingHandler:
 
 
 def _generate_fixture(path: Path) -> bytes:
-    assert FFMPEG is not None
     subprocess.run(
         [
             FFMPEG,
@@ -126,7 +128,6 @@ def _generate_fixture(path: Path) -> bytes:
 
 
 def _generate_image_fixture(path: Path) -> bytes:
-    assert FFMPEG is not None
     subprocess.run(
         [
             FFMPEG,

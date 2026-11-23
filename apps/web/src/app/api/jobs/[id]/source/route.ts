@@ -2,6 +2,11 @@ import { auth } from "@/auth";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
 import { getJob } from "@/server/jobs";
 import { storage } from "@/server/storage";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -25,6 +30,17 @@ export async function GET(
     const session = await auth();
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
+    }
+    const limit = await consumeRateLimit(
+      `source-read:${session.user.id}`,
+      RATE_LIMITS.sourceRead.limit,
+      RATE_LIMITS.sourceRead.windowMs,
+    );
+    if (!limit.allowed) {
+      return applyRateLimitHeaders(
+        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
+        limit,
+      );
     }
 
     const { id } = await context.params;
@@ -62,12 +78,16 @@ export async function GET(
     if (!body) {
       return errorResponse("NOT_FOUND", "Source preview not found");
     }
-    return new Response(body, {
+    return applyRateLimitHeaders(new Response(body, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+        ...(contentType === "application/pdf"
+          ? { "Content-Disposition": "inline; filename=source.pdf" }
+          : {}),
       },
-    });
+    }), limit);
   });
 }

@@ -12,7 +12,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { awsCredentialsProvider } from "@vercel/oidc-aws-credentials-provider";
 import type { S3Config } from "@opencontext/config";
-import type { Storage, PutOptions } from "./types";
+import type { MoveOptions, Storage, PutOptions } from "./types";
 
 /**
  * S3-compatible object storage (ADR-0004) via @aws-sdk/client-s3 — covers
@@ -82,6 +82,7 @@ export class S3Storage implements Storage {
       return {
         sizeBytes: response.ContentLength ?? 0,
         contentType: response.ContentType ?? null,
+        etag: response.ETag ?? null,
       };
     } catch (error) {
       if (isNotFound(error)) {
@@ -92,18 +93,30 @@ export class S3Storage implements Storage {
   }
 
   async stream(key: string): Promise<ReadableStream<Uint8Array> | null> {
-    const response = await this.client.send(
-      new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
-    );
-    return (response.Body as ReadableStream<Uint8Array> | null) ?? null;
+    try {
+      const response = await this.client.send(
+        new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
+      );
+      const body = response.Body as
+        | { transformToWebStream?: () => ReadableStream<Uint8Array> }
+        | null
+        | undefined;
+      return body?.transformToWebStream?.() ?? null;
+    } catch (error) {
+      if (isNotFound(error)) {
+        return null;
+      }
+      throw error;
+    }
   }
 
-  async move(fromKey: string, toKey: string): Promise<void> {
+  async move(fromKey: string, toKey: string, options: MoveOptions = {}): Promise<void> {
     await this.client.send(
       new CopyObjectCommand({
         Bucket: this.config.bucket,
         CopySource: `${this.config.bucket}/${fromKey}`,
         Key: toKey,
+        ...(options.etag ? { CopySourceIfMatch: options.etag } : {}),
       }),
     );
     await this.client.send(
@@ -122,6 +135,7 @@ export class S3Storage implements Storage {
   async presignPut(
     key: string,
     contentType: string,
+    sizeBytes: number,
     expiresInSec = 900,
   ): Promise<string | null> {
     return getSignedUrl(
@@ -130,6 +144,7 @@ export class S3Storage implements Storage {
         Bucket: this.config.bucket,
         Key: key,
         ContentType: contentType,
+        ContentLength: sizeBytes,
       }),
       { expiresIn: expiresInSec },
     );
@@ -142,15 +157,25 @@ export class S3Storage implements Storage {
   }
 
   async deleteMany(keys: string[]): Promise<void> {
-    if (keys.length === 0) {
-      return;
+    const unique = [...new Set(keys)];
+    for (let offset = 0; offset < unique.length; offset += 1000) {
+      const chunk = unique.slice(offset, offset + 1000);
+      const result = await this.client.send(
+        new DeleteObjectsCommand({
+          Bucket: this.config.bucket,
+          Delete: { Objects: chunk.map((key) => ({ Key: key })), Quiet: true },
+        }),
+      );
+      const errors = result.Errors ?? [];
+      if (errors.length > 0) {
+        throw new Error(
+          `S3 rejected ${errors.length} object deletion(s): ${errors
+            .slice(0, 3)
+            .map((entry) => `${entry.Key ?? "?"}:${entry.Code ?? "unknown"}`)
+            .join(", ")}`,
+        );
+      }
     }
-    await this.client.send(
-      new DeleteObjectsCommand({
-        Bucket: this.config.bucket,
-        Delete: { Objects: keys.map((key) => ({ Key: key })) },
-      }),
-    );
   }
 
   /** Verify an object exists (used by tests; object presence = truth). */

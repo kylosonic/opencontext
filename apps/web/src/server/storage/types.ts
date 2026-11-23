@@ -15,6 +15,12 @@ export interface PutOptions {
 export interface StoredObjectInfo {
   sizeBytes: number;
   contentType: string | null;
+  etag?: string | null;
+}
+
+export interface MoveOptions {
+  /** Pin S3 copy to the object version that passed content validation. */
+  etag?: string;
 }
 
 export interface Storage {
@@ -40,7 +46,7 @@ export interface Storage {
    * (rename for local disk; copy+delete for S3). Used by the upload
    * commit sequence (blueprint §3 B3).
    */
-  move(fromKey: string, toKey: string): Promise<void>;
+  move(fromKey: string, toKey: string, options?: MoveOptions): Promise<void>;
 
   /**
    * Produce a directly-fetchable URI for a key. S3 returns a presigned
@@ -56,6 +62,7 @@ export interface Storage {
   presignPut(
     key: string,
     contentType: string,
+    sizeBytes: number,
     expiresInSec?: number,
   ): Promise<string | null>;
 

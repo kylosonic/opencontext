@@ -29,9 +29,11 @@ class TransientFailure(Exception):
         message: str = "",
         *,
         retry_after_seconds: float | None = None,
+        rate_limited: bool = False,
     ) -> None:
         super().__init__(message)
         self.retry_after_seconds = retry_after_seconds
+        self.rate_limited = rate_limited
 
 
 _abort_local = threading.local()

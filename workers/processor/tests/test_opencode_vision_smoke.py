@@ -12,15 +12,16 @@ import httpx
 import pytest
 
 from oc_worker.cli import analyze_file
-from oc_worker.config import Settings
+from oc_worker.config import Settings, resolve_ffmpeg_path
 from oc_worker.providers.vision.openai_compatible import OpenAICompatibleVisionProvider
 
 ENABLED = os.getenv("OPENCONTEXT_OPENCODE_E2E") == "1"
-FFMPEG = shutil.which("ffmpeg")
+FFMPEG = resolve_ffmpeg_path()
+FFMPEG_AVAILABLE = Path(FFMPEG).is_file() or shutil.which(FFMPEG) is not None
 
 pytestmark = pytest.mark.skipif(
-    not ENABLED,
-    reason="set OPENCONTEXT_OPENCODE_E2E=1 to run",
+    not ENABLED or not FFMPEG_AVAILABLE,
+    reason="set OPENCONTEXT_OPENCODE_E2E=1 and install FFmpeg to run",
 )
 
 
@@ -75,9 +76,6 @@ def test_real_opencode_vision_smoke(tmp_path: Path) -> None:
             "OpenCode Go stored authentication or OPENCODE_API_KEY is required.",
             pytrace=False,
         )
-    if FFMPEG is None:
-        pytest.fail("ffmpeg is required to generate the smoke-test frame", pytrace=False)
-
     base_url = os.getenv(
         "OPENAI_BASE_URL",
         "https://opencode.ai/inference/go/openai/v1",

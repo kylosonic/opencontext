@@ -117,6 +117,19 @@ describe("production readiness", () => {
     });
   });
 
+  it("rejects development auth even when GitHub OAuth is configured", () => {
+    const report = evaluateReadiness(
+      { ...productionEnv(), DEV_AUTH_ENABLED: "true" },
+      "production",
+    );
+
+    expect(report.ready).toBe(false);
+    expect(report.checks.find((check) => check.id === "auth")).toMatchObject({
+      ok: false,
+      detail: "DEV_AUTH_ENABLED must be disabled outside development",
+    });
+  });
+
   it("allows local development defaults", () => {
     const report = evaluateReadiness(
       {
@@ -158,7 +171,7 @@ describe("readiness route", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
     vi.stubEnv("RATE_LIMIT_BACKEND", "");
 
-    const response = await GET();
+    const response = await GET(new Request("http://test.local/api/health/ready"));
     const body = await response.json();
 
     expect(response.status).toBe(503);

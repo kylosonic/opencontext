@@ -16,6 +16,7 @@ const response = await fetch(`${baseUrl}/api/ops/alerts`, {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",
   },
+  signal: AbortSignal.timeout(15_000),
 });
 const body = await response.json().catch(() => null);
 
@@ -61,6 +62,7 @@ if (!body.healthy && receiverUrl) {
       alerts: body.alerts,
       checkedAt: body.generatedAt,
     }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!notification.ok) {
     throw new Error(`Alert receiver returned HTTP ${notification.status}`);

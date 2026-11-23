@@ -86,8 +86,9 @@ export default function StatusPage() {
               and real-time processing are not available.
             </li>
             <li>
-              Eight moderate development-toolchain advisories remain. No high or
-              critical web advisories are known.
+              npm audit currently reports no known vulnerabilities in
+              production or development dependencies. Recheck it on every
+              release because advisories change over time.
             </li>
           </ul>
         </section>
