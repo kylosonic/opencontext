@@ -9,7 +9,7 @@ about the current Vercel deployment or future releases.
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
   local suite reports 182 passed plus one opt-in S3 integration skip; CI runs
-  that integration and passes all web tests. Shared config contributes eight
+  that integration and passes all web tests. Shared config contributes nine
   passing tests and the contract suite contributes two.
 - Worker Ruff and all 323 local tests pass, with four environment-dependent
   skips. Real Tesseract and OpenCode Go vision/audio smoke tests run when their

@@ -184,6 +184,12 @@ export function authSecret(): string {
   if (value && isStrongSecret(value, 32)) {
     return value;
   }
+  if (!value && process.env.NEXT_PHASE === "phase-production-build") {
+    // Next.js evaluates Auth.js while collecting route configuration. This
+    // value exists only in the build process; runtime initialization still
+    // requires a real secret and readiness reports a missing one.
+    return "opencontext-build-only-auth-secret-not-for-runtime";
+  }
   if (deploymentEnvironment() === "development") {
     return "opencontext-dev-auth-secret-do-not-use-in-production";
   }

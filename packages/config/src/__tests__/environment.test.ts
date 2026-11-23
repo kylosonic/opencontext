@@ -58,6 +58,15 @@ describe("authentication safety", () => {
     expect(() => authSecret()).toThrow(/AUTH_SECRET/);
   });
 
+  it("allows route collection with a build-only secret", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("OPENCONTEXT_ENV", "");
+    vi.stubEnv("AUTH_SECRET", "");
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+
+    expect(authSecret()).toBe("opencontext-build-only-auth-secret-not-for-runtime");
+  });
+
   it("rejects placeholder and short production secrets", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("OPENCONTEXT_ENV", "");
