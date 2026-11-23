@@ -21,10 +21,12 @@ work. It is not a penetration-test report.
 - **FFmpeg arguments:** subprocesses use list arguments with no shell. Media
   paths are passed as values to `-i`; option-like filenames cannot become
   commands. Automated tests pin this behavior.
-- **Rate limiting:** upload intent creation, completion, cancellation, retries,
-  and evidence review are rate limited per user. A maximum 10-image set uses 10
-  of 120 upload-intent slots per 10 minutes, avoiding a one-set lockout while
-  retaining a bounded abuse budget. `memory` is the local
+- **Rate limiting:** authentication, upload intent creation/completion/body/
+  cancellation, job reads/retries/deletes, source and export reads, evidence
+  review, worker APIs, operations reads, retention sweeps, and demo endpoints
+  are rate limited. A maximum 10-image set uses 10 of 240 upload-intent slots
+  per 10 minutes, avoiding a one-set lockout while retaining a bounded abuse
+  budget. `memory` is the local
   single-instance default; `database` shares fixed-window quotas through the
   application database for multi-instance deployments. A PostgreSQL test with
   six independent processes verified that concurrent requests cannot exceed
@@ -43,6 +45,14 @@ work. It is not a penetration-test report.
   include full presigned object-storage URLs. Secrets stay out of application
   logs, and long provider throttles are deferred without printing credentials
   or media bytes.
+- **Provider throttling:** an upstream HTTP 429 no longer holds a worker in a
+  tight retry loop. The model is cooled down, a configured fallback model is
+  tried, and exhausted quotas defer the job through the bounded shared queue.
+  Rate-limited jobs have a separate 40-attempt ceiling with escalating
+  cooldowns; ordinary crash/poison jobs retain the five-attempt ceiling.
+- **Browser mutation boundaries:** JSON and multipart bodies have incremental
+  byte caps, content types are enforced, and browser mutations require a
+  same-origin `Origin`/`Sec-Fetch-Site` request.
 
 ## Verified tests
 
@@ -58,8 +68,8 @@ work. It is not a penetration-test report.
 
 - Tune database connection pools and add platform/WAF controls based on
   sustained production traffic.
-- Add provider-specific Postgres migrations before making schema changes in a
-  long-lived production database.
+- Apply and verify the checked-in PostgreSQL migration before deploying code
+  that depends on a schema change.
 - Run an independent penetration test before claiming production security.
 
 The production bucket now uses a Vercel-managed OIDC role instead of long-lived

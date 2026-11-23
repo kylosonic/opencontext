@@ -21,6 +21,23 @@ def test_transparency_is_flattened_to_white(tmp_path: Path) -> None:
     assert all(channel >= 250 for channel in normalized.getpixel((0, 0)))
 
 
+def test_opaque_colours_are_preserved_not_inverted(tmp_path: Path) -> None:
+    source = tmp_path / "opaque-colours.png"
+    image = Image.new("RGBA", (3, 1))
+    image.putdata([(0, 0, 0, 255), (255, 255, 255, 255), (32, 96, 224, 255)])
+    image.save(source)
+    output = tmp_path / "opaque-colours.jpg"
+
+    extract_image_frame(source, output, max_width=30)
+
+    normalized = Image.open(output).convert("RGB")
+    expected = [(0, 0, 0), (255, 255, 255), (32, 96, 224)]
+    actual = [normalized.getpixel((index, 0)) for index in range(3)]
+    for got, want in zip(actual, expected, strict=True):
+        # JPEG is lossy; the old alpha bug shifts values by hundreds of levels.
+        assert all(abs(got[channel] - want[channel]) <= 8 for channel in range(3))
+
+
 def test_exif_orientation_is_applied_once(tmp_path: Path) -> None:
     source = tmp_path / "phone-photo.jpg"
     image = Image.new("RGB", (80, 40), "white")

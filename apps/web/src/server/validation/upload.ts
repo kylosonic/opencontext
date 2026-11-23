@@ -91,7 +91,14 @@ export function validateUpload(
   }
 
   const inferredMimes = MIMES_BY_EXTENSION[normalizedExtension];
-  const normalizedMime = mime?.trim().toLowerCase() || inferredMimes[0];
+  const declaredMime = mime?.split(";", 1)[0]?.trim().toLowerCase() || "";
+  // Browsers commonly report WebM codec parameters and may omit a precise
+  // type for MKV/MOV files. The stored-content signature still provides the
+  // authoritative format check at completion.
+  const normalizedMime =
+    declaredMime === "" || declaredMime === "application/octet-stream"
+      ? inferredMimes[0]
+      : declaredMime;
   if (
     !normalizedMime ||
     !(UPLOAD_LIMITS.allowedMimeTypes as readonly string[]).includes(normalizedMime)
@@ -141,6 +148,24 @@ export async function validateStoredMedia(
       : { ok: false, message: "The uploaded PDF is not a valid PDF file" };
   }
   if (!(ext in IMAGE_FORMAT_BY_EXTENSION)) {
+    if (["mp4", "mov", "webm", "mkv"].includes(ext)) {
+      const head = Buffer.from(bytes.subarray(0, 16));
+      const isIsoBase =
+        head.length >= 12 &&
+        head.subarray(4, 8).toString("ascii") === "ftyp";
+      const isEbml =
+        head.length >= 4 &&
+        head[0] === 0x1a &&
+        head[1] === 0x45 &&
+        head[2] === 0xdf &&
+        head[3] === 0xa3;
+      if (!isIsoBase && !isEbml) {
+        return {
+          ok: false,
+          message: "The uploaded video content does not match a supported format",
+        };
+      }
+    }
     return { ok: true };
   }
 

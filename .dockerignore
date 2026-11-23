@@ -1,5 +1,7 @@
 .git
 .github
+.vercel
+.codex
 .tmp
 .artifacts
 .venv
@@ -12,5 +14,9 @@
 **/*.db
 **/.env
 **/.env.*
+**/.test-storage
+**/test.db
+*.log
+MASTER*
 apps/web/storage
 docs

@@ -14,17 +14,18 @@ permissions:
 
 jobs:
   drain:
+    if: github.repository == 'kylosonic/opencontext'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.13"
 
       - name: Cache transcription models
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cache/huggingface
           key: hf-${{ runner.os }}-${{ vars.TRANSCRIPTION_MODEL || 'base' }}
@@ -34,16 +35,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install "./workers/processor[local]"
 
+      - name: Require repository worker configuration
+        env:
+          WORKER_API_URL: ${{ vars.WORKER_API_URL }}
+          WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
+        run: |
+          test -n "$WORKER_API_URL" || { echo "::error::Set the WORKER_API_URL repository variable"; exit 1; }
+          test -n "$WORKER_API_TOKEN" || { echo "::error::Set the WORKER_API_TOKEN repository secret"; exit 1; }
+
       - name: Drain queue
         env:
           OPENCONTEXT_SKIP_DOTENV: "1"
-          WORKER_API_URL: ${{ vars.WORKER_API_URL || 'https://opencontext-swart.vercel.app' }}
+          WORKER_API_URL: ${{ vars.WORKER_API_URL }}
           WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
           WORKER_ID: gh-${{ github.run_id }}
           TRANSCRIPTION_PROVIDER: faster_whisper
           TRANSCRIPTION_MODEL: ${{ vars.TRANSCRIPTION_MODEL || 'base' }}
           VISION_PROVIDER: openai_compatible
           VISION_MODEL: ${{ vars.VISION_MODEL || 'hy4-flash-free' }}
+          VISION_FALLBACK_MODELS: ${{ vars.VISION_FALLBACK_MODELS || 'glm-5.3-flash' }}
+          VISION_REQUEST_INTERVAL_SECONDS: "5"
           VISION_CONCURRENCY: "1"
           VISION_MAX_FRAMES: "60"
           OCR_PROVIDER: vision
@@ -51,15 +62,20 @@ jobs:
           OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://opencode.ai/inference/go/openai/v1' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python -m oc_worker.main --drain-seconds 1200
+          python -m oc_worker.main --drain-seconds 1200 --exit-on-idle
         timeout-minutes: 23
 
       - name: Check operations alerts
+        if: always()
         env:
-          OPENCONTEXT_BASE_URL: ${{ vars.WORKER_API_URL || 'https://opencontext-swart.vercel.app' }}
+          OPENCONTEXT_BASE_URL: ${{ vars.WORKER_API_URL }}
           OPS_API_TOKEN: ${{ secrets.OPS_API_TOKEN }}
           ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
         run: |
+          if [ -z "$OPENCONTEXT_BASE_URL" ]; then
+            echo "::error::WORKER_API_URL is required for the operations check."
+            exit 1
+          fi
           if [ -z "$OPS_API_TOKEN" ]; then
             echo "::warning::OPS_API_TOKEN is not set on the repository; operations checks were skipped."
             exit 0

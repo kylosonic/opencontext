@@ -44,29 +44,55 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-def load_local_env() -> None:
-    """Load `.env` files for native CLI/worker runs without overriding real env."""
+def _repository_env_file() -> Path | None:
+    """Find the checkout's root `.env` without trusting the working directory."""
+    module = Path(__file__).resolve()
+    for parent in module.parents:
+        marker = parent / "workers" / "processor" / "pyproject.toml"
+        if marker.is_file():
+            return parent / ".env"
+    return None
+
+
+def load_local_env(env_file: str | Path | None = None) -> None:
+    """Load a trusted env file without overriding the real process environment.
+
+    ``--env-file`` is the explicit path for installed CLI/MCP runs. When no
+    path is supplied, only a repository root discovered from this module's
+    location may be loaded; a `.env` in the caller's working directory is
+    never consulted because executable and provider-base overrides there can
+    turn an unrelated repository into code execution or credential theft.
+    """
     if os.getenv("OPENCONTEXT_SKIP_DOTENV") == "1":
         return
-    repo_root = Path(__file__).resolve().parents[4]
-    for candidate in (Path.cwd() / ".env", repo_root / ".env"):
-        if candidate.is_file():
-            load_dotenv(candidate, override=False)
+    requested = env_file or os.getenv("OPENCONTEXT_ENV_FILE")
+    candidate = Path(requested).expanduser().resolve() if requested else _repository_env_file()
+    if candidate is None:
+        return
+    if not candidate.is_file():
+        if requested:
+            raise FileNotFoundError(f"env file not found: {candidate}")
+        return
+    load_dotenv(candidate, override=False)
 
 
-def _default_ffmpeg_path() -> str:
+def resolve_ffmpeg_path() -> str:
+    """Resolve the preferred FFmpeg binary.
+
+    The imageio wheel ships a complete build with the codecs needed to create
+    fixtures. Prefer it over a host binary that may be a codec-restricted
+    distribution build, then fall back to PATH for environments that install
+    FFmpeg explicitly.
+    """
     configured = _env("FFMPEG_PATH")
     if configured:
         return configured
-    system = shutil.which("ffmpeg")
-    if system:
-        return system
     try:
         from imageio_ffmpeg import get_ffmpeg_exe
 
         return get_ffmpeg_exe()
     except (ImportError, RuntimeError):
-        return "ffmpeg"
+        return shutil.which("ffmpeg") or "ffmpeg"
 
 
 @dataclass(frozen=True)
@@ -81,15 +107,23 @@ class Settings:
     worker_id: str = field(
         default_factory=lambda: _env("WORKER_ID", "oc-worker-1") or "oc-worker-1"
     )
-    worker_concurrency: int = field(default_factory=lambda: _env_int("WORKER_CONCURRENCY", 1))
+    worker_concurrency: int = field(
+        default_factory=lambda: max(1, min(32, _env_int("WORKER_CONCURRENCY", 1)))
+    )
     worker_shutdown_grace_seconds: float = field(
-        default_factory=lambda: _env_float("WORKER_SHUTDOWN_GRACE_SECONDS", 120.0)
+        default_factory=lambda: max(
+            0.0, min(3600.0, _env_float("WORKER_SHUTDOWN_GRACE_SECONDS", 120.0))
+        )
     )
     worker_error_backoff_seconds: float = field(
-        default_factory=lambda: _env_float("WORKER_ERROR_BACKOFF_SECONDS", 5.0)
+        default_factory=lambda: max(
+            0.05, min(300.0, _env_float("WORKER_ERROR_BACKOFF_SECONDS", 5.0))
+        )
     )
     worker_job_timeout_seconds: float = field(
-        default_factory=lambda: _env_float("WORKER_JOB_TIMEOUT_SECONDS", 900.0)
+        default_factory=lambda: max(
+            0.05, min(86_400.0, _env_float("WORKER_JOB_TIMEOUT_SECONDS", 900.0))
+        )
     )
     transcription_provider: str = field(
         default_factory=lambda: _env("TRANSCRIPTION_PROVIDER", "openai_compatible")
@@ -123,13 +157,23 @@ class Settings:
         or "https://generativelanguage.googleapis.com/v1beta"
     )
     vision_timeout_seconds: float = field(
-        default_factory=lambda: _env_float("VISION_TIMEOUT_SECONDS", 120.0)
+        default_factory=lambda: max(
+            1.0, min(600.0, _env_float("VISION_TIMEOUT_SECONDS", 120.0))
+        )
     )
     vision_concurrency: int = field(
-        default_factory=lambda: _env_int("VISION_CONCURRENCY", 2)
+        default_factory=lambda: max(1, min(16, _env_int("VISION_CONCURRENCY", 2)))
     )
     vision_max_frames: int = field(
-        default_factory=lambda: _env_int("VISION_MAX_FRAMES", 60)
+        default_factory=lambda: max(1, min(300, _env_int("VISION_MAX_FRAMES", 60)))
+    )
+    vision_request_interval_seconds: float = field(
+        default_factory=lambda: max(
+            0.0, min(300.0, _env_float("VISION_REQUEST_INTERVAL_SECONDS", 0.0))
+        )
+    )
+    vision_fallback_models: str = field(
+        default_factory=lambda: _env("VISION_FALLBACK_MODELS", "") or ""
     )
     ocr_provider: str = field(
         default_factory=lambda: _env("OCR_PROVIDER", "vision") or "vision"
@@ -156,7 +200,7 @@ class Settings:
     text_model: str = field(
         default_factory=lambda: _env("TEXT_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
     )
-    ffmpeg_path: str = field(default_factory=_default_ffmpeg_path)
+    ffmpeg_path: str = field(default_factory=resolve_ffmpeg_path)
     ffprobe_path: str = field(default_factory=lambda: _env("FFPROBE_PATH") or "")
 
     @classmethod

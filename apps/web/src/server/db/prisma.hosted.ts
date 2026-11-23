@@ -1,5 +1,5 @@
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { postgresAdapter } from "./postgres-adapter";
 
 export type { Job, Media, User } from "@prisma/client";
 
@@ -9,7 +9,7 @@ function createPrismaClient(): PrismaClient {
   if (!url?.startsWith("postgres")) {
     throw new Error("DATABASE_URL must use PostgreSQL in the hosted web image.");
   }
-  return new PrismaClient({ adapter: new PrismaPg(url) });
+  return new PrismaClient({ adapter: postgresAdapter(url) });
 }
 
 const globalForPrisma = globalThis as unknown as {

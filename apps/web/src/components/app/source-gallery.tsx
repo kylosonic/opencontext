@@ -10,6 +10,8 @@ export interface SourceGalleryProps {
   displayName: string;
   assetCount?: number;
   onError?: () => void;
+  selectedIndex?: number;
+  onSelectedIndexChange?: (index: number) => void;
 }
 
 /** Authenticated image-set gallery and PDF frame for job results. */
@@ -19,8 +21,18 @@ export function SourceGallery({
   displayName,
   assetCount = 1,
   onError,
+  selectedIndex: controlledIndex,
+  onSelectedIndexChange,
 }: SourceGalleryProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [internalIndex, setInternalIndex] = useState(0);
+  const selectedIndex = Math.max(
+    0,
+    Math.min(assetCount - 1, controlledIndex ?? internalIndex),
+  );
+  const selectAsset = (index: number) => {
+    if (controlledIndex === undefined) setInternalIndex(index);
+    onSelectedIndexChange?.(index);
+  };
   const selectedUrl = `${sourceUrl}?asset=${selectedIndex}`;
 
   if (sourceKind === "pdf") {
@@ -28,6 +40,8 @@ export function SourceGallery({
       <iframe
         src={selectedUrl}
         title={`Source PDF: ${displayName}`}
+        sandbox=""
+        referrerPolicy="no-referrer"
         className="h-[70vh] w-full bg-white"
       />
     );
@@ -54,7 +68,7 @@ export function SourceGallery({
               type="button"
               size="sm"
               variant={selectedIndex === index ? "primary" : "secondary"}
-              onClick={() => setSelectedIndex(index)}
+              onClick={() => selectAsset(index)}
             >
               Image {index + 1}
             </Button>

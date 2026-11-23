@@ -3,6 +3,38 @@
 All notable changes are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Closed the audit's production-critical gaps: worker and upload mutations are
+  lease-fenced, local and S3 object access is scoped to the owning job, media
+  downloads and provider calls are bounded, browser mutations require trusted
+  origins/content types, and production authentication/storage/database
+  configuration fails closed.
+- Fixed the production 429 loop. A throttled vision model now enters a cool-down
+  and later frames skip directly to the configured fallback model. If every
+  model is exhausted, the job is deferred with an escalating queue cooldown and
+  can use a bounded 40-attempt provider-quota budget instead of being failed by
+  the ordinary five-attempt crash ceiling.
+- Added route-level 429 coverage for authentication, worker heartbeats,
+  operations reads, and retention sweeps. All quota exhaustion responses now
+  expose `Retry-After` and standard quota metadata.
+- Downloaded and verified 11 JPEG/PNG/WebP images plus two real MP4 videos. All
+  13 assets completed offline analysis and credential-free replay. A live local
+  HTTP/worker acceptance run also completed a mixed 10-image set, three
+  standalone images, and both videos, and every export replayed successfully.
+- Prefer the bundled `imageio-ffmpeg` binary for generated fixtures so test and
+  media workflows do not depend on a host FFmpeg build without required codecs.
+- Restored the hardened local Compose stack by explicitly trusting its Auth.js
+  host and initializing the persistent media volume for the non-root web user.
+  The final container acceptance run completed 11 JPEG/PNG/WebP photos and two
+  MP4 videos, and all four exported jobs replayed without provider credentials.
+- Added the missing Account, Session, Job, UploadIntent, TranscriptSegment, and
+  Media indexes in paired SQLite/PostgreSQL migrations, with fresh-migration and
+  schema-drift checks.
+- Bounded Python runtime and development dependencies, hardened Docker images to
+  run non-root, pinned workflow actions, verified downloaded FFmpeg checksums,
+  and reconciled deployment, security, worker, upload, and status docs.
+
 ## 0.1.1 - 2026-11-23
 
 - Fixed the upload 429 lockout: a single 10-image set previously consumed all

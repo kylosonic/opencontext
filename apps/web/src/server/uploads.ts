@@ -50,9 +50,18 @@ export async function createUploadIntent(
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + UPLOAD_LIMITS.intentTtlSec * 1000);
-  await prisma.uploadIntent.deleteMany({
+  const expired = await prisma.uploadIntent.findMany({
     where: { userId: input.userId, expiresAt: { lte: now } },
+    select: { id: true, tempKey: true },
   });
+  if (expired.length > 0) {
+    // Delete objects first. If storage fails, keep the rows so retention can
+    // retry rather than orphaning the only reference to an incoming blob.
+    await storage.deleteMany(expired.map((intent) => intent.tempKey));
+    await prisma.uploadIntent.deleteMany({
+      where: { id: { in: expired.map((intent) => intent.id) } },
+    });
+  }
 
   const tempKey = `incoming/${randomUUID()}.${validation.extension}`;
   const intent = await prisma.uploadIntent.create({
@@ -72,6 +81,7 @@ export async function createUploadIntent(
     const url = await storage.presignPut(
       tempKey,
       validation.mime,
+      input.sizeBytes,
       UPLOAD_LIMITS.intentTtlSec,
     );
     if (!url) {
@@ -158,6 +168,11 @@ export async function storeLocalUpload(
     return "OK";
   } catch (error) {
     await storage.delete(intent.tempKey).catch(() => undefined);
+    console.warn(
+      `Local upload write failed for ${intent.tempKey}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
     if (error instanceof Error) {
       return "INCOMPLETE";
     }
@@ -189,13 +204,16 @@ export async function completeUpload(
   if (object.contentType && object.contentType.toLowerCase() !== intent.mime.toLowerCase()) {
     return { kind: "INCOMPLETE" };
   }
-  if (/^(png|jpe?g|webp|pdf)$/.test(intent.sourceExt)) {
-    const bytes = await storage.get(intent.tempKey);
+  if (/^(png|jpe?g|webp|pdf|mp4|mov|webm|mkv)$/.test(intent.sourceExt)) {
+    const bytes = /^(mp4|mov|webm|mkv)$/.test(intent.sourceExt)
+      ? await readStoredPrefix(intent.tempKey, 32)
+      : await storage.get(intent.tempKey);
     if (!bytes) {
       return { kind: "INCOMPLETE" };
     }
     const content = await validateStoredMedia(bytes, intent.sourceExt);
     if (!content.ok) {
+      await discardIntent(intent.id, intent.tempKey);
       return { kind: "INVALID_CONTENT", message: content.message };
     }
   }
@@ -208,6 +226,7 @@ export async function completeUpload(
     sourceSize: intent.sizeBytes,
     sourceMime: intent.mime,
     tempKey: intent.tempKey,
+    etag: object.etag ?? undefined,
   });
   await prisma.uploadIntent.delete({ where: { id: intent.id } }).catch(() => undefined);
   return { kind: "OK", job };
@@ -274,6 +293,7 @@ export async function completeUploadBatch(
     }
     const content = await validateStoredMedia(bytes, intent.sourceExt);
     if (!content.ok) {
+      await discardIntents(ordered);
       return { kind: "INVALID_CONTENT", message: content.message };
     }
     validated.push({
@@ -282,6 +302,7 @@ export async function completeUploadBatch(
       sizeBytes: intent.sizeBytes,
       mime: intent.mime,
       tempKey: intent.tempKey,
+      etag: object.etag ?? undefined,
     });
   }
 
@@ -324,4 +345,44 @@ export async function cancelUpload(
   await storage.delete(intent.tempKey);
   await prisma.uploadIntent.delete({ where: { id: intent.id } });
   return { kind: "OK" };
+}
+
+async function discardIntent(id: string, tempKey: string): Promise<void> {
+  await storage.delete(tempKey);
+  await prisma.uploadIntent.deleteMany({ where: { id } });
+}
+
+async function discardIntents(
+  intents: Array<{ id: string; tempKey: string }>,
+): Promise<void> {
+  await storage.deleteMany(intents.map((intent) => intent.tempKey));
+  await prisma.uploadIntent.deleteMany({
+    where: { id: { in: intents.map((intent) => intent.id) } },
+  });
+}
+
+async function readStoredPrefix(key: string, limit: number): Promise<Uint8Array | null> {
+  const body = await storage.stream(key);
+  if (!body) return null;
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < limit) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const take = value.subarray(0, Math.max(0, limit - total));
+      chunks.push(take);
+      total += take.byteLength;
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
 }

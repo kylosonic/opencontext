@@ -3,13 +3,20 @@ import { MediaKindSchema } from "@kylosonic/opencontext-schemas";
 import { storeArtifact } from "@/server/worker";
 import {
   checkClaim,
+  enforceRateLimit,
   errorResponse,
   verifyWorkerToken,
   withErrorHandling,
   workerIdOf,
 } from "@/server/api-helpers";
+import { RATE_LIMITS } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
+const MAX_ARTIFACT_MULTIPART_BYTES = 64 * 1024 * 1024 + 64 * 1024;
+const ARTIFACT_EXTENSIONS = {
+  AUDIO: new Set(["flac", "m4a", "mp3", "ogg", "wav"]),
+  FRAME: new Set(["jpeg", "jpg", "png", "webp"]),
+} as const;
 
 /**
  * POST /api/worker/jobs/[id]/artifacts — multipart binary upload (audio,
@@ -26,6 +33,38 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params;
     const workerId = workerIdOf(request);
 
+    const claim = await checkClaim(id, workerId);
+    if (claim.kind === "NOT_FOUND") {
+      return errorResponse("NOT_FOUND", "Job not found");
+    }
+    if (claim.kind === "NOT_CLAIMED") {
+      return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
+    }
+    const limited = await enforceRateLimit(
+      `worker-artifact:${workerId}`,
+      RATE_LIMITS.workerMutation.limit,
+      RATE_LIMITS.workerMutation.windowMs,
+    );
+    if (limited) return limited;
+    const contentType = request.headers.get("content-type") ?? "";
+    if (!/^multipart\/form-data(?:;|$)/i.test(contentType.trim())) {
+      return errorResponse(
+        "VALIDATION_ERROR",
+        "Artifact upload must use multipart/form-data",
+      );
+    }
+
+    const contentLength = Number(request.headers.get("content-length") ?? "");
+    if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
+      return errorResponse(
+        "VALIDATION_ERROR",
+        "Artifact uploads require a bounded Content-Length",
+      );
+    }
+    if (contentLength > MAX_ARTIFACT_MULTIPART_BYTES) {
+      return errorResponse("VALIDATION_ERROR", "Artifact upload is too large");
+    }
+
     let form: FormData;
     try {
       form = await request.formData();
@@ -40,10 +79,23 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!(file instanceof File)) {
       return errorResponse("VALIDATION_ERROR", "Missing `file` field");
     }
+    if (file.size <= 0 || file.size > 64 * 1024 * 1024) {
+      return errorResponse("VALIDATION_ERROR", "Artifact size is invalid");
+    }
 
     const kindParsed = MediaKindSchema.safeParse(String(form.get("kind") ?? ""));
     if (!kindParsed.success || kindParsed.data === "SOURCE") {
       return errorResponse("VALIDATION_ERROR", "`kind` must be AUDIO or FRAME");
+    }
+    const extension = file.name.slice(file.name.lastIndexOf(".") + 1).toLowerCase();
+    if (
+      file.name.lastIndexOf(".") < 0 ||
+      !ARTIFACT_EXTENSIONS[kindParsed.data].has(extension)
+    ) {
+      return errorResponse(
+        "VALIDATION_ERROR",
+        `Artifact extension is not valid for ${kindParsed.data}`,
+      );
     }
 
     const timestampRaw = form.get("timestampSec");
@@ -51,14 +103,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       timestampRaw === null || timestampRaw === "" ? undefined : Number(timestampRaw);
     if (timestampSec !== undefined && !Number.isFinite(timestampSec)) {
       return errorResponse("VALIDATION_ERROR", "`timestampSec` must be numeric");
-    }
-
-    const claim = await checkClaim(id, workerId);
-    if (claim.kind === "NOT_FOUND") {
-      return errorResponse("NOT_FOUND", "Job not found");
-    }
-    if (claim.kind === "NOT_CLAIMED") {
-      return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
     }
 
     const stored = await storeArtifact(claim.job, {

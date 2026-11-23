@@ -23,7 +23,7 @@ from typing import Any
 from oc_worker.errors import PermanentFailure, TransientFailure
 
 _DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
-_RESOLUTION_RE = re.compile(r"\b(\d{2,5})x(\d{2,5})\b")
+_RESOLUTION_RE = re.compile(r"\b(\d+)x(\d+)\b")
 _STREAM_RE = re.compile(r"Stream #\d+:\d+")
 
 FFMPEG_TIMEOUT_SECONDS = 300
@@ -54,6 +54,7 @@ def _run(
             text=True,
             check=False,
             timeout=timeout,
+            stdin=subprocess.DEVNULL,
         )
     except FileNotFoundError as exc:
         raise PermanentFailure(f"ffmpeg binary not found: {args[0]}") from exc
@@ -112,7 +113,7 @@ def _probe_with_ffprobe(target: str, ffmpeg: str) -> dict[str, Any] | None:
 
 
 def _probe_with_ffmpeg_stderr(target: str, ffmpeg: str) -> dict[str, Any]:
-    proc = _run([ffmpeg, "-i", target])
+    proc = _run([ffmpeg, "-nostdin", "-protocol_whitelist", "file,pipe", "-i", target])
     stderr = proc.stderr
     duration: float | None = None
     width: int | None = None
@@ -164,6 +165,9 @@ def extract_audio(
     proc = _run(
         [
             ffmpeg,
+            "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-y",
             "-i",
             str(src),
@@ -177,9 +181,20 @@ def extract_audio(
             str(dst),
         ]
     )
-    if proc.returncode == 0:
+    destination = Path(dst)
+    if (
+        proc.returncode == 0
+        and destination.is_file()
+        and destination.stat().st_size > 0
+    ):
         return True
-    if "does not contain any stream" in proc.stderr or "audio" not in proc.stderr.lower():
+    no_audio_markers = (
+        "does not contain any stream",
+        "matches no streams",
+        "stream specifier ':a' matches no streams",
+        "output file #0 does not contain any stream",
+    )
+    if any(marker in proc.stderr.lower() for marker in no_audio_markers):
         return False
     raise TransientFailure(f"audio extraction failed: {proc.stderr.strip()[-300:]}")
 
@@ -188,8 +203,9 @@ def extract_frames(
     src: str | Path,
     outdir: str | Path,
     *,
-    fps: int = 1,
+    fps: float = 1.0,
     max_width: int = 1280,
+    max_frames: int = 1800,
     ffmpeg_path: str | None = None,
 ) -> list[dict[str, Any]]:
     """Extract JPEG frames at ``fps`` (max width ``max_width``).
@@ -201,15 +217,22 @@ def extract_frames(
     directory = Path(outdir)
     directory.mkdir(parents=True, exist_ok=True)
     pattern = directory / "frame_%06d.jpg"
-    scale = f"scale='min({max_width},iw)':-2"
+    for stale in directory.glob("frame_*.jpg"):
+        stale.unlink(missing_ok=True)
+    scale = _bounded_scale(max_width)
     proc = _run(
         [
             ffmpeg,
             "-y",
+            "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-i",
             str(src),
             "-vf",
             f"fps={fps},{scale}",
+            "-frames:v",
+            str(max(1, max_frames)),
             "-q:v",
             "3",
             str(pattern),
@@ -242,13 +265,17 @@ def extract_image_frame(
     ffmpeg = _ffmpeg_path(ffmpeg_path)
     destination = Path(dst)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    scale = f"scale='min({max_width},iw)':-2"
+    destination.unlink(missing_ok=True)
+    scale = _bounded_scale(max_width)
+    # geq exposes alpha and colour channels as 0..255 integers. Alpha needs
+    # an 8-bit weighted average, not a 0..1 mix: opaque pixels retain their
+    # colour and transparent pixels become white before JPEG encoding.
     flatten = (
         "format=rgba,"
         "geq="
-        "r='r(X,Y)*alpha(X,Y)+255*(1-alpha(X,Y))':"
-        "g='g(X,Y)*alpha(X,Y)+255*(1-alpha(X,Y))':"
-        "b='b(X,Y)*alpha(X,Y)+255*(1-alpha(X,Y))':"
+        "r='(r(X,Y)*alpha(X,Y)+255*(255-alpha(X,Y)))/255':"
+        "g='(g(X,Y)*alpha(X,Y)+255*(255-alpha(X,Y)))/255':"
+        "b='(b(X,Y)*alpha(X,Y)+255*(255-alpha(X,Y)))/255':"
         "a=255,"
         "format=yuv420p"
     )
@@ -256,6 +283,9 @@ def extract_image_frame(
         [
             ffmpeg,
             "-y",
+            "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
             "-i",
             str(src),
             "-frames:v",
@@ -275,3 +305,12 @@ def extract_image_frame(
         detail = proc.stderr.strip()[-300:] if proc.stderr else "no output frame"
         raise PermanentFailure(f"image conversion failed: {detail}")
     return {"timestamp": 0.0, "path": destination}
+
+
+def _bounded_scale(max_edge: int) -> str:
+    """Scale the long edge while bounding both wide and tall inputs."""
+    edge = max(1, int(max_edge))
+    return (
+        f"scale='if(gte(iw,ih),min({edge},iw),-2)':"
+        f"'if(gte(iw,ih),-2,min({edge},ih))'"
+    )

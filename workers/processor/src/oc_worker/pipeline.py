@@ -136,6 +136,7 @@ class Pipeline:
                 source, output_dir, ffmpeg_path=configured_ffmpeg
             )
         )
+        self._real_frame_extraction = extract_frames_fn is None
         self._extract_image = (
             extract_image_fn
             if extract_image_fn is not None
@@ -188,6 +189,13 @@ class Pipeline:
                     self._current_stage,
                     exc,
                 )
+                if isinstance(exc, PermanentFailure):
+                    # A rejected lease means another worker may own the job.
+                    # Stop provider and FFmpeg work instead of issuing more
+                    # fenced mutations against someone else's claim.
+                    self._cancel.reason = f"Job lease lost: {exc}"
+                    self._cancel.abort()
+                    return
 
     def _start_heartbeat(self, job_id: str) -> None:
         stop = threading.Event()
@@ -213,6 +221,27 @@ class Pipeline:
 
     def _check_deadline(self) -> None:
         self._cancel.check()
+
+    def abort(self) -> None:
+        """Abort this isolated job context when shutdown grace is exhausted."""
+        self._cancel.abort()
+
+    def fork(self) -> Pipeline:
+        """Create isolated mutable state while sharing immutable providers."""
+        return Pipeline(
+            self.api,
+            self.settings,
+            transcription_provider=self.transcription_provider,
+            vision_provider=self.vision_provider,
+            ocr_provider=self.ocr_provider,
+            text_provider=self.text_provider,
+            probe_fn=self._probe,
+            extract_audio_fn=self._extract_audio,
+            extract_frames_fn=self._extract_frames,
+            extract_image_fn=self._extract_image,
+            extract_pdf_fn=self._extract_pdf,
+            job_timeout_seconds=self.job_timeout_seconds,
+        )
 
     def _timed(self, function: Callable[[], Any]) -> Any:
         self._check_deadline()
@@ -309,8 +338,13 @@ class Pipeline:
                     message="Extracting audio",
                 )
             audio_path = workdir / "audio.wav"
-            self._timed(lambda: self._extract_audio(str(src), str(audio_path)))
-            if not resume:
+            extracted = self._timed(
+                lambda: self._extract_audio(str(src), str(audio_path))
+            )
+            if not extracted:
+                audio_path = None
+                probed["audio_present"] = False
+            elif not resume:
                 self.api.upload_artifact(job_id, kind="AUDIO", file_path=audio_path)
 
         if not resume:
@@ -364,9 +398,24 @@ class Pipeline:
                 for page in pages
             ]
         else:
-            frames = self._timed(
-                lambda: self._extract_frames(str(src), str(workdir / "frames"))
-            )
+            if self._real_frame_extraction and duration and duration > 0:
+                frame_fps = max(
+                    0.001,
+                    min(1.0, self.settings.vision_max_frames / duration),
+                )
+                frames = self._timed(
+                    lambda: extract_frames(
+                        str(src),
+                        str(workdir / "frames"),
+                        fps=frame_fps,
+                        max_frames=self.settings.vision_max_frames,
+                        ffmpeg_path=self.settings.ffmpeg_path or None,
+                    )
+                )
+            else:
+                frames = self._timed(
+                    lambda: self._extract_frames(str(src), str(workdir / "frames"))
+                )
             for frame in frames:
                 frame.update(
                     {
@@ -475,9 +524,14 @@ class Pipeline:
             self.api.stage_result(
                 job_id,
                 stage="TRANSCRIBING",
-                outcome="SUCCEEDED",
+                outcome="SKIPPED" if not segments else "SUCCEEDED",
                 attempt=self._attempt(job, "TRANSCRIBING"),
-                data={"segments": [segment.model_dump() for segment in segments]},
+                reason=NO_AUDIO_REASON if not segments else None,
+                data=(
+                    {"segments": [segment.model_dump() for segment in segments]}
+                    if segments
+                    else None
+                ),
             )
         return segments
 
@@ -539,6 +593,14 @@ class Pipeline:
                 raw = aggregation.mark_interaction_certainty(raw)
                 raw["timestampSec"] = float(frame["timestamp"])
                 raw["frameId"] = frame.get("frameId")
+                source_index = (
+                    int(frame["sourceIndex"])
+                    if frame.get("sourceKind") != "video"
+                    and frame.get("sourceIndex") is not None
+                    else None
+                )
+                if source_index is not None:
+                    raw["sourceIndex"] = source_index
                 raw["provider"] = self.vision_provider.name
                 ocr: list[dict[str, Any]] = []
                 embedded_text = str(frame.get("embeddedText") or "").strip()
@@ -550,6 +612,7 @@ class Pipeline:
                                 {
                                     "timestampSec": float(frame["timestamp"]),
                                     "frameId": frame.get("frameId"),
+                                    "sourceIndex": source_index,
                                     "text": text,
                                     "provider": "pdf_text",
                                 }
@@ -571,6 +634,7 @@ class Pipeline:
                         row: dict[str, Any] = {
                             "timestampSec": float(frame["timestamp"]),
                             "frameId": frame.get("frameId"),
+                            "sourceIndex": source_index,
                             "text": text,
                             "provider": self.vision_provider.name,
                         }
@@ -604,6 +668,7 @@ class Pipeline:
                         row: dict[str, Any] = {
                             "timestampSec": float(frame["timestamp"]),
                             "frameId": frame.get("frameId"),
+                            "sourceIndex": source_index,
                             "text": text,
                             "provider": self.ocr_provider.name,
                         }
@@ -821,6 +886,16 @@ class Pipeline:
                 "TRANSIENT",
                 retryable=True,
                 retry_after_seconds=exc.retry_after_seconds,
+                rate_limited=exc.rate_limited,
+            )
+            return "failed"
+        except Exception as exc:
+            log.exception("job=%s stage=%s unhandled_failure", job_id, self._current_stage)
+            self._fail(
+                job_id,
+                f"{type(exc).__name__}: {exc}"[:2_000],
+                "TRANSIENT",
+                retryable=True,
             )
             return "failed"
         finally:
@@ -839,6 +914,7 @@ class Pipeline:
         *,
         retryable: bool,
         retry_after_seconds: float | None = None,
+        rate_limited: bool = False,
     ) -> None:
         log.error(
             "job=%s stage=%s status=failed error=%r failure_kind=%s",
@@ -855,6 +931,7 @@ class Pipeline:
                 failure_kind=failure_kind,
                 retryable=retryable,
                 retry_after_sec=retry_after_seconds,
+                rate_limited=rate_limited,
             )
-        except (PermanentFailure, TransientFailure) as exc:
+        except Exception as exc:
             log.error("job=%s fail_report_error=%s", job_id, exc)

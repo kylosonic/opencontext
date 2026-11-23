@@ -94,7 +94,8 @@ HF_HOME=/models`}
                   ["PDF", "50 MB, 30 pages"],
                   ["Image", "25 MB per image"],
                   ["Image-set job", "10 images"],
-                  ["Provider transient retry", "Two automatic retries"],
+                  ["Provider 429 handling", "Model cooldown + fallback, then queue deferral"],
+                  ["Provider-limited queue budget", "40 bounded attempts"],
                   ["Worker shutdown", "WORKER_SHUTDOWN_GRACE_SECONDS"],
                   ["Worker CPU / memory", "Set by the host container policy"],
                 ].map(([label, value]) => (

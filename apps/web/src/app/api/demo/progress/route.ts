@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "@/server/api-helpers";
+import { RATE_LIMITS, requestRateKey } from "@/server/security/rate-limit";
 import { computeDemoProgress } from "@/server/demo/progress";
 
 /**
@@ -12,7 +14,13 @@ import { computeDemoProgress } from "@/server/demo/progress";
  * Invalid (non-numeric) or negative values are treated as 0 — the function
  * is total over all inputs.
  */
-export function GET(request: Request) {
+export async function GET(request: Request) {
+  const limited = await enforceRateLimit(
+    requestRateKey(request, "demo-progress"),
+    RATE_LIMITS.demo.limit,
+    RATE_LIMITS.demo.windowMs,
+  );
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("elapsed");
   const elapsed = raw === null ? 0 : Number(raw);

@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 
 from oc_worker.cli import analyze_file
-from oc_worker.config import Settings
+from oc_worker.config import Settings, resolve_ffmpeg_path
 from oc_worker.evaluation import character_error_rate, word_error_rate
 from oc_worker.ffmpeg import probe
 from oc_worker.models import DetailLevel
@@ -34,12 +34,13 @@ from oc_worker.replay import validate_context
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AUDIO = REPO_ROOT / "docs" / "evaluation" / "harvard-osr-us-10.wav"
 DATASET = REPO_ROOT / "docs" / "evaluation" / "open-speech-hearing-dataset.json"
-FFMPEG = shutil.which("ffmpeg")
+FFMPEG = resolve_ffmpeg_path()
+FFMPEG_AVAILABLE = Path(FFMPEG).is_file() or shutil.which(FFMPEG) is not None
 MODEL = os.getenv("OPENCONTEXT_ASR_MODEL", "tiny.en")
 ENABLED = os.getenv("OPENCONTEXT_ASR_E2E") == "1"
 
 pytestmark = [
-    pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed"),
+    pytest.mark.skipif(not FFMPEG_AVAILABLE, reason="ffmpeg is not installed"),
     pytest.mark.skipif(
         find_spec("faster_whisper") is None,
         reason="faster-whisper is not installed; install the [local] extra",
@@ -53,7 +54,6 @@ pytestmark = [
 
 def _speech_video(target: Path) -> None:
     """Encode the committed speech recording into a small video fixture."""
-    assert FFMPEG is not None
     subprocess.run(
         [
             FFMPEG,

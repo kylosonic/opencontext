@@ -14,6 +14,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import replace
+from pathlib import Path
 
 from oc_worker.api_client import ApiClient
 from oc_worker.config import Settings, load_local_env
@@ -44,6 +45,7 @@ class WorkerStopper:
         self._lock = threading.Lock()
         self._claiming = 0
         self._reporting = 0
+        self._active_aborts: set[Callable[[], None]] = set()
 
     def request_stop(self) -> None:
         self.stop_event.set()
@@ -73,7 +75,24 @@ class WorkerStopper:
 
     def can_continue(self) -> bool:
         with self._lock:
-            return not self.stop_event.is_set() and self._reporting == 0
+            return not self.stop_event.is_set()
+
+    def register_abort(self, callback: Callable[[], None]) -> Callable[[], None]:
+        """Register a job-local abort callback used after shutdown grace."""
+        with self._lock:
+            self._active_aborts.add(callback)
+
+        def unregister() -> None:
+            with self._lock:
+                self._active_aborts.discard(callback)
+
+        return unregister
+
+    def abort_active(self) -> None:
+        with self._lock:
+            callbacks = list(self._active_aborts)
+        for callback in callbacks:
+            callback()
 
     def begin_cycle(self) -> bool:
         with self._lock:
@@ -104,7 +123,11 @@ def _install_signal_handlers(stopper: WorkerStopper) -> None:
         signal.signal(sig, request_stop)
 
 
-def _process_once(api: ApiClient, pipeline: Pipeline) -> str:
+def _process_once(
+    api: ApiClient,
+    pipeline: Pipeline,
+    stopper: WorkerStopper | None = None,
+) -> str:
     claimed = api.claim()
     if claimed is None:
         return "idle"
@@ -112,7 +135,16 @@ def _process_once(api: ApiClient, pipeline: Pipeline) -> str:
     job_id = str(job.get("id") or "?")
     log.info("job=%s status=claimed stage=EXTRACTING", job_id)
     started = time.monotonic()
-    status = pipeline.run_job(job)
+    run_pipeline = pipeline.fork() if hasattr(pipeline, "fork") else pipeline
+    unregister = (
+        stopper.register_abort(run_pipeline.abort)
+        if stopper is not None and hasattr(run_pipeline, "abort")
+        else lambda: None
+    )
+    try:
+        status = run_pipeline.run_job(job)
+    finally:
+        unregister()
     log.info("job=%s status=%s duration=%.1fs", job_id, status, time.monotonic() - started)
     return status
 
@@ -127,7 +159,7 @@ def _guarded_claim(
     stopped = False
     while stopper.begin_claim():
         try:
-            outcome = _process_once(api, pipeline)
+            outcome = _process_once(api, pipeline, stopper)
         finally:
             stopper.finish_claim()
         if outcome != "idle":
@@ -265,22 +297,44 @@ def _drain(
     pipeline: Pipeline,
     seconds: float,
     stopper: WorkerStopper | None = None,
+    *,
+    exit_on_idle: bool = False,
 ) -> None:
     """Keep one Pipeline alive so model loading is not repeated per claim."""
     stopper = stopper or WorkerStopper()
+    heartbeat_started = threading.Event()
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_loop,
+        args=(
+            api,
+            replace(Settings.from_env(), worker_id=api.worker_id),
+            stopper,
+            heartbeat_started,
+        ),
+        name=f"drain-heartbeat-{api.worker_id}",
+        daemon=True,
+    )
+    heartbeat_thread.start()
+    heartbeat_started.wait(timeout=1.0)
     deadline = time.monotonic() + max(0.0, seconds)
-    while not stopper.stop_event.is_set():
-        try:
-            outcome = _process_once(api, pipeline)
-        except (PermanentFailure, TransientFailure) as exc:
-            log.error("worker=%s status=claim_error error=%s", api.worker_id, exc)
-            outcome = "error"
-        if time.monotonic() >= deadline:
-            return
-        if outcome == "idle":
-            stopper.sleep(IDLE_POLL_SECONDS)
-        elif outcome == "error":
-            stopper.sleep(5.0)
+    try:
+        while not stopper.stop_event.is_set():
+            try:
+                outcome = _process_once(api, pipeline, stopper)
+            except (PermanentFailure, TransientFailure) as exc:
+                log.error("worker=%s status=claim_error error=%s", api.worker_id, exc)
+                outcome = "error"
+            if time.monotonic() >= deadline:
+                return
+            if outcome == "idle":
+                if exit_on_idle:
+                    return
+                stopper.sleep(IDLE_POLL_SECONDS)
+            elif outcome == "error":
+                stopper.sleep(5.0)
+    finally:
+        stopper.request_stop()
+        heartbeat_thread.join(timeout=2.0)
 
 
 def _run_supervisor(settings: Settings) -> int:
@@ -295,7 +349,7 @@ def _run_supervisor(settings: Settings) -> int:
     pipeline = Pipeline(api, settings)
     cycle_started = threading.Event()
     heartbeat_started = threading.Event()
-    threads = [
+    worker_threads = [
         threading.Thread(
             target=_tracked_worker_loop,
             args=(api, pipeline, settings, stopper, cycle_started),
@@ -303,13 +357,15 @@ def _run_supervisor(settings: Settings) -> int:
         )
         for index in range(concurrency)
     ]
-    threads.append(
-        threading.Thread(
-            target=_heartbeat_loop,
-            args=(api, settings, stopper, heartbeat_started),
-            name=f"heartbeat-{settings.worker_id}",
-        )
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_loop,
+        args=(api, settings, stopper, heartbeat_started),
+        name=f"heartbeat-{settings.worker_id}",
+        daemon=True,
     )
+    threads = [*worker_threads, heartbeat_thread]
+    for thread in worker_threads:
+        thread.daemon = True
     for thread in threads:
         thread.start()
     log.info(
@@ -319,8 +375,9 @@ def _run_supervisor(settings: Settings) -> int:
         settings.worker_shutdown_grace_seconds,
     )
     while not stopper.stop_event.wait(0.5):
-        if not any(thread.is_alive() for thread in threads):
+        if not any(thread.is_alive() for thread in worker_threads):
             log.error("worker=%s status=all_threads_exited", settings.worker_id)
+            stopper.request_stop()
             return 1
 
     stop_started = time.monotonic()
@@ -347,6 +404,7 @@ def _run_supervisor(settings: Settings) -> int:
             settings.worker_id,
             grace,
         )
+        stopper.abort_active()
         return 1
     log.info("worker=%s status=shutdown_complete", settings.worker_id)
     return 0
@@ -367,6 +425,16 @@ def main() -> None:
         help="Keep one worker process alive for this many seconds, then exit.",
     )
     parser.add_argument(
+        "--exit-on-idle",
+        action="store_true",
+        help="Exit the drain loop after the queue is empty (useful for cron).",
+    )
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        help="Load configuration from this explicit .env file (trusted path only).",
+    )
+    parser.add_argument(
         "--job-timeout-seconds",
         type=float,
         default=None,
@@ -382,7 +450,10 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    load_local_env()
+    try:
+        load_local_env(args.env_file)
+    except OSError as exc:
+        parser.error(str(exc))
     settings = Settings.from_env()
     if args.job_timeout_seconds is not None:
         settings = replace(
@@ -416,7 +487,13 @@ def main() -> None:
             settings.worker_api_url,
             args.drain_seconds,
         )
-        _drain(api, pipeline, args.drain_seconds, stopper)
+        _drain(
+            api,
+            pipeline,
+            args.drain_seconds,
+            stopper,
+            exit_on_idle=args.exit_on_idle,
+        )
         raise SystemExit(0)
     raise SystemExit(_run_supervisor(settings))
 

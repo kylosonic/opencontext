@@ -14,6 +14,7 @@ export interface CreateJobInput {
   sourceMime: string;
   /** Temporary object key the upload was streamed to (e.g. `incoming/<uuid>`). */
   tempKey: string;
+  etag?: string;
 }
 
 export interface CreateJobSource {
@@ -22,6 +23,7 @@ export interface CreateJobSource {
   mime: string;
   tempKey: string;
   filename: string;
+  etag?: string;
 }
 
 export interface CreateJobSourcesInput {
@@ -49,6 +51,7 @@ export async function createJob(input: CreateJobInput) {
         sizeBytes: input.sourceSize,
         mime: input.sourceMime,
         tempKey: input.tempKey,
+        etag: input.etag,
       },
     ],
   });
@@ -67,6 +70,7 @@ export async function createJobSources(input: CreateJobSourcesInput) {
   const stageStates = initialStageStates();
   const primary = input.sources[0];
   const finalizedKeys: string[] = [];
+  let createdJobId: string | null = null;
   try {
     const job = await prisma.$transaction(async (tx) => {
       const created = await tx.job.create({
@@ -99,15 +103,24 @@ export async function createJobSources(input: CreateJobSourcesInput) {
             timestampSec: index,
           },
         });
-        await storage.move(source.tempKey, finalKey);
         finalKeys.push(finalKey);
-        finalizedKeys.push(finalKey);
       }
       return tx.job.update({
         where: { id: created.id },
         data: { sourceKey: finalKeys[0] },
       });
     });
+    createdJobId = job.id;
+
+    for (let index = 0; index < input.sources.length; index += 1) {
+      const source = input.sources[index];
+      const finalKey =
+        input.sources.length === 1
+          ? `jobs/${job.id}/source.${source.extension}`
+          : `jobs/${job.id}/sources/${String(index + 1).padStart(2, "0")}.${source.extension}`;
+      await storage.move(source.tempKey, finalKey, { etag: source.etag });
+      finalizedKeys.push(finalKey);
+    }
     return job;
   } catch (error) {
     // Best-effort cleanup for both unmoved intents and generated final keys.
@@ -117,6 +130,9 @@ export async function createJobSources(input: CreateJobSourcesInput) {
       ),
       ...finalizedKeys.map((key) => storage.delete(key).catch(() => undefined)),
     ]);
+    if (createdJobId) {
+      await prisma.job.deleteMany({ where: { id: createdJobId } });
+    }
     throw error;
   }
 }

@@ -4,11 +4,14 @@ import { applyHeartbeat } from "@/server/worker";
 import { jobToDetail } from "@/server/jobs";
 import {
   checkClaim,
+  enforceRateLimit,
   errorResponse,
+  readJsonBody,
   verifyWorkerToken,
   withErrorHandling,
   workerIdOf,
 } from "@/server/api-helpers";
+import { RATE_LIMITS } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -24,13 +27,11 @@ export async function POST(
     const { id } = await context.params;
     const workerId = workerIdOf(request);
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const body = await readJsonBody(request, 32 * 1024);
+    if (!body.ok) {
       return errorResponse("VALIDATION_ERROR", "Request body must be JSON");
     }
-    const parsed = WorkerHeartbeatRequestSchema.safeParse(body);
+    const parsed = WorkerHeartbeatRequestSchema.safeParse(body.value);
     if (!parsed.success) {
       return errorResponse("VALIDATION_ERROR", "Invalid heartbeat payload");
     }
@@ -42,6 +43,12 @@ export async function POST(
     if (claim.kind === "NOT_CLAIMED") {
       return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
     }
+    const limited = await enforceRateLimit(
+      `worker-heartbeat:${workerId}`,
+      RATE_LIMITS.workerHeartbeat.limit,
+      RATE_LIMITS.workerHeartbeat.windowMs,
+    );
+    if (limited) return limited;
 
     const updated = await applyHeartbeat(claim.job);
     return NextResponse.json(jobToDetail(updated));

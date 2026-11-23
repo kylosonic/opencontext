@@ -147,6 +147,7 @@ describe("S3Storage (mocked AWS SDK)", () => {
     expect(await storage.head("jobs/j1/source.mp4")).toEqual({
       sizeBytes: 42,
       contentType: "video/mp4",
+      etag: null,
     });
     state.sendMock.mockRejectedValueOnce({ name: "NotFound" });
     expect(await storage.head("missing")).toBeNull();
@@ -159,23 +160,25 @@ describe("S3Storage (mocked AWS SDK)", () => {
     );
   });
 
-  it("presignPut signs a PUT with the declared content type", async () => {
+  it("presignPut signs a PUT with the declared content type and length", async () => {
     const storage = new S3Storage(config);
-    expect(await storage.presignPut("incoming/video.mp4", "video/mp4", 900)).toBe(
+    expect(await storage.presignPut("incoming/video.mp4", "video/mp4", 1234, 900)).toBe(
       "https://signed.example/oc-media/key?token=abc",
     );
     const input = lastCommand("PutObjectCommand");
     expect(input.Key).toBe("incoming/video.mp4");
     expect(input.ContentType).toBe("video/mp4");
+    expect(input.ContentLength).toBe(1234);
   });
 
   it("move copies then deletes", async () => {
     const storage = new S3Storage(config);
     state.sendMock.mockResolvedValue({});
-    await storage.move("incoming/x", "jobs/j1/source.mp4");
+    await storage.move("incoming/x", "jobs/j1/source.mp4", { etag: '"abc"' });
     const copy = lastCommand("CopyObjectCommand");
     expect(copy.CopySource).toBe("oc-media/incoming/x");
     expect(copy.Key).toBe("jobs/j1/source.mp4");
+    expect(copy.CopySourceIfMatch).toBe('"abc"');
     const del = lastCommand("DeleteObjectCommand");
     expect(del.Key).toBe("incoming/x");
   });
@@ -185,6 +188,26 @@ describe("S3Storage (mocked AWS SDK)", () => {
     state.sendMock.mockResolvedValue({});
     await storage.deleteMany(["a", "b"]);
     const input = lastCommand("DeleteObjectsCommand");
-    expect(input.Delete).toEqual({ Objects: [{ Key: "a" }, { Key: "b" }] });
+    expect(input.Delete).toEqual({ Objects: [{ Key: "a" }, { Key: "b" }], Quiet: true });
+  });
+
+  it("chunks large deletes below the S3 1,000-key limit", async () => {
+    const storage = new S3Storage(config);
+    state.sendMock.mockResolvedValue({});
+    await storage.deleteMany(Array.from({ length: 1001 }, (_, index) => `key-${index}`));
+    const deletes = state.commands.filter((command) => command.name === "DeleteObjectsCommand");
+    expect(deletes).toHaveLength(2);
+    expect((deletes[0].input.Delete as { Objects: unknown[] }).Objects).toHaveLength(1000);
+    expect((deletes[1].input.Delete as { Objects: unknown[] }).Objects).toHaveLength(1);
+  });
+
+  it("streams the SDK web body and maps a missing key to null", async () => {
+    const storage = new S3Storage(config);
+    const body = new Blob(["streamed"]).stream();
+    state.sendMock.mockResolvedValueOnce({ Body: { transformToWebStream: () => body } });
+    expect(await storage.stream("jobs/j1/source.mp4")).toBe(body);
+
+    state.sendMock.mockRejectedValueOnce({ name: "NoSuchKey" });
+    expect(await storage.stream("missing")).toBeNull();
   });
 });

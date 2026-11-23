@@ -3,6 +3,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { findFfmpeg } from "./ffmpeg-command.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputDir = path.join(repoRoot, ".artifacts");
@@ -12,7 +13,7 @@ const output = path.join(outputDir, "opencontext-hearing-eval-v1.mp4");
 await mkdir(outputDir, { recursive: true });
 
 const result = spawnSync(
-  "ffmpeg",
+  findFfmpeg(),
   [
     "-y",
     "-hide_banner",

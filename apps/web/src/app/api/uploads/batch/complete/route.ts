@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CompleteUploadBatchRequestSchema } from "@kylosonic/opencontext-schemas";
 import { auth } from "@/auth";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import { errorResponse, readJsonBody, withErrorHandling } from "@/server/api-helpers";
 import { jobToSummary } from "@/server/jobs";
 import {
   applyRateLimitHeaders,
@@ -36,13 +36,14 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const body = await readJsonBody(request, 64 * 1024);
+    if (!body.ok) {
+      if (body.reason === "TOO_LARGE") {
+        return errorResponse("VALIDATION_ERROR", "Image-set request is too large");
+      }
       return errorResponse("VALIDATION_ERROR", "Request body must be valid JSON");
     }
-    const parsed = CompleteUploadBatchRequestSchema.safeParse(body);
+    const parsed = CompleteUploadBatchRequestSchema.safeParse(body.value);
     if (!parsed.success) {
       return errorResponse("VALIDATION_ERROR", "Image-set upload data is invalid");
     }

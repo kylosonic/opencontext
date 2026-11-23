@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from imageio_ffmpeg import get_ffmpeg_exe
+
 from oc_worker.config import Settings
 
 _ENV_KEYS = [
@@ -114,7 +116,7 @@ def test_invalid_int_falls_back_to_default(monkeypatch) -> None:
     monkeypatch.setenv("WORKER_CONCURRENCY", "not-a-number")
     assert Settings.from_env().worker_concurrency == 1
     monkeypatch.setenv("WORKER_CONCURRENCY", "0")
-    assert Settings.from_env().worker_concurrency == 0
+    assert Settings.from_env().worker_concurrency == 1
 
 
 def test_from_env_reads_current_process_environment(monkeypatch) -> None:
@@ -125,8 +127,8 @@ def test_from_env_reads_current_process_environment(monkeypatch) -> None:
     assert settings.worker_api_token == "tok"
 
 
-def test_ffmpeg_falls_back_to_bundled_binary(monkeypatch) -> None:
+def test_ffmpeg_prefers_bundled_binary(monkeypatch) -> None:
     monkeypatch.delenv("FFMPEG_PATH", raising=False)
     monkeypatch.setenv("PATH", "")
     settings = Settings()
-    assert Path(settings.ffmpeg_path).is_file()
+    assert Path(settings.ffmpeg_path) == Path(get_ffmpeg_exe())

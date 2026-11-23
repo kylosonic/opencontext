@@ -170,7 +170,8 @@ describe("operations alert snapshot", () => {
       database([
         signal({
           status: "PARTIAL",
-          completedAt: new Date(now.getTime() - 5 * 60_000),
+          completedAt: null,
+          updatedAt: new Date(now.getTime() - 5 * 60_000),
         }),
       ]),
     );
@@ -188,9 +189,52 @@ describe("operations alert snapshot", () => {
           claimedBy: "worker-a",
           leaseUntil: new Date(now.getTime() + 5 * 60_000),
           createdAt: new Date(now.getTime() - 31 * 60_000),
+          stageStates: [
+            {
+              stage: "ANALYZING",
+              status: "RUNNING",
+              startedAt: new Date(now.getTime() - 31 * 60_000).toISOString(),
+            },
+          ],
         }),
       ]),
     );
     expect(report.alerts.map((alert) => alert.code)).toEqual(["JOB_STUCK"]);
+  });
+
+  it("keeps multi-day queued work visible instead of aging out of the window", async () => {
+    const report = await evaluateOperations(
+      now,
+      thresholds,
+      database([signal({ createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60_000) })]),
+    );
+    expect(report.counts.queued).toBe(1);
+    expect(report.oldestQueueAgeMinutes).toBe(4320);
+    expect(report.alerts.map((alert) => alert.code)).toEqual([
+      "WORKER_STALE",
+      "QUEUE_OLDEST",
+    ]);
+  });
+
+  it("treats expired mid-pipeline leases as backlog rather than healthy work", async () => {
+    const report = await evaluateOperations(
+      now,
+      thresholds,
+      database([
+        signal({
+          status: "ANALYZING",
+          claimedBy: "worker-a",
+          leaseUntil: new Date(now.getTime() - 60_000),
+          createdAt: new Date(now.getTime() - 2 * 60 * 60_000),
+        }),
+      ]),
+    );
+    expect(report.counts.queued).toBe(0);
+    expect(report.counts.running).toBe(0);
+    expect(report.alerts.map((alert) => alert.code)).toEqual([
+      "WORKER_STALE",
+      "QUEUE_OLDEST",
+    ]);
+    expect(report.healthy).toBe(false);
   });
 });

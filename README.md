@@ -125,6 +125,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   evidence timestamp bounds.
 - Generated image-set and PDF jobs are covered from upload and batch commit
   through worker rendering, result persistence, and export data.
+- Reproducible downloaded-media coverage verifies 11 JPEG/PNG/WebP images and
+  two real MP4 videos through local analysis and replay; the HTTP/worker smoke
+  accepts mixed 10-image sets, standalone images, and multiple videos.
 - Real S3-compatible presigned upload/download coverage in CI.
 - OpenCode Go hosted vision smoke and measured synthetic UI/OCR evidence with
   published context, scores, configuration, and limitations. The opt-in smoke

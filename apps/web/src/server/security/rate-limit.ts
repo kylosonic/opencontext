@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { prisma } from "@/server/db/prisma";
 
 interface Bucket {
@@ -8,6 +8,7 @@ interface Bucket {
 }
 
 const buckets = new Map<string, Bucket>();
+const MAX_MEMORY_BUCKETS = 10_000;
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -21,15 +22,45 @@ export interface RateLimitResult {
 
 /** Per-user budgets. Keep these centralized so route tests and docs agree. */
 export const RATE_LIMITS = {
-  uploadIntent: { limit: 120, windowMs: 10 * 60_000 },
-  uploadComplete: { limit: 60, windowMs: 60_000 },
-  uploadCancel: { limit: 120, windowMs: 60_000 },
-  jobRetry: { limit: 10, windowMs: 60_000 },
-  evidenceReview: { limit: 60, windowMs: 60_000 },
+  jobsRead: { limit: 600, windowMs: 60_000 },
+  jobRead: { limit: 600, windowMs: 60_000 },
+  jobDelete: { limit: 60, windowMs: 60_000 },
+  uploadIntent: { limit: 240, windowMs: 10 * 60_000 },
+  uploadComplete: { limit: 120, windowMs: 60_000 },
+  uploadCancel: { limit: 240, windowMs: 60_000 },
+  uploadBody: { limit: 240, windowMs: 60_000 },
+  sourceRead: { limit: 120, windowMs: 60_000 },
+  export: { limit: 30, windowMs: 60_000 },
+  jobRetry: { limit: 30, windowMs: 60_000 },
+  evidenceReview: { limit: 120, windowMs: 60_000 },
+  auth: { limit: 600, windowMs: 60_000 },
+  workerClaim: { limit: 600, windowMs: 60_000 },
+  workerHeartbeat: { limit: 600, windowMs: 60_000 },
+  workerSource: { limit: 240, windowMs: 60_000 },
+  workerMutation: { limit: 1_200, windowMs: 60_000 },
+  workerMedia: { limit: 1_200, windowMs: 60_000 },
+  operations: { limit: 120, windowMs: 60_000 },
+  retentionSweep: { limit: 6, windowMs: 60_000 },
+  demo: { limit: 600, windowMs: 60_000 },
 } as const;
 
+/** Stable, non-reversible request key using proxy headers that are safe to trust. */
+export function requestRateKey(request: Request, namespace: string): string {
+  const trustProxy =
+    process.env.VERCEL === "1" ||
+    /^(?:1|true|yes)$/i.test(process.env.TRUST_PROXY?.trim() ?? "");
+  const forwarded = trustProxy
+    ? request.headers.get("x-vercel-forwarded-for") ??
+      request.headers.get("x-real-ip") ??
+      request.headers.get("x-forwarded-for")
+    : request.headers.get("x-vercel-forwarded-for");
+  const address = forwarded?.split(",")[0]?.trim() || "unknown";
+  const digest = createHash("sha256").update(address).digest("hex").slice(0, 24);
+  return `${namespace}:${digest}`;
+}
+
 /** Add standard quota metadata and Retry-After when the request is blocked. */
-export function applyRateLimitHeaders<T extends NextResponse>(
+export function applyRateLimitHeaders<T extends Response>(
   response: T,
   result: RateLimitResult,
 ): T {
@@ -39,7 +70,6 @@ export function applyRateLimitHeaders<T extends NextResponse>(
     "X-RateLimit-Reset",
     String(Math.max(0, Math.ceil(result.resetAt / 1000))),
   );
-  response.headers.set("X-RateLimit-Backend", result.backend);
   if (!result.allowed) {
     response.headers.set("Retry-After", String(Math.max(1, result.retryAfterSec)));
   }
@@ -57,7 +87,7 @@ export async function consumeRateLimit(
   windowMs: number,
   now = Date.now(),
 ): Promise<RateLimitResult> {
-  const backend = (process.env.RATE_LIMIT_BACKEND ?? "memory").toLowerCase();
+  const backend = (process.env.RATE_LIMIT_BACKEND ?? "memory").trim().toLowerCase();
   try {
     if (backend === "database") {
       return await consumeDatabaseRateLimit(key, limit, windowMs, now);
@@ -68,7 +98,9 @@ export async function consumeRateLimit(
     return consumeMemoryRateLimit(key, limit, windowMs, now);
   } catch (error) {
     console.error("Rate limiter backend failure:", error);
-    const failureMode = (process.env.RATE_LIMIT_FAILURE_MODE ?? "open").toLowerCase();
+    const failureMode = (process.env.RATE_LIMIT_FAILURE_MODE ?? "open")
+      .trim()
+      .toLowerCase();
     if (failureMode === "closed") {
       return {
         allowed: false,
@@ -96,8 +128,13 @@ function consumeMemoryRateLimit(
   windowMs: number,
   now: number,
 ): RateLimitResult {
+  pruneMemoryBuckets(now);
   const current = buckets.get(key);
   if (!current || current.resetAt <= now) {
+    if (!current && buckets.size >= MAX_MEMORY_BUCKETS) {
+      const oldest = buckets.keys().next().value;
+      if (oldest !== undefined) buckets.delete(oldest);
+    }
     const resetAt = now + windowMs;
     buckets.set(key, { count: 1, resetAt });
     return {
@@ -130,6 +167,13 @@ function consumeMemoryRateLimit(
   };
 }
 
+function pruneMemoryBuckets(now: number): void {
+  if (buckets.size < MAX_MEMORY_BUCKETS / 2) return;
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) buckets.delete(key);
+  }
+}
+
 async function consumeDatabaseRateLimit(
   key: string,
   limit: number,
@@ -138,76 +182,87 @@ async function consumeDatabaseRateLimit(
 ): Promise<RateLimitResult> {
   const nowDate = new Date(now);
   const resetAt = new Date(now + windowMs);
-  try {
-    await prisma.rateLimitBucket.create({
-      data: { key, count: 1, resetAt, updatedAt: nowDate },
-    });
-    return {
-      allowed: true,
-      remaining: Math.max(0, limit - 1),
-      retryAfterSec: 0,
-      limit,
-      resetAt: resetAt.getTime(),
-      backend: "database",
-    };
-  } catch (error) {
-    if (
-      !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-      error.code !== "P2002"
-    ) {
-      throw error;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await prisma.rateLimitBucket.create({
+        data: { key, count: 1, resetAt, updatedAt: nowDate },
+      });
+      return {
+        allowed: true,
+        remaining: Math.max(0, limit - 1),
+        retryAfterSec: 0,
+        limit,
+        resetAt: resetAt.getTime(),
+        backend: "database",
+      };
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== "P2002"
+      ) {
+        throw error;
+      }
     }
-  }
 
-  const reset = await prisma.rateLimitBucket.updateMany({
-    where: { key, resetAt: { lte: nowDate } },
-    data: { count: 1, resetAt, updatedAt: nowDate },
-  });
-  if (reset.count > 0) {
-    return {
-      allowed: true,
-      remaining: Math.max(0, limit - 1),
-      retryAfterSec: 0,
-      limit,
-      resetAt: resetAt.getTime(),
-      backend: "database",
-    };
-  }
+    const reset = await prisma.rateLimitBucket.updateMany({
+      where: { key, resetAt: { lte: nowDate } },
+      data: { count: 1, resetAt, updatedAt: nowDate },
+    });
+    if (reset.count > 0) {
+      return {
+        allowed: true,
+        remaining: Math.max(0, limit - 1),
+        retryAfterSec: 0,
+        limit,
+        resetAt: resetAt.getTime(),
+        backend: "database",
+      };
+    }
 
-  const incremented = await prisma.rateLimitBucket.updateMany({
-    where: { key, resetAt: { gt: nowDate }, count: { lt: limit } },
-    data: { count: { increment: 1 }, updatedAt: nowDate },
-  });
-  if (incremented.count > 0) {
+    const incremented = await prisma.rateLimitBucket.updateMany({
+      where: { key, resetAt: { gt: nowDate }, count: { lt: limit } },
+      data: { count: { increment: 1 }, updatedAt: nowDate },
+    });
+    if (incremented.count > 0) {
+      const bucket = await prisma.rateLimitBucket.findUnique({ where: { key } });
+      return {
+        allowed: true,
+        remaining: Math.max(0, limit - (bucket?.count ?? limit)),
+        retryAfterSec: 0,
+        limit,
+        resetAt: bucket?.resetAt.getTime() ?? resetAt.getTime(),
+        backend: "database",
+      };
+    }
+
     const bucket = await prisma.rateLimitBucket.findUnique({ where: { key } });
-    return {
-      allowed: true,
-      remaining: Math.max(0, limit - (bucket?.count ?? limit)),
-      retryAfterSec: 0,
-      limit,
-      resetAt: bucket?.resetAt.getTime() ?? resetAt.getTime(),
-      backend: "database",
-    };
+    if (bucket) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSec: Math.max(
+          1,
+          Math.ceil((bucket.resetAt.getTime() - now) / 1000),
+        ),
+        limit,
+        resetAt: bucket.resetAt.getTime(),
+        backend: "database",
+      };
+    }
+    // A retention sweep removed the expired row between our conditional
+    // updates. Retry creation instead of allowing an uncounted request.
   }
-
-  const bucket = await prisma.rateLimitBucket.findUnique({ where: { key } });
-  const bucketResetAt = bucket?.resetAt.getTime() ?? resetAt.getTime();
-  return {
-    allowed: false,
-    remaining: 0,
-    retryAfterSec: bucket
-      ? Math.max(1, Math.ceil((bucket.resetAt.getTime() - now) / 1000))
-      : 1,
-    limit,
-    resetAt: bucketResetAt,
-    backend: "database",
-  };
+  // Extreme cleanup contention is an unavailable quota backend, not proof
+  // that the caller has exhausted a genuine window.
+  throw new Error("Rate-limit bucket changed repeatedly during update");
 }
 
 /** Test helper only. */
 export async function resetRateLimits(): Promise<void> {
   buckets.clear();
-  if ((process.env.RATE_LIMIT_BACKEND ?? "memory").toLowerCase() === "database") {
+  if (
+    (process.env.RATE_LIMIT_BACKEND ?? "memory").trim().toLowerCase() === "database"
+  ) {
     await prisma.rateLimitBucket.deleteMany();
   }
 }

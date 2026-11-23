@@ -8,19 +8,21 @@ from pathlib import Path
 import oc_worker.ffmpeg as ffmpeg_module
 
 
-def test_ffmpeg_uses_argument_list_without_a_shell(monkeypatch) -> None:
+def test_ffmpeg_uses_argument_list_without_a_shell(tmp_path: Path, monkeypatch) -> None:
     captured: dict = {}
+    destination = tmp_path / "audio output.wav"
 
     def fake_run(args, **kwargs):
         captured["args"] = args
         captured["kwargs"] = kwargs
+        Path(args[-1]).write_bytes(b"wav")
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
     monkeypatch.setattr(ffmpeg_module.subprocess, "run", fake_run)
-    ffmpeg_module.extract_audio("input with spaces.mp4", "audio output.wav")
+    ffmpeg_module.extract_audio("input with spaces.mp4", destination)
 
     assert isinstance(captured["args"], list)
-    assert captured["args"][-1] == "audio output.wav"
+    assert captured["args"][-1] == str(destination)
     assert "shell" not in captured["kwargs"]
 
 

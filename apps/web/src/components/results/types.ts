@@ -146,7 +146,7 @@ export interface ResultViewerProps {
   /** Persistent "Demo Analysis" badges (job header + tab strip). */
   demo?: boolean;
   /** Timeline and evidence reference click → seek to a source timestamp. */
-  onSeek?: (timestampSec: number) => void;
+  onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   /** A real `<video>` or `<img>` element. Omitted → placeholder panel. */
   sourceSlot?: ReactNode;
   /** Currently selected timestamp, echoed in the placeholder (demo wiring). */

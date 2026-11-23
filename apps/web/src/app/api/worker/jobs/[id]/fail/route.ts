@@ -4,11 +4,14 @@ import { failJob } from "@/server/queue";
 import { jobToDetail } from "@/server/jobs";
 import {
   checkClaim,
+  enforceRateLimit,
   errorResponse,
+  readJsonBody,
   verifyWorkerToken,
   withErrorHandling,
   workerIdOf,
 } from "@/server/api-helpers";
+import { RATE_LIMITS } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -29,13 +32,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params;
     const workerId = workerIdOf(request);
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
+    const body = await readJsonBody(request, 32 * 1024);
+    if (!body.ok) {
       return errorResponse("VALIDATION_ERROR", "Request body must be JSON");
     }
-    const parsed = WorkerFailRequestSchema.safeParse(body);
+    const parsed = WorkerFailRequestSchema.safeParse(body.value);
     if (!parsed.success) {
       return errorResponse("VALIDATION_ERROR", "Invalid fail payload");
     }
@@ -47,8 +48,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (claim.kind === "NOT_CLAIMED") {
       return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
     }
+    const limited = await enforceRateLimit(
+      `worker-fail:${workerId}`,
+      RATE_LIMITS.workerMutation.limit,
+      RATE_LIMITS.workerMutation.windowMs,
+    );
+    if (limited) return limited;
 
-    const result = await failJob(id, workerId ?? "", parsed.data);
+    const result = await failJob(id, workerId!, parsed.data);
     if (result.kind === "NOT_CLAIMED") {
       return errorResponse("VALIDATION_ERROR", "Job is not claimed by this worker");
     }

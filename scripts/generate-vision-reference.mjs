@@ -1,13 +1,14 @@
 import { mkdir } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
+import { findFfmpeg } from "./ffmpeg-command.mjs";
 
 const repository = path.resolve(import.meta.dirname, "..");
 const output = path.join(repository, "docs/assets/real-vision-checkout.png");
 await mkdir(path.dirname(output), { recursive: true });
 
 const result = spawnSync(
-  "ffmpeg",
+  findFfmpeg(),
   [
     "-y",
     "-hide_banner",

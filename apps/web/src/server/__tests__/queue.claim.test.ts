@@ -1,6 +1,15 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { prisma } from "@/server/db/prisma";
-import { claimJob, isClaimable, LEASE_MS, requeueJob } from "@/server/queue";
+import {
+  claimJob,
+  completeJob,
+  isClaimable,
+  LEASE_MS,
+  QUEUE_MAX_ATTEMPTS,
+  RATE_LIMIT_MAX_ATTEMPTS,
+  requeueJob,
+  transientBudgetExhausted,
+} from "@/server/queue";
 import { createQueuedJob, createUser, resetDatabase } from "./helpers";
 
 beforeEach(async () => {
@@ -116,6 +125,30 @@ describe("claimJob — portable atomic claim (ADR-0001)", () => {
     expect(await claimJob({ workerId: "worker-b" })).toBeNull();
   });
 
+  it("gives provider rate limits a larger bounded retry budget", () => {
+    expect(transientBudgetExhausted(QUEUE_MAX_ATTEMPTS, false)).toBe(true);
+    expect(transientBudgetExhausted(QUEUE_MAX_ATTEMPTS, true)).toBe(false);
+    expect(transientBudgetExhausted(40, true)).toBe(true);
+  });
+
+  it("uses escalating cooldowns for repeated provider throttles", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    await claimJob({ workerId: "worker-a" });
+    const before = Date.now();
+
+    await requeueJob(job.id, {
+      stage: "ANALYZING",
+      attempts: 4,
+      retryAfterSec: 60,
+      rateLimited: true,
+      workerId: "worker-a",
+    });
+
+    const requeued = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
+    expect(requeued.availableAt?.getTime()).toBeGreaterThanOrEqual(before + 479_000);
+  });
+
   it("returns null when the queue is idle", async () => {
     const user = await createUser();
     await createQueuedJob(user.id);
@@ -123,6 +156,98 @@ describe("claimJob — portable atomic claim (ADR-0001)", () => {
 
     // Lease held → idle for everyone else.
     expect(await claimJob({ workerId: "worker-c" })).toBeNull();
+  });
+
+  it("fails a poison job when its claim budget is exhausted", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: "ANALYZING",
+        claimedBy: "worker-a",
+        leaseUntil: new Date(Date.now() - 1_000),
+        attempts: QUEUE_MAX_ATTEMPTS,
+      },
+    });
+
+    expect(await claimJob({ workerId: "worker-b" })).toBeNull();
+    const failed = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
+    expect(failed.status).toBe("FAILED");
+    expect(failed.claimedBy).toBeNull();
+    expect(failed.failureKind).toBe("TRANSIENT");
+  });
+
+  it("keeps provider-rate-limited jobs claimable beyond the poison-job limit", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: "ANALYZING",
+        claimedBy: null,
+        leaseUntil: null,
+        attempts: QUEUE_MAX_ATTEMPTS,
+        failureKind: "TRANSIENT",
+      },
+    });
+
+    const claimed = await claimJob({ workerId: "worker-b" });
+
+    expect(claimed?.id).toBe(job.id);
+    expect(claimed?.attempts).toBe(QUEUE_MAX_ATTEMPTS + 1);
+  });
+
+  it("fails a rate-limited job at the larger bounded quota budget", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: "ANALYZING",
+        claimedBy: null,
+        leaseUntil: null,
+        attempts: RATE_LIMIT_MAX_ATTEMPTS,
+        failureKind: "TRANSIENT",
+      },
+    });
+
+    expect(await claimJob({ workerId: "worker-b" })).toBeNull();
+    const failed = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
+    expect(failed.status).toBe("FAILED");
+  });
+});
+
+describe("completion fencing", () => {
+  it("is idempotent after the lease is released", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    const claimed = await claimJob({ workerId: "worker-a" });
+    const states = (claimed!.stageStates as Array<Record<string, unknown>>).map((state) => ({
+      ...state,
+      status: "SUCCEEDED",
+    }));
+    await prisma.job.update({ where: { id: job.id }, data: { stageStates: states } });
+
+    const first = await completeJob(job.id, "worker-a");
+    expect(first.kind).toBe("OK");
+    const retried = await completeJob(job.id, "worker-a");
+    expect(retried.kind).toBe("OK");
+    expect(retried.kind === "OK" && retried.job.status).toBe("COMPLETED");
+  });
+
+  it("never promotes a job containing a failed stage", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    const claimed = await claimJob({ workerId: "worker-a" });
+    const states = (claimed!.stageStates as Array<Record<string, unknown>>).map(
+      (state, index) => ({ ...state, status: index === 0 ? "FAILED" : "SUCCEEDED" }),
+    );
+    await prisma.job.update({ where: { id: job.id }, data: { stageStates: states } });
+
+    await expect(completeJob(job.id, "worker-a")).resolves.toMatchObject({
+      kind: "STAGES_FAILED",
+    });
   });
 });
 

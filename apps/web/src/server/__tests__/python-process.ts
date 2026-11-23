@@ -43,6 +43,42 @@ export function findWorkerPython(): string | null {
   return null;
 }
 
+/** Resolve an FFmpeg with the encoders used by generated test fixtures. */
+export function findFixtureFfmpeg(): string | null {
+  const candidates: string[] = [];
+  const configured = process.env.OPENCONTEXT_FFMPEG ?? process.env.FFMPEG_PATH;
+  if (configured) candidates.push(configured);
+
+  const python = findWorkerPython();
+  if (python) {
+    try {
+      const bundled = execFileSync(
+        python,
+        ["-c", "from imageio_ffmpeg import get_ffmpeg_exe; print(get_ffmpeg_exe())"],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10_000 },
+      ).trim();
+      if (bundled) candidates.push(bundled);
+    } catch {
+      // A system FFmpeg may still satisfy the fixture requirement.
+    }
+  }
+  candidates.push("ffmpeg");
+
+  for (const candidate of [...new Set(candidates)]) {
+    try {
+      const encoders = execFileSync(candidate, ["-hide_banner", "-encoders"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 10_000,
+      });
+      if (encoders.includes("libx264")) return candidate;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+  return null;
+}
+
 export function workerPythonEnv(
   extra: Record<string, string | undefined> = {},
 ): NodeJS.ProcessEnv {

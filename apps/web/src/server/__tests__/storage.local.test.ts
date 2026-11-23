@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterAll, beforeAll } from "vitest";
@@ -59,6 +59,7 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
     expect(await storage.head("jobs/head/source.mp4")).toEqual({
       sizeBytes: TEST_BYTES.length,
       contentType: null,
+      etag: null,
     });
     expect(await storage.head("jobs/head/missing.mp4")).toBeNull();
   });
@@ -95,12 +96,35 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
     await expect(storage.put("..", testStream(), { sizeBytes: 2 })).rejects.toThrow(
       /Invalid storage key/,
     );
+    await expect(storage.get("jobs/..")).rejects.toThrow(/Invalid storage key/);
+    await expect(
+      storage.get("C:\\Windows\\system.ini"),
+    ).rejects.toThrow(/Invalid storage key/);
+  });
+
+  it("refuses symlinks that escape the storage root", async () => {
+    const outside = await mkdtemp(path.join(os.tmpdir(), "oc-storage-outside-"));
+    try {
+      await symlink(outside, path.join(dir, "linked-directory"));
+      await expect(
+        storage.put("linked-directory/escape.bin", testStream(), {
+          sizeBytes: TEST_BYTES.length,
+        }),
+      ).rejects.toThrow(/symlink/);
+      await expect(storage.get("linked-directory/escape.bin")).rejects.toThrow(
+        /symlink/,
+      );
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
   it("presign returns null (local media is served via the worker media route)", async () => {
     await storage.put("x.bin", testStream(), { sizeBytes: TEST_BYTES.length });
     expect(await storage.presign("x.bin")).toBeNull();
-    expect(await storage.presignPut("x.bin", "application/octet-stream")).toBeNull();
+    expect(
+      await storage.presignPut("x.bin", "application/octet-stream", 1),
+    ).toBeNull();
   });
 
   it("writes real files under the root", async () => {

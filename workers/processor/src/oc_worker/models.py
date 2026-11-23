@@ -8,10 +8,11 @@ additive API changes without redeploying.
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Candidate keys used to salvage a string out of legacy dict-shaped
 # provider items (uiElements {type,label,role?}, visibleText
@@ -84,9 +85,22 @@ class DetailLevel(StrEnum):
 
 
 class Segment(BaseModel):
-    start: float
-    end: float
-    text: str
+    start: float = Field(ge=0)
+    end: float = Field(ge=0)
+    text: str = Field(min_length=1, max_length=20_000)
+
+    @field_validator("start", "end")
+    @classmethod
+    def finite_timestamp(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("timestamp must be finite")
+        return value
+
+    @model_validator(mode="after")
+    def ordered_bounds(self) -> Segment:
+        if self.end < self.start:
+            raise ValueError("segment end must be greater than or equal to start")
+        return self
 
 
 def clamp_segments_to_duration(
@@ -131,19 +145,34 @@ class VisualObservation(BaseModel):
     ``model_dump()`` always emits the canonical shapes above.
     """
 
-    timestampSec: float
-    frameId: str | None = None
+    timestampSec: float = Field(ge=0)
+    frameId: str | None = Field(default=None, max_length=256)
+    sourceIndex: int | None = Field(default=None, ge=0, le=30)
     certainty: Certainty = Certainty.OBSERVED
-    sceneTitle: str | None = None
-    visualDescription: str | None = None
-    uiElements: list[str] = Field(default_factory=list)
-    visibleText: list[str] = Field(default_factory=list)
-    interactions: list[str] = Field(default_factory=list)
-    layoutDescription: str | None = None
+    sceneTitle: str | None = Field(default=None, max_length=2_000)
+    visualDescription: str | None = Field(default=None, max_length=20_000)
+    uiElements: list[str] = Field(default_factory=list, max_length=500)
+    visibleText: list[str] = Field(default_factory=list, max_length=1_000)
+    interactions: list[str] = Field(default_factory=list, max_length=500)
+    layoutDescription: str | None = Field(default=None, max_length=20_000)
     designObservations: dict[str, str] = Field(default_factory=dict)
-    importantChanges: list[str] = Field(default_factory=list)
-    provider: str | None = None
-    model: str | None = None
+    importantChanges: list[str] = Field(default_factory=list, max_length=500)
+    provider: str | None = Field(default=None, max_length=128)
+    model: str | None = Field(default=None, max_length=256)
+
+    @field_validator("timestampSec")
+    @classmethod
+    def finite_timestamp(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("timestamp must be finite")
+        return value
+
+    @field_validator("uiElements", "visibleText", "interactions", "importantChanges")
+    @classmethod
+    def bounded_string_items(cls, value: list[str]) -> list[str]:
+        if any(len(item) > 20_000 for item in value):
+            raise ValueError("observation text item is too long")
+        return value
 
     @field_validator(
         "uiElements", "visibleText", "interactions", "importantChanges", mode="before"
@@ -189,38 +218,46 @@ class VisualObservation(BaseModel):
 
 
 class OCRObservation(BaseModel):
-    timestampSec: float
-    frameId: str | None = None
-    text: str
-    confidence: float | None = None
-    provider: str | None = None
+    timestampSec: float = Field(ge=0)
+    sourceIndex: int | None = Field(default=None, ge=0, le=30)
+    frameId: str | None = Field(default=None, max_length=256)
+    text: str = Field(min_length=1, max_length=20_000)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    provider: str | None = Field(default=None, max_length=128)
+
+    @field_validator("timestampSec", "confidence")
+    @classmethod
+    def finite_numbers(cls, value: float | None) -> float | None:
+        if value is not None and not math.isfinite(value):
+            raise ValueError("number must be finite")
+        return value
 
 
 class StageState(BaseModel):
     model_config = ConfigDict(extra="allow")
-    stage: str
-    status: str = StageStatus.NOT_STARTED.value
-    attempt: int = 0
+    stage: str = Field(min_length=1, max_length=64)
+    status: str = Field(default=StageStatus.NOT_STARTED.value, max_length=32)
+    attempt: int = Field(default=0, ge=0)
 
 
 class Job(BaseModel):
     model_config = ConfigDict(extra="allow")
-    id: str
-    displayName: str | None = None
-    status: str | None = None
+    id: str = Field(min_length=1, max_length=256)
+    displayName: str | None = Field(default=None, max_length=255)
+    status: str | None = Field(default=None, max_length=32)
     detailLevel: DetailLevel = DetailLevel.MEDIUM
-    progress: int = 0
+    progress: int = Field(default=0, ge=0, le=100)
     stageStates: list[StageState] = Field(default_factory=list)
-    durationSec: float | None = None
-    width: int | None = None
-    height: int | None = None
+    durationSec: float | None = Field(default=None, ge=0, le=86_400)
+    width: int | None = Field(default=None, ge=0, le=100_000)
+    height: int | None = Field(default=None, ge=0, le=100_000)
     audioPresent: bool | None = None
-    frameCount: int | None = None
+    frameCount: int | None = Field(default=None, ge=0, le=100_000)
 
 
 class SourceInfo(BaseModel):
     model_config = ConfigDict(extra="allow")
-    uri: str
-    provider: str | None = None
-    sizeBytes: int | None = None
-    filename: str | None = None
+    uri: str = Field(min_length=1, max_length=8_192)
+    provider: str | None = Field(default=None, max_length=32)
+    sizeBytes: int | None = Field(default=None, ge=0)
+    filename: str | None = Field(default=None, max_length=255)

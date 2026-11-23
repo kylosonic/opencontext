@@ -13,15 +13,18 @@ import pytest
 
 from oc_worker import package_version
 from oc_worker.cli import main
+from oc_worker.config import resolve_ffmpeg_path
 from oc_worker.models import Segment
 from oc_worker.replay import validate_context
 
-FFMPEG = shutil.which("ffmpeg")
-pytestmark = pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")
+FFMPEG = resolve_ffmpeg_path()
+pytestmark = pytest.mark.skipif(
+    not Path(FFMPEG).is_file() and shutil.which(FFMPEG) is None,
+    reason="ffmpeg is not installed",
+)
 
 
 def _fixture(path: Path) -> None:
-    assert FFMPEG is not None
     subprocess.run(
         [
             FFMPEG,

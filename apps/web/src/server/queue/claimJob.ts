@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 
 /**
@@ -10,6 +11,8 @@ export const LEASE_MS = 5 * 60 * 1000;
 export const BACKOFF_MS = [2_000, 8_000] as const;
 /** Auto-retry budget for transient failures (jobs.md B7, blueprint §4). */
 export const QUEUE_MAX_ATTEMPTS = 5;
+/** Provider quota windows may legitimately span several queue attempts. */
+export const RATE_LIMIT_MAX_ATTEMPTS = 40;
 const CLAIMABLE_STATUSES = [
   "QUEUED",
   "DOWNLOADING",
@@ -21,7 +24,7 @@ const CLAIMABLE_STATUSES = [
 ] as const;
 
 /** Portable claimability predicates (no SKIP LOCKED per ADR-0003). */
-function claimConditions(now: Date) {
+function claimConditions(now: Date): Prisma.JobWhereInput {
   return {
     status: { in: [...CLAIMABLE_STATUSES] },
     OR: [
@@ -29,7 +32,21 @@ function claimConditions(now: Date) {
       { leaseUntil: null },
       { leaseUntil: { lte: now } },
     ],
-    AND: [{ OR: [{ availableAt: null }, { availableAt: { lte: now } }] }],
+    AND: [
+      { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+      {
+        OR: [
+          { attempts: { lt: QUEUE_MAX_ATTEMPTS } },
+          {
+            // A provider-quota deferral is marked TRANSIENT while queued so it
+            // can use the larger bounded quota window without weakening the
+            // ordinary poison-job limit.
+            attempts: { lt: RATE_LIMIT_MAX_ATTEMPTS },
+            failureKind: "TRANSIENT",
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -46,10 +63,14 @@ export interface ClaimInput {
  */
 export async function claimJob(input: ClaimInput) {
   const now = new Date();
+  await failExhaustedJobs(now);
   const candidates = await prisma.job.findMany({
     where: claimConditions(now),
     orderBy: { createdAt: "asc" },
-    take: 5,
+    // A small fixed head-of-line window let a handful of contenders starve
+    // every later item. Exhausted attempts are removed above before this
+    // portable candidate scan.
+    take: 25,
     select: { id: true },
   });
 
@@ -81,6 +102,71 @@ export async function claimJob(input: ClaimInput) {
   return null;
 }
 
+async function failExhaustedJobs(now: Date): Promise<void> {
+  const exhausted = await prisma.job.findMany({
+    where: {
+      status: { in: [...CLAIMABLE_STATUSES] },
+      AND: [
+        {
+          OR: [
+            {
+              attempts: { gte: QUEUE_MAX_ATTEMPTS },
+              failureKind: { not: "TRANSIENT" },
+            },
+            { attempts: { gte: RATE_LIMIT_MAX_ATTEMPTS } },
+          ],
+        },
+        {
+          OR: [
+            { claimedBy: null },
+            { leaseUntil: null },
+            { leaseUntil: { lte: now } },
+          ],
+        },
+      ],
+    },
+    select: { id: true },
+    take: 100,
+  });
+  for (const job of exhausted) {
+    const failed = await prisma.job.updateMany({
+      where: {
+        id: job.id,
+        status: { in: [...CLAIMABLE_STATUSES] },
+        AND: [
+          {
+            OR: [
+              {
+                attempts: { gte: QUEUE_MAX_ATTEMPTS },
+                failureKind: { not: "TRANSIENT" },
+              },
+              { attempts: { gte: RATE_LIMIT_MAX_ATTEMPTS } },
+            ],
+          },
+          {
+            OR: [
+              { claimedBy: null },
+              { leaseUntil: null },
+              { leaseUntil: { lte: now } },
+            ],
+          },
+        ],
+      },
+      data: {
+        status: "FAILED",
+        error: "Automatic retry budget exhausted",
+        failureKind: "TRANSIENT",
+        claimedBy: null,
+        leaseUntil: null,
+        availableAt: null,
+      },
+    });
+    if (failed.count > 0) {
+      continue;
+    }
+  }
+}
+
 /** The claimability predicate exported for tests. */
 export function isClaimable(
   job: {
@@ -88,10 +174,20 @@ export function isClaimable(
     claimedBy: string | null;
     leaseUntil: Date | null;
     availableAt: Date | null;
+    attempts?: number;
+    failureKind?: string;
   },
   now: Date = new Date(),
 ): boolean {
   if (!(CLAIMABLE_STATUSES as readonly string[]).includes(job.status)) {
+    return false;
+  }
+  const attempts = job.attempts ?? 0;
+  const maxAttempts =
+    job.failureKind === "TRANSIENT"
+      ? RATE_LIMIT_MAX_ATTEMPTS
+      : QUEUE_MAX_ATTEMPTS;
+  if (attempts >= maxAttempts) {
     return false;
   }
   const leaseFree =

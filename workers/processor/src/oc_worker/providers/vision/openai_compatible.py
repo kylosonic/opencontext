@@ -9,15 +9,20 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
+import threading
+import time
 from typing import Any
 
 import httpx
 
-from oc_worker.errors import TransientFailure
+from oc_worker.errors import TransientFailure, current_abort
 from oc_worker.providers.http_status import (
     openai_compatible_headers,
     raise_for_provider_status,
 )
+
+log = logging.getLogger("oc_worker.providers.vision")
 
 _SYSTEM_PROMPT = (
     "You analyze individual images and frames from software sessions or "
@@ -65,12 +70,25 @@ class OpenAICompatibleVisionProvider:
         model: str,
         session_id: str | None = None,
         timeout: float = 120.0,
+        fallback_models: tuple[str, ...] = (),
+        min_request_interval_seconds: float = 0.0,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+        self.models = tuple(
+            dict.fromkeys(
+                candidate
+                for candidate in (model, *fallback_models)
+                if candidate.strip()
+            )
+        )
         self.session_id = session_id
+        self.min_request_interval_seconds = max(0.0, min_request_interval_seconds)
+        self._request_lock = threading.Lock()
+        self._next_request_at = 0.0
+        self._model_unavailable_until: dict[str, float] = {}
         self._client = client or httpx.Client(timeout=timeout)
 
     def analyze(self, frame_bytes: bytes, context: dict[str, Any]) -> dict[str, Any]:
@@ -92,7 +110,6 @@ class OpenAICompatibleVisionProvider:
                 f"(detail level {context.get('detailLevel')}). Analyze this frame."
             )
         payload = {
-            "model": self.model,
             "temperature": 0,
             "messages": [
                 {"role": "system", "content": _SYSTEM_PROMPT},
@@ -108,23 +125,103 @@ class OpenAICompatibleVisionProvider:
                 },
             ],
         }
-        request_session = str(context.get("sessionId") or self.session_id)
+        request_session = context.get("sessionId") or self.session_id
+        if request_session is not None:
+            request_session = str(request_session)
         headers = openai_compatible_headers(
             self.api_key, self.base_url, request_session
         )
-        try:
-            response = self._client.post(
-                f"{self.base_url}/chat/completions", headers=headers, json=payload
+        last_rate_limit: TransientFailure | None = None
+        now = time.monotonic()
+        available_models = tuple(
+            model
+            for model in self.models
+            if self._model_unavailable_until.get(model, 0.0) <= now
+        )
+        if not available_models:
+            retry_after = min(
+                max(0.0, deadline - now)
+                for deadline in self._model_unavailable_until.values()
             )
-        except (httpx.TimeoutException, httpx.TransportError) as exc:
-            raise TransientFailure(f"vision request failed: {exc}") from exc
-        raise_for_provider_status("vision", response)
-        try:
-            body = response.json()
-            content = body["choices"][0]["message"]["content"]
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise TransientFailure("vision provider returned an unexpected body") from exc
-        return _normalize(_parse_json_object(str(content)))
+            self._apply_cooldown(retry_after)
+            raise TransientFailure(
+                "vision provider models are temporarily rate limited",
+                retry_after_seconds=max(1.0, retry_after),
+                rate_limited=True,
+            )
+
+        for index, model in enumerate(available_models):
+            self._pace_request()
+            request_payload = {**payload, "model": model}
+            try:
+                response = self._client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=request_payload,
+                )
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                raise TransientFailure(f"vision request failed: {exc}") from exc
+            try:
+                raise_for_provider_status("vision", response)
+            except TransientFailure as exc:
+                if not exc.rate_limited:
+                    raise
+                last_rate_limit = exc
+                self._mark_model_rate_limited(model, exc.retry_after_seconds)
+                if index + 1 < len(available_models):
+                    log.warning(
+                        "vision_model=%s rate_limited=true fallback_model=%s",
+                        model,
+                        available_models[index + 1],
+                    )
+                    continue
+                self._apply_cooldown(exc.retry_after_seconds)
+                raise
+            try:
+                body = response.json()
+                content = body["choices"][0]["message"]["content"]
+            except (ValueError, KeyError, IndexError, TypeError) as exc:
+                raise TransientFailure(
+                    "vision provider returned an unexpected body"
+                ) from exc
+            observation = _normalize(_parse_json_object(str(content)))
+            observation["model"] = model
+            return observation
+        assert last_rate_limit is not None
+        raise last_rate_limit
+
+    def _pace_request(self) -> None:
+        interval = self.min_request_interval_seconds
+        if interval <= 0:
+            return
+        with self._request_lock:
+            now = time.monotonic()
+            scheduled = max(now, self._next_request_at)
+            self._next_request_at = scheduled + interval
+        delay = scheduled - now
+        if delay > 0:
+            abort = current_abort()
+            if abort is not None:
+                abort.sleep(delay)
+            else:
+                time.sleep(delay)
+
+    def _apply_cooldown(self, seconds: float | None) -> None:
+        if seconds is None:
+            return
+        with self._request_lock:
+            self._next_request_at = max(
+                self._next_request_at,
+                time.monotonic() + max(0.0, seconds),
+            )
+
+    def _mark_model_rate_limited(self, model: str, seconds: float | None) -> None:
+        cooldown = seconds if seconds is not None else 60.0
+        with self._request_lock:
+            self._model_unavailable_until[model] = max(
+                self._model_unavailable_until.get(model, 0.0),
+                time.monotonic() + max(1.0, cooldown),
+            )
 
 
 def _normalize(raw: dict[str, Any]) -> dict[str, Any]:

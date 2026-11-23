@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -13,6 +14,7 @@ from oc_worker.agent import build_implementation_brief, load_context_payload
 from oc_worker.cli import analyze_file
 from oc_worker.config import Settings, load_local_env
 from oc_worker.models import DetailLevel
+from oc_worker.sandbox import WorkspaceSandbox, roots_from_env
 
 INSTRUCTIONS = """\
 Use OpenContext when a user provides a video, screen recording, or image that
@@ -23,7 +25,6 @@ Treat inferred or uncertain evidence as a hypothesis and preserve evidence IDs.
 
 
 def _settings_for_analysis(offline: bool) -> Settings:
-    load_local_env()
     settings = Settings.from_env()
     if not offline:
         return settings
@@ -36,7 +37,7 @@ def _settings_for_analysis(offline: bool) -> Settings:
     )
 
 
-def build_server() -> MCPServer:
+def build_server(sandbox: WorkspaceSandbox) -> MCPServer:
     server = MCPServer(
         "opencontext",
         title="OpenContext",
@@ -52,10 +53,12 @@ def build_server() -> MCPServer:
         task: str | None = None,
     ) -> str:
         """Turn an existing OpenContext JSON result into an implementation brief."""
-        payload = load_context_payload(context_path)
+        context = sandbox.context_file(context_path)
+        payload = load_context_payload(context)
+        repository = sandbox.repository(repository_path) if repository_path else None
         return build_implementation_brief(
             payload,
-            repository=repository_path,
+            repository=repository,
             task=task,
         )
 
@@ -64,11 +67,10 @@ def build_server() -> MCPServer:
         repository_path: str | None = None,
         task: str | None = None,
         detail_level: str = "MEDIUM",
-        offline: bool = False,
+        offline: bool = True,
     ) -> str:
-        media = Path(media_path).expanduser().resolve()
-        if not media.is_file():
-            raise ValueError(f"Media path is not a file: {media}")
+        media = sandbox.media_file(media_path)
+        repository = sandbox.repository(repository_path) if repository_path else None
         settings = _settings_for_analysis(offline)
         _markdown, payload = analyze_file(
             media,
@@ -77,7 +79,7 @@ def build_server() -> MCPServer:
         )
         return build_implementation_brief(
             payload,
-            repository=repository_path,
+            repository=repository,
             task=task,
         )
 
@@ -87,7 +89,7 @@ def build_server() -> MCPServer:
         repository_path: str | None = None,
         task: str | None = None,
         detail_level: str = "MEDIUM",
-        offline: bool = False,
+        offline: bool = True,
     ) -> str:
         """Analyze a local video or image and return an evidence-linked brief."""
         return _analyze_local_media(
@@ -104,7 +106,7 @@ def build_server() -> MCPServer:
         repository_path: str | None = None,
         task: str | None = None,
         detail_level: str = "MEDIUM",
-        offline: bool = False,
+        offline: bool = True,
     ) -> str:
         """Analyze a local video and return an evidence-linked brief."""
         return _analyze_local_media(
@@ -121,7 +123,7 @@ def build_server() -> MCPServer:
         repository_path: str | None = None,
         task: str | None = None,
         detail_level: str = "MEDIUM",
-        offline: bool = False,
+        offline: bool = True,
     ) -> str:
         """Analyze a local image and return an evidence-linked brief."""
         return _analyze_local_media(
@@ -135,7 +137,7 @@ def build_server() -> MCPServer:
     @server.tool()
     def context_evidence(context_path: str, limit: int = 50) -> str:
         """Return the evidence ledger from an OpenContext JSON result."""
-        payload = load_context_payload(context_path)
+        payload = load_context_payload(sandbox.context_file(context_path))
         evidence = payload.get("evidence") or []
         bounded = max(1, min(int(limit), 200))
         return json.dumps(evidence[:bounded], ensure_ascii=False, indent=2)
@@ -143,8 +145,28 @@ def build_server() -> MCPServer:
     return server
 
 
-def main() -> None:
-    build_server().run("stdio")
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(prog="opencontext-mcp")
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        help="Load configuration from this explicit .env file (trusted path only).",
+    )
+    parser.add_argument(
+        "--workspace",
+        action="append",
+        type=Path,
+        default=[],
+        help="Allow file access beneath this root (repeatable).",
+    )
+    args = parser.parse_args(argv)
+    load_local_env(args.env_file)
+    roots = [*args.workspace, *roots_from_env()]
+    if not roots:
+        parser.error(
+            "at least one --workspace or OPENCONTEXT_WORKSPACE_ROOTS value is required"
+        )
+    build_server(WorkspaceSandbox(roots)).run("stdio")
 
 
 if __name__ == "__main__":

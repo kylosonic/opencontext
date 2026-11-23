@@ -125,3 +125,24 @@ def test_context_loader_rejects_incomplete_results(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="evidence ledger"):
         load_context_payload(path)
+
+
+def test_repository_scan_ignores_symlinked_special_files(tmp_path: Path) -> None:
+    (tmp_path / "package.json").symlink_to("/dev/zero")
+    (tmp_path / "app.py").write_text("print('safe')", encoding="utf-8")
+
+    profile = detect_repository_profile(tmp_path)
+
+    assert profile is not None
+    assert "Python" in profile.languages
+
+
+def test_repository_scan_ignores_non_object_dependencies(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": ["not", "an", "object"]}), encoding="utf-8"
+    )
+
+    profile = detect_repository_profile(tmp_path)
+
+    assert profile is not None
+    assert "Node.js" in profile.technologies

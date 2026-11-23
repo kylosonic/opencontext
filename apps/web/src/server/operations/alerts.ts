@@ -55,6 +55,7 @@ export type JobSignal = {
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;
+  stageStates?: unknown;
 };
 
 export type AlertDatabase = {
@@ -105,9 +106,16 @@ export async function evaluateOperations(
     database.job.findMany({
       where: {
         OR: [
-          { createdAt: { gt: from } },
-          { updatedAt: { gt: from } },
-          { completedAt: { gt: from } },
+          // Queue and running/expired jobs are never hidden by a time window:
+          // a multi-day outage must remain visible until an operator fixes it.
+          { status: { in: [...RUNNING_STATUSES, "QUEUED"] } },
+          {
+            status: { in: [...TERMINAL_STATUSES] },
+            OR: [
+              { completedAt: { gte: failureFrom } },
+              { completedAt: null, updatedAt: { gte: failureFrom } },
+            ],
+          },
         ],
       },
       select: {
@@ -118,6 +126,7 @@ export async function evaluateOperations(
         createdAt: true,
         updatedAt: true,
         completedAt: true,
+        stageStates: true,
       },
     }),
     database.rateLimitBucket.findMany({
@@ -134,11 +143,16 @@ export async function evaluateOperations(
       (RUNNING_STATUSES as readonly string[]).includes(job.status) &&
       isActiveLease(job, now),
   );
+  const stalled = jobs.filter(
+    (job) =>
+      (RUNNING_STATUSES as readonly string[]).includes(job.status) &&
+      !isActiveLease(job, now),
+  );
+  const backlog = [...queued, ...stalled];
   const terminalFailures = jobs.filter(
     (job) =>
       (job.status === "FAILED" || job.status === "PARTIAL") &&
-      job.completedAt !== null &&
-      job.completedAt > failureFrom,
+      (job.completedAt ?? job.updatedAt) >= failureFrom,
   );
   const active = jobs.filter((job) => isActiveLease(job, now));
   const newestClaim = active.reduce<Date | null>(
@@ -168,7 +182,7 @@ export async function evaluateOperations(
       },
       null,
     );
-  const oldestQueuedAt = queued.reduce<Date | null>(
+  const oldestQueuedAt = backlog.reduce<Date | null>(
     (oldest, job) => (!oldest || job.createdAt < oldest ? job.createdAt : oldest),
     null,
   );
@@ -181,7 +195,7 @@ export async function evaluateOperations(
     ? roundedMinutes(now.getTime() - workerHeartbeatAt.getTime())
     : null;
   if (
-    queued.length > 0 &&
+    backlog.length > 0 &&
     (heartbeatAgeMinutes === null ||
       heartbeatAgeMinutes > thresholds.claimAgeMinutes)
   ) {
@@ -207,7 +221,8 @@ export async function evaluateOperations(
   }
 
   for (const job of running) {
-    const runtimeMinutes = roundedMinutes(now.getTime() - job.createdAt.getTime());
+    const attemptStartedAt = activeAttemptStartedAt(job) ?? job.updatedAt;
+    const runtimeMinutes = roundedMinutes(now.getTime() - attemptStartedAt.getTime());
     if (runtimeMinutes > thresholds.jobRuntimeMinutes) {
       alerts.push({
         code: "JOB_STUCK",
@@ -248,4 +263,22 @@ export async function evaluateOperations(
     lastWorkerClaimAt: lastWorkerClaimAt?.toISOString() ?? null,
     alerts,
   };
+}
+
+/** Read the current running stage's start without relying on job createdAt. */
+function activeAttemptStartedAt(job: JobSignal): Date | null {
+  if (!Array.isArray(job.stageStates)) {
+    return null;
+  }
+  let latest: Date | null = null;
+  for (const value of job.stageStates) {
+    if (!value || typeof value !== "object") continue;
+    const state = value as { status?: unknown; startedAt?: unknown };
+    if (state.status !== "RUNNING" || typeof state.startedAt !== "string") continue;
+    const startedAt = new Date(state.startedAt);
+    if (!Number.isNaN(startedAt.getTime()) && (!latest || startedAt > latest)) {
+      latest = startedAt;
+    }
+  }
+  return latest;
 }

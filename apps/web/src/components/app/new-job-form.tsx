@@ -161,6 +161,7 @@ export function NewJobForm() {
       setFiles([]);
       setPhase("idle");
       setError({ code: "CLIENT_VALIDATION", message: invalid.message });
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
     const valid = checks.filter(
@@ -173,6 +174,7 @@ export function NewJobForm() {
         code: "CLIENT_VALIDATION",
         message: `Choose up to ${MAX_IMAGE_COUNT} images per analysis`,
       });
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
     if (valid.length > 1 && valid.some((check) => check.kind !== "image")) {
@@ -182,6 +184,7 @@ export function NewJobForm() {
         code: "CLIENT_VALIDATION",
         message: "Multiple-file jobs accept images only. Upload a video or PDF by itself.",
       });
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
     setError(null);
@@ -191,8 +194,8 @@ export function NewJobForm() {
     setPhase("ready");
   }
 
-  async function startUpload(): Promise<void> {
-    if (files.length === 0 || phase !== "ready" || uploading) return;
+  async function startUpload(retry = false): Promise<void> {
+    if (files.length === 0 || (!retry && phase !== "ready") || uploading) return;
     const attempt = ++attemptRef.current;
     setError(null);
     setPhase("uploading");
@@ -457,7 +460,7 @@ export function NewJobForm() {
         </p>
       )}
 
-      {phase === "error" && error && error.code !== "UNAUTHORIZED" && (
+      {error && error.code !== "UNAUTHORIZED" && (
         <div
           role="alert"
           className="rounded-lg border border-err-bg bg-err-bg/60 px-4 py-3 text-sm text-err"
@@ -522,7 +525,7 @@ export function NewJobForm() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              onClick={startUpload}
+              onClick={() => void startUpload()}
               disabled={phase !== "ready"}
               className="min-w-40"
             >
@@ -547,7 +550,7 @@ export function NewJobForm() {
               {files.length > 1 ? "Remove files" : "Remove file"}
             </Button>
             {phase === "error" && (
-              <Button variant="secondary" size="sm" onClick={startUpload}>
+              <Button variant="secondary" size="sm" onClick={() => void startUpload(true)}>
                 Try upload again
               </Button>
             )}

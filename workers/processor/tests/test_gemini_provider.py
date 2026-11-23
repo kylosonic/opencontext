@@ -67,9 +67,7 @@ def test_gemini_sends_native_inline_image_and_normalizes_observation() -> None:
     assert parts[0]["inlineData"]["mimeType"] == "image/jpeg"
     assert base64.b64decode(parts[0]["inlineData"]["data"]) == b"jpeg-bytes"
     assert "reference.jpg" in parts[1]["text"]
-    assert seen["body"]["generationConfig"]["thinkingConfig"] == {
-        "thinkingLevel": "low"
-    }
+    assert "thinkingConfig" not in seen["body"]["generationConfig"]
     assert observation["sceneTitle"] == "Checkout"
     assert observation["visibleText"] == ["Order 1042", "Pay now"]
     assert observation["designObservations"] == {"layout": "Card"}
@@ -94,3 +92,28 @@ def test_gemini_missing_candidate_is_transient() -> None:
 
     with pytest.raises(TransientFailure):
         _provider(lambda _request: response).analyze(b"frame", {})
+
+
+def test_gemini_skips_thought_parts_and_uses_the_visible_answer() -> None:
+    answer = json.dumps({"certainty": "OBSERVED", "sceneTitle": "Answer"})
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {"thought": True, "text": "private reasoning"},
+                                {"text": answer},
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    observation = _provider(handler).analyze(b"frame", {})
+
+    assert observation["sceneTitle"] == "Answer"

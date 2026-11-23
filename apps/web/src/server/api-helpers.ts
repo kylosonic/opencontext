@@ -1,8 +1,13 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { workerApiToken } from "@opencontext/config";
+import { isStrongSecret, workerApiToken } from "@opencontext/config";
 import { ERROR_STATUS, type ErrorCode } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  type RateLimitResult as ConsumedRateLimitResult,
+} from "@/server/security/rate-limit";
 
 /** Worker id header carried by every job-scoped worker request. */
 export const WORKER_ID_HEADER = "x-worker-id";
@@ -29,7 +34,7 @@ export function errorResponse(
  */
 export function verifyWorkerToken(request: Request): boolean {
   const expected = workerApiToken();
-  if (!expected) {
+  if (!isStrongSecret(expected, 16)) {
     return false;
   }
   const header = request.headers.get("authorization") ?? "";
@@ -37,13 +42,13 @@ export function verifyWorkerToken(request: Request): boolean {
   if (!match) {
     return false;
   }
-  return safeEqual(match[1], expected);
+  return safeEqual(match[1], expected!.trim());
 }
 
 /** Bearer-token check for the read-only operations alert endpoint. */
 export function verifyOpsToken(request: Request): boolean {
   const expected = process.env.OPS_API_TOKEN?.trim() ?? "";
-  if (!expected) {
+  if (!isStrongSecret(expected, 16)) {
     return false;
   }
   const header = request.headers.get("authorization") ?? "";
@@ -52,25 +57,29 @@ export function verifyOpsToken(request: Request): boolean {
 }
 
 function safeEqual(candidate: string, expected: string): boolean {
-  const a = Buffer.from(candidate, "utf8");
-  const b = Buffer.from(expected, "utf8");
-  if (a.length !== b.length) {
-    return false;
-  }
+  // Fixed-width digests avoid leaking the configured token length through
+  // timingSafeEqual's required equal-buffer-length check.
+  const a = createHash("sha256").update(candidate.trim(), "utf8").digest();
+  const b = createHash("sha256").update(expected, "utf8").digest();
   return timingSafeEqual(a, b);
 }
 
-/** Read the worker id from the header (or body/query for convenience). */
+/** Read and validate the worker id from the header (or body/query). */
 export function workerIdOf(request: Request, body?: { workerId?: string }): string | null {
   const fromHeader = request.headers.get(WORKER_ID_HEADER);
-  if (fromHeader) {
-    return fromHeader;
-  }
-  if (body?.workerId) {
-    return body.workerId;
-  }
+  if (fromHeader) return validWorkerId(fromHeader);
+  if (body?.workerId) return validWorkerId(body.workerId);
   const url = new URL(request.url);
-  return url.searchParams.get("workerId");
+  return validWorkerId(url.searchParams.get("workerId"));
+}
+
+/** Worker ids are also used as bounded database-rate-limit keys. */
+function validWorkerId(value: string | null): string | null {
+  if (value === null) return null;
+  const normalized = value.trim();
+  return /^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$/.test(normalized)
+    ? normalized
+    : null;
 }
 
 /**
@@ -87,7 +96,12 @@ export async function checkClaim(jobId: string, workerId: string | null): Promis
   if (!job) {
     return { kind: "NOT_FOUND" };
   }
-  if (!workerId || job.claimedBy !== workerId) {
+  if (
+    !workerId ||
+    job.claimedBy !== workerId ||
+    !job.leaseUntil ||
+    job.leaseUntil.getTime() <= Date.now()
+  ) {
     return { kind: "NOT_CLAIMED" };
   }
   return { kind: "OK", job };
@@ -100,7 +114,88 @@ export async function withErrorHandling(
   try {
     return await fn();
   } catch (error) {
+    if ((error as { code?: unknown }).code === "LEASE_LOST") {
+      return errorResponse(
+        "WORKER_UNAUTHORIZED",
+        "This worker no longer holds the job lease; stop and claim work again",
+      );
+    }
     console.error("Unhandled API error:", error);
     return errorResponse("INTERNAL", "Something went wrong on our side");
   }
+}
+
+export type JsonBodyResult =
+  | { ok: true; value: unknown }
+  | { ok: false; reason: "TOO_LARGE" | "INVALID" };
+
+/** Read JSON from the request stream with a real byte cap (not only Content-Length). */
+export async function readJsonBody(
+  request: Request,
+  maxBytes: number,
+): Promise<JsonBodyResult> {
+  if (!isJsonContentType(request.headers.get("content-type"))) {
+    return { ok: false, reason: "INVALID" };
+  }
+  const reader = request.body?.getReader();
+  if (!reader) {
+    return { ok: false, reason: "INVALID" };
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { ok: false, reason: "TOO_LARGE" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, reason: "INVALID" };
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return { ok: false, reason: "INVALID" };
+  }
+}
+
+/** Accept JSON and structured-syntax `+json` media types only. */
+export function isJsonContentType(value: string | null): boolean {
+  if (!value) return false;
+  const mediaType = value.split(";", 1)[0]?.trim().toLowerCase();
+  return (
+    mediaType === "application/json" ||
+    (mediaType?.startsWith("application/") === true &&
+      mediaType.endsWith("+json"))
+  );
+}
+
+/** Apply a route-level limit and return a ready-to-send 429 when blocked. */
+export async function enforceRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<NextResponse | null> {
+  const result: ConsumedRateLimitResult = await consumeRateLimit(key, limit, windowMs);
+  if (result.allowed) return null;
+  return applyRateLimitHeaders(
+    errorResponse(
+      result.unavailable ? "INTERNAL" : "RATE_LIMITED",
+      result.unavailable
+        ? "Service temporarily unavailable — try again shortly"
+        : `Request limit reached — try again in ${result.retryAfterSec} seconds`,
+    ),
+    result,
+  );
 }

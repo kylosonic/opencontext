@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { JobSummary } from "@kylosonic/opencontext-schemas";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
   const [deleting, setDeleting] = useState<JobSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const pollEpochRef = useRef(0);
 
   const hasActive = jobs.some((job) => isActiveStatus(job.status));
 
@@ -77,18 +78,26 @@ export function JobsList({ initialJobs }: JobsListProps) {
   useEffect(() => {
     if (fatal || !hasActive) return;
     let stopped = false;
+    let inFlight = false;
     const tick = async () => {
-      if (stopped) return;
+      if (stopped || inFlight) return;
+      inFlight = true;
+      const epoch = pollEpochRef.current;
       try {
-        setJobs(await fetchJobsList());
+        const next = await fetchJobsList();
+        if (stopped || epoch !== pollEpochRef.current) return;
+        setJobs(next);
         setReconnecting(false);
       } catch (error) {
+        if (stopped || epoch !== pollEpochRef.current) return;
         if (isSignInError(error)) {
           setFatal({ kind: "signed-out" });
           return;
         }
         // B3: the displayed list never changes because of a poll failure.
         setReconnecting(true);
+      } finally {
+        inFlight = false;
       }
     };
     void tick();
@@ -112,6 +121,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
     try {
       await deleteJobRequest(deleting.id);
       // Optimistic removal - no full-list refetch needed.
+      pollEpochRef.current += 1;
       setJobs((current) => current.filter((job) => job.id !== deleting.id));
       setDeleting(null);
     } catch (error) {

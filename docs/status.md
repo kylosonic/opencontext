@@ -8,11 +8,16 @@ about the current Vercel deployment or future releases.
 ## Verified in the repository
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
-  local suite reports 158 passed plus one opt-in S3 integration skip; CI runs
-  that integration and passes all web tests.
-- Worker Ruff and all 306 local tests pass, with four environment-dependent
+  local suite reports 182 passed plus one opt-in S3 integration skip; CI runs
+  that integration and passes all web tests. Shared config contributes eight
+  passing tests and the contract suite contributes two.
+- Worker Ruff and all 323 local tests pass, with four environment-dependent
   skips. Real Tesseract and OpenCode Go vision/audio smoke tests run when their
   binaries or stored credentials and opt-in flags are present.
+- The 429 regression path is covered at both layers: provider tests verify
+  model cool-down/fallback behavior, and queue tests verify that a provider
+  throttle can use its bounded 40-attempt quota budget while ordinary poison
+  jobs still stop at five attempts.
 - A manual local smoke test produced a real Faster Whisper transcript from
   generated speech with no cloud credentials.
 - OpenCode Go `glm-5.3-flash` completed a real hosted-vision analysis of the
@@ -79,19 +84,27 @@ about the current Vercel deployment or future releases.
 - `opencontext evaluate` computes transcript WER/CER, OCR precision/recall/F1,
   and visual keyword recall against a versioned synthetic dataset, while keeping
   fixture baselines, smoke tests, and measured model runs separately labeled.
+- The downloaded media corpus verifies 11 JPEG/PNG/WebP images and two real MP4
+  videos. Every asset passed local offline analysis and `opencontext replay`;
+  a fresh Docker Compose acceptance run then completed one mixed 10-image set,
+  an eleventh standalone photo, and both videos. All four generated exports
+  replayed successfully, and the fixture codec path uses the bundled
+  `imageio-ffmpeg` binary rather than relying on a possibly codec-restricted
+  host build.
 - Python wheel and sdist build; `twine check` passes.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - Prisma 7.10.1 uses driver adapters for SQLite and PostgreSQL; the migration
   chain applies to fresh SQLite and PostgreSQL databases.
-- The production npm audit reports no known vulnerabilities. The full audit,
-  including build and test tooling, still reports development-toolchain
-  findings.
+- The production and full `npm audit` reports currently contain zero known
+  vulnerabilities, including development tooling.
 - Next.js uses the current `proxy.ts` request interception convention.
 - Docker Compose was verified locally with PostgreSQL, web, and worker images;
   generated audio and video completed all five stages at 100%, producing
   evidence-linked Markdown and JSON. An existing model cache was migrated to
-  the non-root worker and verified writable. The worker uses bundled FFmpeg, so
-  the default image does not install Debian multimedia packages.
+  the non-root worker and verified writable. Both the worker model cache and web
+  media volume are initialized for their non-root owners. The worker uses
+  bundled FFmpeg, so the default image does not install Debian multimedia
+  packages.
 - The worker entrypoint has a long-running supervisor with signal-driven
   graceful stop, bounded shutdown, retry backoff for API outages, and a
   per-job processing deadline. Focused tests cover an in-flight claim, active
@@ -141,13 +154,13 @@ the non-root worker container and the Compose upload-to-export flow.
   accuracy, noisy audio performance, or behavior on real application
   recordings.
 - The live media acceptance corpus contains downloaded photographs and trailer
-  footage, not a long real application walkthrough or a representative sample
-  of user-uploaded codecs.
+  footage, not a long real application walkthrough or a statistically
+  representative sample of user-uploaded codecs and screen recordings.
 - `opencontext-video==0.1.1` is published on PyPI and
   `@kylosonic/opencontext-schemas@0.1.1` is published on npm. Both use Trusted
   Publishing through their protected release workflows.
-- The full npm audit still reports development-toolchain findings; the
-  production dependency audit reports none.
+- `npm audit` reports zero known vulnerabilities at the time of verification;
+  dependency advisories must still be rechecked on every release.
 - No sustained high-traffic test against the deployed HTTP service or
   independent penetration test exists.
 - A dedicated persistent worker deployment and runtime alerts have not been

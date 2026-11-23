@@ -35,6 +35,10 @@ const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64",
 );
+const VALID_MP4_PREFIX = new Uint8Array([
+  0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70,
+  0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x00, 0x00,
+]);
 
 function asUser(userId: string): void {
   authMock.auth.mockResolvedValue({ user: { id: userId, name: "Test User" } });
@@ -111,7 +115,7 @@ describe("direct upload + list", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filename: "banking demo (final).mp4",
-          sizeBytes: 4,
+          sizeBytes: VALID_MP4_PREFIX.length,
           mime: "video/mp4",
           detailLevel: "HIGH",
         }),
@@ -136,9 +140,9 @@ describe("direct upload + list", () => {
         method: "PUT",
         headers: {
           "Content-Type": intent.headers["Content-Type"],
-          "Content-Length": "4",
+          "Content-Length": String(VALID_MP4_PREFIX.length),
         },
-        body: new Uint8Array([1, 2, 3, 4]),
+        body: VALID_MP4_PREFIX,
       }),
       { params: Promise.resolve({ id: intent.uploadId }) },
     );
@@ -160,7 +164,7 @@ describe("direct upload + list", () => {
     const row = await prisma.job.findUnique({ where: { id: summary.id } });
     expect(row?.sourceKey).toBe(`jobs/${summary.id}/source.mp4`);
     expect(await storage.get(row?.sourceKey as string)).toEqual(
-      new Uint8Array([1, 2, 3, 4]),
+      VALID_MP4_PREFIX,
     );
   });
 
@@ -347,6 +351,49 @@ describe("direct upload + list", () => {
     expect(
       await prisma.uploadIntent.findUnique({ where: { id: intent.uploadId } }),
     ).not.toBeNull();
+  });
+
+  it("removes an expired intent's stored object before pruning its row", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "expired-cleanup.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+    const intent = (await intentResponse.json()) as { uploadId: string };
+    const row = await prisma.uploadIntent.findUniqueOrThrow({
+      where: { id: intent.uploadId },
+    });
+    await storage.put(row.tempKey, new Blob([new Uint8Array([1, 2, 3, 4])]).stream(), {
+      sizeBytes: 4,
+    });
+    await prisma.uploadIntent.update({
+      where: { id: row.id },
+      data: { expiresAt: new Date(Date.now() - 1_000) },
+    });
+
+    const next = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "next.mp4",
+          sizeBytes: 4,
+          mime: "video/mp4",
+        }),
+      }),
+    );
+
+    expect(next.status).toBe(201);
+    expect(await prisma.uploadIntent.findUnique({ where: { id: row.id } })).toBeNull();
+    expect(await storage.get(row.tempKey)).toBeNull();
   });
 
   it("rejects an expired intent with 410 UPLOAD_EXPIRED", async () => {

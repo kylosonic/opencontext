@@ -12,6 +12,7 @@ import pytest
 from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.providers.text.ollama import OllamaTextProvider
 from oc_worker.providers.text.openai_compatible import OpenAICompatibleTextProvider
+from oc_worker.providers.transcription.audio_chunks import bounded_audio_chunks
 from oc_worker.providers.transcription.openai_audio import (
     OpenAIAudioChatTranscriptionProvider,
 )
@@ -178,6 +179,71 @@ def test_provider_429_caps_a_long_retry_after_at_fifteen_minutes() -> None:
     assert exc_info.value.retry_after_seconds == 900.0
 
 
+def test_provider_429_without_retry_after_uses_a_conservative_cooldown() -> None:
+    provider = _openai_vision(_client(httpx.Response(429)))
+
+    with pytest.raises(TransientFailure) as exc_info:
+        provider.analyze(b"frame", {"timestampSec": 0})
+
+    assert exc_info.value.rate_limited is True
+    assert exc_info.value.retry_after_seconds == 60.0
+
+
+def test_opencode_vision_uses_a_fallback_model_after_429() -> None:
+    models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model"]
+        models.append(model)
+        if model == "primary-free":
+            return httpx.Response(429)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps({"sceneTitle": "Fallback"})}}]},
+        )
+
+    provider = OpenAICompatibleVisionProvider(
+        base_url="https://opencode.ai/inference/go/openai/v1",
+        api_key="secret",
+        model="primary-free",
+        fallback_models=("backup-model",),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    observation = provider.analyze(b"frame", {"timestampSec": 0})
+
+    assert models == ["primary-free", "backup-model"]
+    assert observation["sceneTitle"] == "Fallback"
+    assert observation["model"] == "backup-model"
+
+
+def test_rate_limited_primary_is_skipped_for_later_frames() -> None:
+    models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model"]
+        models.append(model)
+        if model == "primary-free":
+            return httpx.Response(429)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps({"sceneTitle": "Fallback"})}}]},
+        )
+
+    provider = OpenAICompatibleVisionProvider(
+        base_url="https://opencode.ai/inference/go/openai/v1",
+        api_key="secret",
+        model="primary-free",
+        fallback_models=("backup-model",),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    provider.analyze(b"frame-one", {"timestampSec": 0})
+    provider.analyze(b"frame-two", {"timestampSec": 1})
+
+    assert models == ["primary-free", "backup-model", "backup-model"]
+
+
 def test_opencode_headers_and_string_fields_are_normalized() -> None:
     seen: dict[str, str] = {}
 
@@ -270,6 +336,45 @@ def _write_wav(path: Path) -> None:
         output.writeframes(b"\0\0" * 800)
 
 
+def test_long_wav_is_split_below_the_provider_limit(tmp_path: Path) -> None:
+    audio = tmp_path / "speech.wav"
+    with wave.open(str(audio), "wb") as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(8_000)
+        output.writeframes(b"\0\0" * 8_000)
+
+    with bounded_audio_chunks(audio, max_bytes=4096) as chunks:
+        assert len(chunks) > 1
+        assert all(chunk.path.stat().st_size <= 4096 for chunk in chunks)
+        assert chunks[0].offset_seconds == 0.0
+        assert all(
+            later.offset_seconds > earlier.offset_seconds
+            for earlier, later in zip(chunks[:-1], chunks[1:], strict=True)
+        )
+
+        requests: list[int] = []
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            requests.append(1)
+            return httpx.Response(
+                200,
+                json={"segments": [{"start": 0, "end": 0.05, "text": "chunk"}]},
+            )
+
+        provider = OpenAICompatibleTranscriptionProvider(
+            base_url="http://provider.test/v1",
+            api_key="secret",
+            model="whisper-test",
+            client=httpx.Client(transport=httpx.MockTransport(handler)),
+            max_request_bytes=4096,
+        )
+        segments = provider.transcribe(str(audio))
+
+    assert len(requests) == len(chunks)
+    assert [segment.start for segment in segments] == [chunk.offset_seconds for chunk in chunks]
+
+
 def test_openai_audio_chat_requests_wav_and_disables_reasoning(
     tmp_path: Path,
 ) -> None:
@@ -309,7 +414,7 @@ def test_openai_audio_chat_requests_wav_and_disables_reasoning(
     assert segments[0].text == "Hello from OpenContext."
 
 
-def test_openai_audio_chat_accepts_reasoning_only_response(tmp_path: Path) -> None:
+def test_openai_audio_chat_never_uses_chain_of_thought_as_transcript(tmp_path: Path) -> None:
     audio = tmp_path / "speech.wav"
     _write_wav(audio)
 
@@ -335,7 +440,7 @@ def test_openai_audio_chat_accepts_reasoning_only_response(tmp_path: Path) -> No
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
 
-    assert provider.transcribe(str(audio))[0].text == "Spoken words."
+    assert provider.transcribe(str(audio)) == []
 
 
 def test_openai_audio_chat_omits_opencode_reasoning_for_other_endpoints(
@@ -364,7 +469,7 @@ def test_openai_audio_chat_omits_opencode_reasoning_for_other_endpoints(
     assert "reasoning_effort" not in seen["payload"]
 
 
-def test_openai_audio_chat_rejects_empty_transcript(tmp_path: Path) -> None:
+def test_openai_audio_chat_treats_silence_as_an_empty_transcript(tmp_path: Path) -> None:
     audio = tmp_path / "speech.wav"
     _write_wav(audio)
 
@@ -381,5 +486,4 @@ def test_openai_audio_chat_rejects_empty_transcript(tmp_path: Path) -> None:
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
 
-    with pytest.raises(TransientFailure, match="empty transcript"):
-        provider.transcribe(str(audio))
+    assert provider.transcribe(str(audio)) == []

@@ -17,6 +17,13 @@ const { auth } = NextAuth(authConfig);
 export const proxy = auth((req) => {
   const { pathname, search } = req.nextUrl;
 
+  if (!safeMutation(req.method, req.headers, req.nextUrl.host)) {
+    return NextResponse.json(
+      { error: { code: "FORBIDDEN", message: "Cross-site request rejected" } },
+      { status: 403 },
+    );
+  }
+
   if (!req.auth) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
@@ -36,3 +43,26 @@ export const proxy = auth((req) => {
 export const config = {
   matcher: ["/app/:path*", "/api/jobs/:path*", "/api/uploads/:path*"],
 };
+
+/** Browser mutations must be same-origin; non-browser clients omit these headers. */
+export function safeMutation(
+  method: string,
+  headers: Headers,
+  requestHost: string,
+): boolean {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase())) {
+    return true;
+  }
+  const fetchSite = headers.get("sec-fetch-site")?.trim().toLowerCase();
+  if (fetchSite === "cross-site") return false;
+
+  const origin = headers.get("origin");
+  if (!origin) return true;
+  try {
+    const expectedHost =
+      headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim() || requestHost;
+    return new URL(origin).host.toLowerCase() === expectedHost.toLowerCase();
+  } catch {
+    return false;
+  }
+}

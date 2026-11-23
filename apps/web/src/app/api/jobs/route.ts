@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { listJobs } from "@/server/jobs";
 import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  applyRateLimitHeaders,
+  consumeRateLimit,
+  RATE_LIMITS,
+} from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,7 +23,18 @@ export async function GET(): Promise<Response> {
     if (!session?.user?.id) {
       return errorResponse("UNAUTHORIZED", "Sign in required");
     }
+    const limit = await consumeRateLimit(
+      `jobs-read:${session.user.id}`,
+      RATE_LIMITS.jobsRead.limit,
+      RATE_LIMITS.jobsRead.windowMs,
+    );
+    if (!limit.allowed) {
+      return applyRateLimitHeaders(
+        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
+        limit,
+      );
+    }
     const jobs = await listJobs(session.user.id);
-    return NextResponse.json(jobs);
+    return applyRateLimitHeaders(NextResponse.json(jobs), limit);
   });
 }

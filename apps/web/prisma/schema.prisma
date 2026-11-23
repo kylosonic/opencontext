@@ -106,6 +106,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -114,6 +115,8 @@ model Session {
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -122,6 +125,7 @@ model VerificationToken {
   expires    DateTime
 
   @@id([identifier, token])
+  @@index([expires])
 }
 
 // ─── Pipeline ────────────────────────────────────────────────────────────────
@@ -178,6 +182,10 @@ model Job {
 
   @@index([userId, createdAt])
   @@index([status, availableAt])
+  @@index([completedAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([leaseUntil])
 }
 
 model Media {
@@ -194,6 +202,7 @@ model Media {
   createdAt    DateTime  @default(now())
 
   @@index([jobId, kind])
+  @@unique([jobId, key])
 }
 
 model UploadIntent {
@@ -210,6 +219,7 @@ model UploadIntent {
   createdAt   DateTime    @default(now())
 
   @@index([userId, expiresAt])
+  @@index([expiresAt])
 }
 
 model TranscriptSegment {
@@ -223,6 +233,7 @@ model TranscriptSegment {
   createdAt DateTime @default(now())
 
   @@index([jobId])
+  @@index([jobId, start])
 }
 
 model VisualObservation {

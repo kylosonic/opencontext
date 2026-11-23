@@ -68,8 +68,8 @@ Status: IMPLEMENTED — DIRECT UPLOAD PATH TESTED
 ## B5b — Upload rate budgets
 
 - **Actor:** signed-in user
-- **Expected outcome:** one maximum-size 10-image set uses 10 of 120 upload-intent slots per 10 minutes, leaving room for retries and multiple jobs. Upload completion allows 60 requests per minute, and cancellation allows 120 per minute.
-- **Visible outcome:** success and failure responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `X-RateLimit-Backend`. A genuine quota rejection returns 429 with `Retry-After`; a limiter backend outage never masquerades as a client quota rejection.
+- **Expected outcome:** one maximum-size 10-image set uses 10 of 240 upload-intent slots per 10 minutes, leaving room for retries and multiple jobs. Upload completion allows 120 requests per minute; cancellation and upload-body requests allow 240 per minute.
+- **Visible outcome:** success and failure responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`. A genuine quota rejection returns 429 with `Retry-After`; a limiter backend outage never masquerades as a client quota rejection or leaks internal backend state.
 - **Acceptance:** upload or retry multiple 10-image sets without reaching a one-set lockout; exhaust the documented budget with an isolated test identity and verify the 429 response exposes the reset time and quota headers.
 
 ## B6 — Job display name

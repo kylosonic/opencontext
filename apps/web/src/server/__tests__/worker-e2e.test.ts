@@ -31,18 +31,21 @@ import {
 } from "@/server/worker";
 import { claimJob, completeJob, failJob } from "@/server/queue";
 import { createUser, resetDatabase, resetStorage } from "./helpers";
-import { findWorkerPython, REPO_ROOT, workerPythonEnv } from "./python-process";
+import {
+  findFixtureFfmpeg,
+  findWorkerPython,
+  REPO_ROOT,
+  workerPythonEnv,
+} from "./python-process";
 import { resetRateLimits } from "@/server/security/rate-limit";
 
 const python = findWorkerPython();
-const ffmpeg = (() => {
-  try {
-    execFileSync("ffmpeg", ["-version"], { stdio: "ignore", timeout: 5_000 });
-    return true;
-  } catch {
-    return false;
-  }
-})();
+const ffmpeg = findFixtureFfmpeg();
+
+function requireFfmpeg(): string {
+  if (!ffmpeg) throw new Error("FFmpeg with libx264 is required");
+  return ffmpeg;
+}
 
 type JsonBody = Record<string, unknown>;
 
@@ -200,6 +203,7 @@ function createWorkerServer() {
 
       respond(res, 404, { error: { code: "NOT_FOUND", message: "unknown route" } });
     } catch (error) {
+      console.error("worker e2e server error", error);
       respond(res, 500, {
         error: { code: "INTERNAL", message: error instanceof Error ? error.message : String(error) },
       });
@@ -209,7 +213,7 @@ function createWorkerServer() {
 
 function generateFixture(output: string): void {
   execFileSync(
-    "ffmpeg",
+    requireFfmpeg(),
     [
       "-y",
       "-hide_banner",
@@ -240,7 +244,7 @@ function generateFixture(output: string): void {
 
 function generateImage(output: string, color = "white"): void {
   execFileSync(
-    "ffmpeg",
+    requireFfmpeg(),
     [
       "-y",
       "-hide_banner",

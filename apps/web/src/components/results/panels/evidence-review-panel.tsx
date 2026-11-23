@@ -14,7 +14,7 @@ export interface EvidenceReviewPanelProps {
   jobId: string;
   evidence: EvidenceRecord[];
   demo?: boolean;
-  onSeek?: (timestampSec: number) => void;
+  onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   onSaved: (result: { markdown: string; json: unknown }) => void;
 }
 
@@ -154,7 +154,7 @@ function EvidenceReviewItem({
   jobId: string;
   evidence: EvidenceRecord;
   demo: boolean;
-  onSeek?: (timestampSec: number) => void;
+  onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   onSaved: (result: { markdown: string; json: unknown }) => void;
 }) {
   const [note, setNote] = useState(evidence.review?.note ?? "");
@@ -180,6 +180,10 @@ function EvidenceReviewItem({
           : {}),
       });
       onSaved(result);
+      if (status === "UNREVIEWED") {
+        setNote("");
+        setCorrectedText("");
+      }
       setSaved(true);
     } catch (cause) {
       setError(
@@ -232,7 +236,11 @@ function EvidenceReviewItem({
           <button
             type="button"
             className="ml-auto rounded-sm font-mono text-xs text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            onClick={() => onSeek(evidence.timestampSec)}
+            onClick={() =>
+              evidence.source.assetIndex === undefined
+                ? onSeek(evidence.timestampSec)
+                : onSeek(evidence.timestampSec, evidence.source.assetIndex)
+            }
             aria-label={`Jump to evidence ${evidence.id} at ${formatClock(evidence.timestampSec)}, ${reviewLabel}`}
           >
             {formatClock(evidence.timestampSec)} ↗

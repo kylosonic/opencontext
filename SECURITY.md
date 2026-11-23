@@ -4,10 +4,13 @@
 
 | Version | Supported |
 | --- | --- |
-| `main` (unreleased MVP) | Active development |
+| `0.1.x` | Supported |
+| `main` | Active development |
 
-No stable releases exist yet. The MVP is under active development; security
-fixes land on `main` and are included in the first release.
+Security fixes land on `main` and are included in the next `0.1.x` release.
+The hosted deployment at
+[opencontext-swart.vercel.app](https://opencontext-swart.vercel.app) is a
+working preview, not a production SLA.
 
 ## Reporting a vulnerability
 
@@ -29,11 +32,11 @@ Include:
 - A coordinated disclosure timeline (default 90 days)
 - Credit in the release notes unless you prefer anonymity
 
-## Out of scope (for now)
+## Out of scope
 
 - No bug bounty program is offered at this time
-- The public site is a preview without a complete processing backend. Do not
-  test live infrastructure without written authorization.
+- Do not test live infrastructure, overload provider quotas, upload sensitive
+  media, or attempt destructive traffic without written authorization.
 
 ## Security best practices for contributors
 

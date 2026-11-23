@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "@/server/api-helpers";
+import { RATE_LIMITS, requestRateKey } from "@/server/security/rate-limit";
 import { DEMO_RESULT } from "@/server/demo";
 
 /**
@@ -11,7 +13,13 @@ import { DEMO_RESULT } from "@/server/demo";
  * Zero dependencies: no database, queue, storage, environment variables, or
  * AI credentials. Cacheable; the payload never changes.
  */
-export function GET() {
+export async function GET(request: Request) {
+  const limited = await enforceRateLimit(
+    requestRateKey(request, "demo-result"),
+    RATE_LIMITS.demo.limit,
+    RATE_LIMITS.demo.windowMs,
+  );
+  if (limited) return limited;
   return NextResponse.json(DEMO_RESULT, {
     headers: {
       "Cache-Control": "public, max-age=300, s-maxage=3600",
