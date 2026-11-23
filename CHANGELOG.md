@@ -25,6 +25,18 @@ All notable changes are documented here. The project follows
 - Active jobs whose worker disappears are claimable again when their lease
   expires. Previously only `QUEUED` rows were reclaimed, so a killed process
   could leave an `ANALYZING` job stuck indefinitely.
+- Replay validation now accepts zero-duration still-image and PDF sources while
+  retaining positive-duration checks for media timelines. All 13 downloaded
+  corpus exports, including 11 images, now validate through `opencontext replay`.
+- OpenCode requests now use an independent session ID per claimed job instead
+  of sharing one process-wide session across every upload.
+- Switched the hosted worker and deployment examples to the current
+  image-capable `hy4-flash-free` model after the shared paid allowance returned
+  429s. A live production smoke run then completed ten JPEG/PNG/WebP photos, a
+  standalone image, a 5-second audio video, and a 52-second audio trailer;
+  every result had nonempty exports and passed `opencontext replay`.
+- Replay now recognizes evidence sourced from multi-image
+  `crossImageFindings`, matching the collection emitted by ordered image jobs.
 - Added reproducible downloaded photo/video smoke coverage across JPEG, PNG,
   WebP, MP4, short and longer video, and an audio-bearing trailer.
 - Refreshed the npm lockfile, moved Next.js to 16.4.6, and pinned the patched

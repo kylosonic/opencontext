@@ -132,7 +132,7 @@ services:
       TRANSCRIPTION_PROVIDER: ${TRANSCRIPTION_PROVIDER:-faster_whisper}
       TRANSCRIPTION_MODEL: ${TRANSCRIPTION_MODEL:-base}
       VISION_PROVIDER: ${VISION_PROVIDER:-openai_compatible}
-      VISION_MODEL: ${VISION_MODEL:-glm-5.3-flash}
+      VISION_MODEL: ${VISION_MODEL:-hy4-flash-free}
       OCR_PROVIDER: ${OCR_PROVIDER:-vision}
       OCR_LANGUAGE: ${OCR_LANGUAGE:-eng}
       TEXT_PROVIDER: template
