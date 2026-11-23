@@ -44,18 +44,51 @@ export const RATE_LIMITS = {
   demo: { limit: 600, windowMs: 60_000 },
 } as const;
 
-/** Stable, non-reversible request key using proxy headers that are safe to trust. */
+function trustedProxyHops(): number {
+  const parsed = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? "1", 10);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 16) : 1;
+}
+
+/** Stable, non-reversible request key using only headers from trusted hops. */
 export function requestRateKey(request: Request, namespace: string): string {
+  const onVercel = process.env.VERCEL === "1";
   const trustProxy =
-    process.env.VERCEL === "1" ||
+    onVercel ||
     /^(?:1|true|yes)$/i.test(process.env.TRUST_PROXY?.trim() ?? "");
-  const forwarded = trustProxy
-    ? request.headers.get("x-vercel-forwarded-for") ??
-      request.headers.get("x-real-ip") ??
-      request.headers.get("x-forwarded-for")
-    : request.headers.get("x-vercel-forwarded-for");
-  const address = forwarded?.split(",")[0]?.trim() || "unknown";
-  const digest = createHash("sha256").update(address).digest("hex").slice(0, 24);
+  let address: string | null = null;
+  if (onVercel) {
+    // Vercel overwrites these platform headers. Do not fall through to the
+    // client-supplied generic X-Forwarded-For/X-Vercel-Forwarded-For path.
+    address =
+      request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip")?.trim() ||
+      null;
+  } else if (trustProxy) {
+    address = request.headers.get("x-real-ip")?.trim() || null;
+    if (!address) {
+      const chain = (request.headers.get("x-forwarded-for") ?? "")
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (chain.length > 0) {
+        // Proxies append to X-Forwarded-For, so the leftmost value is
+        // client-controlled unless the proxy overwrites the header. Select
+        // the hop immediately beyond the configured number of trusted hops.
+        const index = Math.max(0, chain.length - trustedProxyHops());
+        address = chain[index] ?? null;
+      }
+    }
+  }
+
+  // On an unconfigured standalone host no address header is trustworthy.
+  // Authenticated machine routes can still get an independent bound bucket
+  // from their bearer credential, avoiding one global "unknown" bucket.
+  const bearer = request.headers
+    .get("authorization")
+    ?.match(/^Bearer\s+(.+)$/i)?.[1]
+    ?.trim();
+  const identity = address ?? (bearer ? `bearer:${bearer}` : "untrusted-client");
+  const digest = createHash("sha256").update(identity).digest("hex").slice(0, 24);
   return `${namespace}:${digest}`;
 }
 
@@ -64,16 +97,32 @@ export function applyRateLimitHeaders<T extends Response>(
   response: T,
   result: RateLimitResult,
 ): T {
-  response.headers.set("X-RateLimit-Limit", String(result.limit));
-  response.headers.set("X-RateLimit-Remaining", String(result.remaining));
-  response.headers.set(
+  // Fetch's redirect responses expose immutable headers. Rebuild the
+  // response with a mutable header collection instead of mutating in place;
+  // Auth.js commonly returns Response.redirect() for callback errors.
+  const headers = new Headers(response.headers);
+  const setCookieReader = (
+    response.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie;
+  if (setCookieReader) {
+    const cookies = setCookieReader.call(response.headers);
+    headers.delete("set-cookie");
+    for (const cookie of cookies) headers.append("set-cookie", cookie);
+  }
+  headers.set("X-RateLimit-Limit", String(result.limit));
+  headers.set("X-RateLimit-Remaining", String(result.remaining));
+  headers.set(
     "X-RateLimit-Reset",
     String(Math.max(0, Math.ceil(result.resetAt / 1000))),
   );
   if (!result.allowed) {
-    response.headers.set("Retry-After", String(Math.max(1, result.retryAfterSec)));
+    headers.set("Retry-After", String(Math.max(1, result.retryAfterSec)));
   }
-  return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  }) as T;
 }
 
 /**

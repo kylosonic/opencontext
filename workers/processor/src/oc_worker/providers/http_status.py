@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
@@ -9,6 +11,20 @@ from urllib.parse import urlsplit
 import httpx
 
 from oc_worker.errors import PermanentFailure, TransientFailure, check_abort
+
+_provider_session: ContextVar[str | None] = ContextVar(
+    "opencontext_provider_session", default=None
+)
+
+
+@contextmanager
+def provider_session(session_id: str | None):
+    """Scope OpenCode session headers to one job/media analysis call."""
+    token = _provider_session.set(session_id)
+    try:
+        yield
+    finally:
+        _provider_session.reset(token)
 
 
 def openai_compatible_headers(
@@ -19,7 +35,9 @@ def openai_compatible_headers(
     headers = {"Authorization": f"Bearer {api_key}"}
     hostname = (urlsplit(base_url).hostname or "").lower()
     if hostname == "opencode.ai" or hostname.endswith(".opencode.ai"):
-        headers["x-opencode-session"] = session_id or "opencontext-local"
+        headers["x-opencode-session"] = (
+            _provider_session.get() or session_id or "opencontext-local"
+        )
         headers["User-Agent"] = "opencontext-video"
     return headers
 

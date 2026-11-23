@@ -41,3 +41,24 @@ def test_rejects_unsupported_and_special_files(tmp_path: Path) -> None:
         sandbox.media_file("notes.txt")
     with pytest.raises(ValueError, match="regular file"):
         sandbox.context_file(".")
+
+
+def test_outside_existing_and_missing_paths_have_the_same_error(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "existing.png"
+    outside.write_bytes(b"png")
+    sandbox = WorkspaceSandbox([workspace])
+
+    errors: list[str] = []
+    for value in (outside, tmp_path / "missing.png"):
+        with pytest.raises(ValueError) as exc_info:
+            sandbox.media_file(value)
+        errors.append(str(exc_info.value))
+
+    assert errors == [
+        "Path is outside the configured workspace roots",
+        "Path is outside the configured workspace roots",
+    ]

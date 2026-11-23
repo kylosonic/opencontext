@@ -34,10 +34,12 @@ export default function DemoPage() {
   useEffect(() => {
     if (phase !== "running") return;
     let stopped = false;
+    let inFlight = false;
     const startedAt = performance.now();
 
     const timer = window.setInterval(async () => {
-      if (stopped) return;
+      if (stopped || inFlight) return;
+      inFlight = true;
       const elapsedSec = (performance.now() - startedAt) / 1000;
       try {
         const res = await fetch(
@@ -47,6 +49,7 @@ export default function DemoPage() {
           throw new Error(`Progress request failed (HTTP ${res.status})`);
         }
         const data: DemoProgress = await res.json();
+        if (stopped) return;
         setElapsed(elapsedSec);
         setStages(data.stages as StageState[]);
         setProgress(data.progress);
@@ -55,6 +58,7 @@ export default function DemoPage() {
           stopped = true;
           window.clearInterval(timer);
           const resultRes = await fetch("/api/demo/result");
+          if (stopped) return;
           if (!resultRes.ok) {
             throw new Error(`Result request failed (HTTP ${resultRes.status})`);
           }
@@ -62,10 +66,13 @@ export default function DemoPage() {
           setPhase("done");
         }
       } catch (err) {
+        if (stopped) return;
         stopped = true;
         window.clearInterval(timer);
         setError(err instanceof Error ? err.message : "Something went wrong");
         setPhase("error");
+      } finally {
+        inFlight = false;
       }
     }, TICK_MS);
 

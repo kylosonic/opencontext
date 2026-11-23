@@ -1,5 +1,5 @@
 # Self-contained PostgreSQL web image for a container host.
-FROM node:24-bookworm-slim AS base
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
@@ -33,7 +33,8 @@ COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/schemas/package.json packages/schemas/package.json
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev --ignore-scripts \
+  && rm -rf node_modules/@prisma/adapter-better-sqlite3 node_modules/better-sqlite3
 
 FROM base AS runner
 ENV NODE_ENV=production \
@@ -51,4 +52,4 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["sh", "-c", "node scripts/prisma-schema.mjs postgresql && node node_modules/prisma/build/index.js migrate deploy --config apps/web/prisma.postgres.config.ts && exec node apps/web/server.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy --config apps/web/prisma.postgres.config.ts && exec node apps/web/server.js"]

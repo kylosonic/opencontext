@@ -46,6 +46,11 @@ export async function POST(_request: Request, context: RouteContext): Promise<Re
         return errorResponse("FORBIDDEN", "You don't have access to this upload");
       case "EXPIRED":
         return errorResponse("UPLOAD_EXPIRED", "Upload intent has expired");
+      case "IN_PROGRESS":
+        return errorResponse(
+          "UPLOAD_INCOMPLETE",
+          "Upload completion is already in progress",
+        );
       case "INCOMPLETE":
         return errorResponse(
           "UPLOAD_INCOMPLETE",

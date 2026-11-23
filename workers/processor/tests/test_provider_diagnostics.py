@@ -3,13 +3,24 @@
 from __future__ import annotations
 
 import json
+import time
 import wave
 from pathlib import Path
 
 import httpx
 import pytest
 
-from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.errors import (
+    JobAbort,
+    PermanentFailure,
+    ProcessingCancelled,
+    TransientFailure,
+    bind_abort,
+)
+from oc_worker.providers.http_status import (
+    openai_compatible_headers,
+    provider_session,
+)
 from oc_worker.providers.text.ollama import OllamaTextProvider
 from oc_worker.providers.text.openai_compatible import OpenAICompatibleTextProvider
 from oc_worker.providers.transcription.audio_chunks import bounded_audio_chunks
@@ -21,6 +32,23 @@ from oc_worker.providers.transcription.openai_compatible import (
 )
 from oc_worker.providers.vision.ollama import OllamaVisionProvider
 from oc_worker.providers.vision.openai_compatible import OpenAICompatibleVisionProvider
+
+
+def test_provider_session_overrides_shared_opencode_session_header() -> None:
+    base_url = "https://opencode.ai/inference/go/openai/v1"
+    assert (
+        openai_compatible_headers("secret", base_url, "shared-local")[
+            "x-opencode-session"
+        ]
+        == "shared-local"
+    )
+    with provider_session("opencontext-job-42"):
+        assert (
+            openai_compatible_headers("secret", base_url, "shared-local")[
+                "x-opencode-session"
+            ]
+            == "opencontext-job-42"
+        )
 
 
 def _client(response: httpx.Response | Exception) -> httpx.Client:
@@ -242,6 +270,40 @@ def test_rate_limited_primary_is_skipped_for_later_frames() -> None:
     provider.analyze(b"frame-two", {"timestampSec": 1})
 
     assert models == ["primary-free", "backup-model", "backup-model"]
+
+
+def test_rate_limit_cooldown_is_scoped_to_models_not_global_pacing() -> None:
+    provider = OpenAICompatibleVisionProvider(
+        base_url="https://provider.example/v1",
+        api_key="secret",
+        model="only-model",
+        min_request_interval_seconds=0.01,
+        client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    429, headers={"Retry-After": "900"}
+                )
+            )
+        ),
+    )
+
+    with pytest.raises(TransientFailure):
+        provider.analyze(b"frame", {"timestampSec": 0})
+
+    with provider._request_lock:
+        assert provider._next_request_at < time.monotonic() + 1
+        assert provider._model_unavailable_until["only-model"] > time.monotonic() + 800
+
+
+def test_vision_provider_rejects_an_empty_model_list() -> None:
+    with pytest.raises(ValueError, match="at least one model"):
+        OpenAICompatibleVisionProvider(
+            base_url="https://provider.example/v1",
+            api_key="secret",
+            model="   ",
+            fallback_models=(),
+            client=httpx.Client(),
+        )
 
 
 def test_opencode_headers_and_string_fields_are_normalized() -> None:
@@ -487,3 +549,70 @@ def test_openai_audio_chat_treats_silence_as_an_empty_transcript(tmp_path: Path)
     )
 
     assert provider.transcribe(str(audio)) == []
+
+
+def test_openai_audio_chat_splits_provider_text_to_schema_limits(
+    tmp_path: Path,
+) -> None:
+    audio = tmp_path / "speech.wav"
+    _write_wav(audio)
+    transcript = "word " * 10_000
+
+    provider = OpenAIAudioChatTranscriptionProvider(
+        base_url="http://provider.test/v1",
+        api_key="secret",
+        model="audio-model",
+        client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(
+                    200,
+                    json={"choices": [{"message": {"content": transcript}}]},
+                )
+            )
+        ),
+    )
+
+    segments = provider.transcribe(str(audio))
+
+    assert len(segments) > 1
+    assert all(len(segment.text) <= 20_000 for segment in segments)
+    assert segments[0].start == 0.0
+    assert segments[-1].end == 0.1
+    assert all(
+        later.start >= earlier.start
+        for earlier, later in zip(segments, segments[1:], strict=False)
+    )
+    assert " ".join(segment.text for segment in segments) == transcript.strip()
+
+
+def test_openai_audio_chat_honors_abort_before_next_chunk(tmp_path: Path) -> None:
+    audio = tmp_path / "speech.wav"
+    _write_wav(audio)
+    requests: list[httpx.Request] = []
+    abort = JobAbort("test cancellation")
+    previous = bind_abort(abort)
+    abort.abort()
+    try:
+        provider = OpenAIAudioChatTranscriptionProvider(
+            base_url="http://provider.test/v1",
+            api_key="secret",
+            model="audio-model",
+            client=httpx.Client(
+                transport=httpx.MockTransport(
+                    lambda request: (
+                        requests.append(request)
+                        or httpx.Response(
+                            200,
+                            json={"choices": [{"message": {"content": "unused"}}]},
+                        )
+                    )
+                )
+            ),
+        )
+
+        with pytest.raises(ProcessingCancelled):
+            provider.transcribe(str(audio))
+    finally:
+        bind_abort(previous)
+
+    assert requests == []

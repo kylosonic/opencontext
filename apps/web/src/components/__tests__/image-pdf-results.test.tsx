@@ -36,9 +36,11 @@ describe("image and PDF result surfaces", () => {
         displayName="spec.pdf"
       />,
     );
-    expect(
-      screen.getByTitle("Source PDF: spec.pdf").getAttribute("src"),
-    ).toBe("/api/jobs/job-2/source?asset=0");
+    const frame = screen.getByTitle("Source PDF: spec.pdf");
+    expect(frame.getAttribute("src")).toBe(
+      "/api/jobs/job-2/source?asset=0#page=1",
+    );
+    expect(frame.hasAttribute("sandbox")).toBe(false);
   });
 
   it("uses image and PDF specific transcript empty states", () => {

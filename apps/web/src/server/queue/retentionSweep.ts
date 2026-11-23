@@ -8,15 +8,23 @@ export interface RetentionSweepResult {
 
 /**
  * Retention sweeper (jobs.md B9; trigger: POST /api/admin/retention-sweep).
- * Completed jobs expire 14 days after completion; jobs that never
- * completed expire 7 days after creation. Removes stored objects first,
- * then the rows. Idempotent — a second sweep finds nothing.
+ * Completed and incomplete jobs use separately configurable expiry windows
+ * (14 and 7 days by default). Removes stored objects first, then the rows.
+ * Idempotent — a second sweep finds nothing.
  */
 export async function retentionSweep(): Promise<RetentionSweepResult> {
   const now = Date.now();
   const DAY = 24 * 60 * 60 * 1000;
-  const completedCutoff = new Date(now - 14 * DAY);
-  const incompleteCutoff = new Date(now - 7 * DAY);
+  const completedDays = positiveInteger(
+    process.env.RETENTION_COMPLETED_DAYS,
+    14,
+  );
+  const incompleteDays = positiveInteger(
+    process.env.RETENTION_INCOMPLETE_DAYS,
+    7,
+  );
+  const completedCutoff = new Date(now - completedDays * DAY);
+  const incompleteCutoff = new Date(now - incompleteDays * DAY);
 
   let scanned = 0;
   let deleted = 0;
@@ -83,4 +91,9 @@ export async function retentionSweep(): Promise<RetentionSweepResult> {
   });
 
   return { scanned, deleted };
+}
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }

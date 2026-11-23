@@ -37,7 +37,21 @@ class FasterWhisperTranscriptionProvider:
 
     def transcribe(self, audio_path: str) -> list[Segment]:
         segments_iter, _info = self._model.transcribe(audio_path)
-        return [
-            Segment(start=float(segment.start), end=float(segment.end), text=segment.text.strip())
-            for segment in segments_iter
-        ]
+        segments: list[Segment] = []
+        for segment in segments_iter:
+            text = str(getattr(segment, "text", "") or "").strip()
+            if not text:
+                continue
+            start = float(segment.start)
+            end = max(start, float(segment.end))
+            # The API schema caps one segment at 20k characters. Very long
+            # decoder output is split without dropping speech.
+            for offset in range(0, len(text), 20_000):
+                segments.append(
+                    Segment(
+                        start=start,
+                        end=end,
+                        text=text[offset : offset + 20_000],
+                    )
+                )
+        return segments

@@ -5,13 +5,27 @@ import type { NextConfig } from "next";
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const hostedDbClient = path.join(appRoot, "src/server/db/prisma.hosted.ts");
 
+function storageOrigin(): string {
+  const raw = process.env.STORAGE_S3_ENDPOINT?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    return ["http:", "https:"].includes(parsed.protocol) ? ` ${parsed.origin}` : "";
+  } catch {
+    return "";
+  }
+}
+
+const objectOrigin = storageOrigin();
+const contentSecurityPolicy =
+  `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:${objectOrigin}; media-src 'self' blob: https:${objectOrigin}; font-src 'self' data:; connect-src 'self' https:${objectOrigin}; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://github.com; frame-ancestors 'self'`;
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
-    value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    value: contentSecurityPolicy,
   },
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   {
     key: "Strict-Transport-Security",
@@ -22,6 +36,7 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
   },
+  { key: "X-DNS-Prefetch-Control", value: "off" },
 ];
 
 const nextConfig: NextConfig = {

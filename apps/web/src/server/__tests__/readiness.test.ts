@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ReadinessResponseSchema } from "@kylosonic/opencontext-schemas";
+import {
+  PublicReadinessResponseSchema,
+} from "@kylosonic/opencontext-schemas";
 import { GET } from "@/app/api/health/ready/route";
 import { deploymentEnvironment, evaluateReadiness } from "@/server/readiness";
 
@@ -177,8 +179,9 @@ describe("readiness route", () => {
     expect(response.status).toBe(503);
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(body.ready).toBe(false);
-    expect(body.checks).toHaveLength(6);
-    expect(() => ReadinessResponseSchema.parse(body)).not.toThrow();
+    expect(body).not.toHaveProperty("checks");
+    expect(body).not.toHaveProperty("environment");
+    expect(() => PublicReadinessResponseSchema.parse(body)).not.toThrow();
   });
 
   it("distinguishes Vercel preview from production", () => {

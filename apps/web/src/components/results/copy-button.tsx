@@ -12,6 +12,7 @@ export interface CopyButtonProps {
   /** Shown briefly after a successful copy. */
   copiedLabel?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -25,6 +26,7 @@ export function CopyButton({
   label = "Copy Context",
   copiedLabel = "Copied ✓",
   className,
+  disabled = false,
 }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
@@ -39,6 +41,7 @@ export function CopyButton({
   }, []);
 
   const handleCopy = async () => {
+    if (disabled || !value) return;
     try {
       if (!navigator.clipboard?.writeText) {
         throw new Error("Clipboard API unavailable");
@@ -65,6 +68,7 @@ export function CopyButton({
         variant="secondary"
         className={className}
         aria-live="polite"
+        disabled={disabled || value.length === 0}
       >
         {copied ? copiedLabel : label}
       </Button>

@@ -1,6 +1,6 @@
 # Project Status
 
-Last verified: 2026-11-23
+Last verified: 2026-11-24
 
 This page describes the repository and verification evidence, not a guarantee
 about the current Vercel deployment or future releases.
@@ -8,10 +8,10 @@ about the current Vercel deployment or future releases.
 ## Verified in the repository
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
-  local suite reports 182 passed plus one opt-in S3 integration skip; CI runs
+  local web suite reports 206 passed plus one opt-in S3 integration skip; CI runs
   that integration and passes all web tests. Shared config contributes nine
-  passing tests and the contract suite contributes two.
-- Worker Ruff and all 323 local tests pass, with four environment-dependent
+  passing tests and the contract suite contributes five.
+- Worker Ruff and all 337 local tests pass, with four environment-dependent
   skips. Real Tesseract and OpenCode Go vision/audio smoke tests run when their
   binaries or stored credentials and opt-in flags are present.
 - The 429 regression path is covered at both layers: provider tests verify
@@ -62,8 +62,9 @@ about the current Vercel deployment or future releases.
   keyboard accessibility have focused tests.
 - A PostgreSQL load test with six independent processes and 150 synchronized
   requests per round allowed exactly 37 requests on each fresh key and
-  persisted exactly 37 slots across four rounds. The raw result and limits are
-  published under `docs/performance/`.
+  persisted exactly 37 slots across four rounds: 148 allowed and 452 correctly
+  blocked out of 600 attempts. The raw result and limits are published under
+  `docs/performance/`.
 - `opencontext --version` reads installed package metadata, `doctor --json`
   emits ordered readiness checks without credential values, and provider
   factories name invalid settings and missing credentials explicitly.
@@ -84,13 +85,18 @@ about the current Vercel deployment or future releases.
 - `opencontext evaluate` computes transcript WER/CER, OCR precision/recall/F1,
   and visual keyword recall against a versioned synthetic dataset, while keeping
   fixture baselines, smoke tests, and measured model runs separately labeled.
-- The downloaded media corpus verifies 11 JPEG/PNG/WebP images and two real MP4
-  videos. Every asset passed local offline analysis and `opencontext replay`;
-  a fresh Docker Compose acceptance run then completed one mixed 10-image set,
-  an eleventh standalone photo, and both videos. All four generated exports
-  replayed successfully, and the fixture codec path uses the bundled
+- A freshly downloaded media corpus verified 10 JPEG/PNG/WebP images and two
+  real MP4 videos. Every asset passed local offline analysis and `replay`; a
+  fresh Docker Compose acceptance run then completed one mixed
+  10-image set, an additional standalone photo, and both videos. The four jobs
+  produced 208 evidence records in total, including four real Faster Whisper
+  transcript segments for the 52-second trailer, and every exported ledger
+  replayed successfully. The fixture codec path uses the bundled
   `imageio-ffmpeg` binary rather than relying on a possibly codec-restricted
   host build.
+- A presigned S3 upload integration passed against S3Mock and fresh PostgreSQL,
+  including object verification, final-key move, upload completion, source
+  ownership, presigned worker download, and cleanup.
 - Python wheel and sdist build; `twine check` passes.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - Prisma 7.10.1 uses driver adapters for SQLite and PostgreSQL; the migration
@@ -114,8 +120,12 @@ about the current Vercel deployment or future releases.
   quickstart, jobs API, package/CLI, agent, worker, status, and error pages.
 - CI passes both a packaged-worker CLI smoke test and a full Compose login,
   upload, processing, Markdown export, and JSON export smoke test.
-- `/api/health/ready` reports production configuration blockers without exposing
-  secret values; it returns 503 until every required integration is configured.
+- `/api/health/ready` publicly returns only aggregate readiness and its
+  timestamp. Per-subsystem production configuration blockers are available only
+  with the operations bearer token; the endpoint returns 503 until every
+  required integration is configured.
+- Runtime web, worker, PostgreSQL, S3Mock, and AWS CLI images are pinned by
+  digest. CI jobs have timeouts and stale-run cancellation for the web pipeline.
 
 ## Public deployment
 

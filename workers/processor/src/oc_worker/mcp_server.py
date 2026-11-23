@@ -37,7 +37,19 @@ def _settings_for_analysis(offline: bool) -> Settings:
     )
 
 
-def build_server(sandbox: WorkspaceSandbox) -> MCPServer:
+def require_remote_permission(offline: bool, allow_remote: bool) -> None:
+    if not offline and not allow_remote:
+        raise ValueError(
+            "Remote provider access is disabled by the MCP operator; "
+            "use offline=true or start with --allow-remote"
+        )
+
+
+def build_server(
+    sandbox: WorkspaceSandbox,
+    *,
+    allow_remote: bool = False,
+) -> MCPServer:
     server = MCPServer(
         "opencontext",
         title="OpenContext",
@@ -69,6 +81,7 @@ def build_server(sandbox: WorkspaceSandbox) -> MCPServer:
         detail_level: str = "MEDIUM",
         offline: bool = True,
     ) -> str:
+        require_remote_permission(offline, allow_remote)
         media = sandbox.media_file(media_path)
         repository = sandbox.repository(repository_path) if repository_path else None
         settings = _settings_for_analysis(offline)
@@ -159,6 +172,14 @@ def main(argv: list[str] | None = None) -> None:
         default=[],
         help="Allow file access beneath this root (repeatable).",
     )
+    parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help=(
+            "Allow each MCP caller to opt into sending local media to configured "
+            "remote AI providers. Disabled by default."
+        ),
+    )
     args = parser.parse_args(argv)
     load_local_env(args.env_file)
     roots = [*args.workspace, *roots_from_env()]
@@ -166,7 +187,7 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(
             "at least one --workspace or OPENCONTEXT_WORKSPACE_ROOTS value is required"
         )
-    build_server(WorkspaceSandbox(roots)).run("stdio")
+    build_server(WorkspaceSandbox(roots), allow_remote=args.allow_remote).run("stdio")
 
 
 if __name__ == "__main__":

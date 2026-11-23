@@ -4,7 +4,7 @@
 # variables documented in docs/deployment.md.
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-opencontext}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
@@ -18,7 +18,8 @@ services:
       retries: 20
 
   s3mock:
-    image: adobe/s3mock:5
+    image: adobe/s3mock:5@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92
+    profiles: ["local-storage"]
     healthcheck:
       test:
         [
@@ -32,7 +33,8 @@ services:
       retries: 20
 
   storage-init:
-    image: amazon/aws-cli:2.32.7
+    image: amazon/aws-cli:2.32.7@sha256:2fcb4059b4f87a42cfe28a674bee119c0c484f7bdc67f1643f9dda0200134d1e
+    profiles: ["local-storage"]
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
@@ -100,6 +102,7 @@ services:
         condition: service_healthy
       storage-init:
         condition: service_completed_successfully
+        required: false
     healthcheck:
       test:
         [
@@ -137,25 +140,16 @@ services:
       OCR_LANGUAGE: ${OCR_LANGUAGE:-eng}
       TEXT_PROVIDER: template
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://opencode.ai/inference/go/openai/v1}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GEMINI_API_KEY: ${OPENCONTEXT_DEMO_GEMINI_API_KEY:-${GEMINI_API_KEY:-}}
       HF_HOME: /models
     volumes:
       - worker-models:/models
     depends_on:
       web:
         condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://web:3000/api/health/ready', timeout=5)",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
     stop_grace_period: 130s
 

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  errorResponse,
+  rateLimitDeniedResponse,
+  withErrorHandling,
+} from "@/server/api-helpers";
 import { storage } from "@/server/storage";
 import { getUploadIntent, storeLocalUpload } from "@/server/uploads";
 import {
@@ -29,10 +33,7 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
       RATE_LIMITS.uploadBody.windowMs,
     );
     if (!limit.allowed) {
-      return applyRateLimitHeaders(
-        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
-        limit,
-      );
+      return rateLimitDeniedResponse(limit, "Upload body");
     }
     if (storage.provider !== "local") {
       return errorResponse(
@@ -51,6 +52,12 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
     }
     if (lookup.kind === "EXPIRED") {
       return errorResponse("UPLOAD_EXPIRED", "Upload intent has expired");
+    }
+    if (lookup.kind === "IN_PROGRESS") {
+      return errorResponse(
+        "UPLOAD_INCOMPLETE",
+        "This upload is already being completed",
+      );
     }
     if (!request.body) {
       return errorResponse("VALIDATION_ERROR", "Upload body is empty");

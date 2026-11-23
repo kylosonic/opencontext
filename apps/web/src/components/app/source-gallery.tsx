@@ -38,9 +38,11 @@ export function SourceGallery({
   if (sourceKind === "pdf") {
     return (
       <iframe
-        src={selectedUrl}
+        // PDF jobs have one SOURCE object. Citations carry a one-based page
+        // index through selectedIndex, which is mapped to the browser's
+        // standard fragment instead of requesting a nonexistent asset.
+        src={`${sourceUrl}?asset=0#page=${selectedIndex + 1}`}
         title={`Source PDF: ${displayName}`}
-        sandbox=""
         referrerPolicy="no-referrer"
         className="h-[70vh] w-full bg-white"
       />

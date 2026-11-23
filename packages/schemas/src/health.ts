@@ -45,3 +45,13 @@ export type DeploymentEnvironment = z.infer<typeof ReadinessEnvironmentSchema>;
 export type ReadinessCheckId = z.infer<typeof ReadinessCheckIdSchema>;
 export type ReadinessCheck = z.infer<typeof ReadinessCheckSchema>;
 export type ReadinessResponse = z.infer<typeof ReadinessResponseSchema>;
+
+/** Secret-safe public liveness payload; check identifiers require OPS auth. */
+export const PublicReadinessResponseSchema = z.object({
+  ready: z.boolean(),
+  checkedAt: z.string().datetime(),
+});
+
+export type PublicReadinessResponse = z.infer<
+  typeof PublicReadinessResponseSchema
+>;

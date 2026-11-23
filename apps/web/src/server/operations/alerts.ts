@@ -173,15 +173,18 @@ export async function evaluateOperations(
     claimedAt && (!leaseObservedAt || claimedAt > leaseObservedAt)
       ? claimedAt
       : leaseObservedAt;
-  const workerHeartbeatAt = leases
-    .filter((lease) => lease.resetAt > now)
-    .reduce<Date | null>(
-      (latest, lease) => {
-        const observedAt = new Date(lease.resetAt.getTime() - 2 * MINUTE_MS);
-        return !latest || observedAt > latest ? observedAt : latest;
-      },
-      null,
-    );
+  // Heartbeats intentionally have a short two-minute lease, while the
+  // operator-configured claim threshold may be much longer. Keep the most
+  // recent observed marker even after it expires so the stale-worker alert
+  // fires at OPS_WORKER_CLAIM_MINUTES instead of immediately when the lease
+  // ceases to be active.
+  const workerHeartbeatAt = leases.reduce<Date | null>(
+    (latest, lease) => {
+      const observedAt = new Date(lease.resetAt.getTime() - 2 * MINUTE_MS);
+      return !latest || observedAt > latest ? observedAt : latest;
+    },
+    null,
+  );
   const oldestQueuedAt = backlog.reduce<Date | null>(
     (oldest, job) => (!oldest || job.createdAt < oldest ? job.createdAt : oldest),
     null,

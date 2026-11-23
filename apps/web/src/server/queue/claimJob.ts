@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
+import type { StageState } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
+import { computeProgress } from "@/server/jobs/progress";
 
 /**
  * Queue constants (ADR-0001). The lease is the visibility timeout:
@@ -84,6 +86,10 @@ export async function claimJob(input: ClaimInput) {
         claimedBy: input.workerId,
         leaseUntil: new Date(now.getTime() + LEASE_MS),
         availableAt: null,
+        // TRANSIENT grants a larger quota window while queued. Once a worker
+        // successfully claims the job, normal poison-job accounting resumes;
+        // a crash cannot inherit the provider-quota budget indefinitely.
+        failureKind: "NONE",
         attempts: { increment: 1 },
       },
     });
@@ -125,10 +131,34 @@ async function failExhaustedJobs(now: Date): Promise<void> {
         },
       ],
     },
-    select: { id: true },
+    select: { id: true, status: true, stageStates: true, failureKind: true },
     take: 100,
   });
   for (const job of exhausted) {
+    const stageStates = ((job.stageStates as StageState[] | null) ?? []).map(
+      (state) =>
+        state.status === "RUNNING"
+          ? {
+              ...state,
+              status: "FAILED" as const,
+              completedAt: now.toISOString(),
+              error: "Automatic retry budget exhausted",
+            }
+          : state,
+    );
+    const completedStage = stageStates.some(
+      (state) => state.status === "SUCCEEDED" || state.status === "SKIPPED",
+    );
+    const runningStage = stageStates.find((state) => state.status === "FAILED");
+    const errorStage =
+      runningStage?.stage ??
+      (job.status === "TRANSCRIBING" ||
+      job.status === "ANALYZING" ||
+      job.status === "AGGREGATING" ||
+      job.status === "GENERATING_CONTEXT" ||
+      job.status === "EXTRACTING"
+        ? job.status
+        : "EXTRACTING");
     const failed = await prisma.job.updateMany({
       where: {
         id: job.id,
@@ -153,9 +183,12 @@ async function failExhaustedJobs(now: Date): Promise<void> {
         ],
       },
       data: {
-        status: "FAILED",
+        status: completedStage ? "PARTIAL" : "FAILED",
+        progress: computeProgress(stageStates),
         error: "Automatic retry budget exhausted",
+        errorStage: errorStage as never,
         failureKind: "TRANSIENT",
+        stageStates,
         claimedBy: null,
         leaseUntil: null,
         availableAt: null,

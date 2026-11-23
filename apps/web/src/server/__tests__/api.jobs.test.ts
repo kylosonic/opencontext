@@ -241,6 +241,60 @@ describe("direct upload + list", () => {
     expect((await response.json()).error.code).toBe("UPLOAD_INCOMPLETE");
   });
 
+  it("atomically claims an upload so concurrent completion creates one job", async () => {
+    const user = await createUser();
+    asUser(user.id);
+    const pdf = Buffer.from("%PDF-1.4\n");
+    const intentResponse = await uploadsPost(
+      new Request("http://test.local/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "race.pdf",
+          sizeBytes: pdf.length,
+          mime: "application/pdf",
+        }),
+      }),
+    );
+    const intent = (await intentResponse.json()) as {
+      uploadId: string;
+      url: string;
+      headers: Record<string, string>;
+    };
+    await uploadBodyPut(
+      new Request(`http://test.local${intent.url}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": intent.headers["Content-Type"],
+          "Content-Length": String(pdf.length),
+        },
+        body: pdf,
+      }),
+      { params: Promise.resolve({ id: intent.uploadId }) },
+    );
+
+    const responses = await Promise.all([
+      uploadCompletePost(
+        new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`, {
+          method: "POST",
+        }),
+        { params: Promise.resolve({ id: intent.uploadId }) },
+      ),
+      uploadCompletePost(
+        new Request(`http://test.local/api/uploads/${intent.uploadId}/complete`, {
+          method: "POST",
+        }),
+        { params: Promise.resolve({ id: intent.uploadId }) },
+      ),
+    ]);
+
+    expect(responses.filter((response) => response.status === 201)).toHaveLength(1);
+    expect(
+      responses.some((response) => [404, 409].includes(response.status)),
+    ).toBe(true);
+    expect(await prisma.job.count({ where: { userId: user.id } })).toBe(1);
+  });
+
   it("non-owner cannot upload into or complete another user's intent", async () => {
     const owner = await createUser();
     const intruder = await createUser();
@@ -581,6 +635,9 @@ describe("direct upload + list", () => {
     );
     expect(sourceResponse.status).toBe(200);
     expect(sourceResponse.headers.get("content-type")).toBe("application/pdf");
+    expect(sourceResponse.headers.get("content-security-policy")).toBe(
+      "frame-ancestors 'self'",
+    );
   });
 
   it("commits multiple images as one ordered image-set job", async () => {
@@ -826,6 +883,29 @@ describe("DELETE /api/jobs/[id] (jobs.md B10)", () => {
     );
     expect(response.status).toBe(403);
   });
+
+  it("is idempotent under concurrent deletes", async () => {
+    const user = await createUser();
+    const jobId = await makeJob(user.id);
+    asUser(user.id);
+
+    const responses = await Promise.all([
+      apiJobDelete(
+        new Request(jobUrl(jobId), { method: "DELETE" }),
+        { params: Promise.resolve({ id: jobId }) },
+      ),
+      apiJobDelete(
+        new Request(jobUrl(jobId), { method: "DELETE" }),
+        { params: Promise.resolve({ id: jobId }) },
+      ),
+    ]);
+
+    expect(responses.every((response) => [204, 404].includes(response.status))).toBe(
+      true,
+    );
+    expect(responses.some((response) => response.status === 204)).toBe(true);
+    expect(await prisma.job.count()).toBe(0);
+  });
 });
 
 describe("POST /api/jobs/[id]/retry (jobs.md B5/B6)", () => {
@@ -856,6 +936,23 @@ describe("POST /api/jobs/[id]/retry (jobs.md B5/B6)", () => {
     expect(response.status).toBe(409);
   });
 
+  it("409 for PARTIAL + PERMANENT output", async () => {
+    const user = await createUser();
+    const jobId = await makeJob(user.id, {
+      status: "PARTIAL",
+      failureKind: "PERMANENT",
+      error: "Unsupported frame",
+    });
+    asUser(user.id);
+
+    const response = await apiJobRetry(
+      new Request(jobUrl(jobId, "/retry"), { method: "POST" }),
+      { params: Promise.resolve({ id: jobId }) },
+    );
+
+    expect(response.status).toBe(409);
+  });
+
   it("200 for PARTIAL: failed stages reset, succeeded stages untouched", async () => {
     const user = await createUser();
     const stageStates = [
@@ -875,6 +972,33 @@ describe("POST /api/jobs/[id]/retry (jobs.md B5/B6)", () => {
     });
     await prisma.transcriptSegment.create({
       data: { jobId, start: 0, end: 1, text: "kept transcript" },
+    });
+    await prisma.visualObservation.create({
+      data: {
+        jobId,
+        timestampSec: 1,
+        certainty: "INFERRED",
+        visualDescription: "stale failed-stage observation",
+        uiElements: [],
+        visibleText: [],
+        interactions: [],
+        designObservations: {},
+        importantChanges: [],
+      },
+    });
+    await prisma.ocrObservation.create({
+      data: { jobId, timestampSec: 1, text: "stale OCR" },
+    });
+    await prisma.processingResult.create({
+      data: {
+        jobId,
+        markdown: "stale result",
+        json: { stale: true },
+      },
+    });
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { timeline: [{ start: 0, end: 1, summary: "stale" }] },
     });
 
     asUser(user.id);
@@ -901,5 +1025,9 @@ describe("POST /api/jobs/[id]/retry (jobs.md B5/B6)", () => {
     // Completed-stage data survives the retry (B5: transcript not regenerated).
     const segments = await prisma.transcriptSegment.findMany({ where: { jobId } });
     expect(segments).toHaveLength(1);
+    expect(await prisma.visualObservation.count({ where: { jobId } })).toBe(0);
+    expect(await prisma.ocrObservation.count({ where: { jobId } })).toBe(0);
+    expect(await prisma.processingResult.count({ where: { jobId } })).toBe(0);
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: jobId } })).timeline).toBeNull();
   });
 });

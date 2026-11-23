@@ -196,6 +196,43 @@ describe("claimJob — portable atomic claim (ADR-0001)", () => {
 
     expect(claimed?.id).toBe(job.id);
     expect(claimed?.attempts).toBe(QUEUE_MAX_ATTEMPTS + 1);
+    expect(claimed?.failureKind).toBe("NONE");
+  });
+
+  it("preserves completed results as PARTIAL when an exhausted job has progress", async () => {
+    const user = await createUser();
+    const job = await createQueuedJob(user.id);
+    const stageStates = (
+      job.stageStates as Array<Record<string, unknown>>
+    ).map((state, index) => ({
+      ...state,
+      status: index === 0 ? "SUCCEEDED" : index === 1 ? "RUNNING" : "NOT_STARTED",
+    }));
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        status: "ANALYZING",
+        claimedBy: null,
+        leaseUntil: null,
+        attempts: QUEUE_MAX_ATTEMPTS,
+        failureKind: "NONE",
+        stageStates,
+      },
+    });
+
+    expect(await claimJob({ workerId: "worker-b" })).toBeNull();
+    const failed = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
+    const failedStates = failed.stageStates as Array<{
+      stage: string;
+      status: string;
+      error?: string;
+    }>;
+
+    expect(failed.status).toBe("PARTIAL");
+    expect(failed.errorStage).toBe("TRANSCRIBING");
+    expect(failedStates[0].status).toBe("SUCCEEDED");
+    expect(failedStates[1].status).toBe("FAILED");
+    expect(failedStates[1].error).toContain("budget exhausted");
   });
 
   it("fails a rate-limited job at the larger bounded quota budget", async () => {

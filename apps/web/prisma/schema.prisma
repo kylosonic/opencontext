@@ -216,6 +216,9 @@ model UploadIntent {
   mime        String
   detailLevel DetailLevel @default(MEDIUM)
   expiresAt   DateTime
+  // Set atomically by the completion route so concurrent completions cannot
+  // create duplicate jobs from the same uploaded object.
+  claimedAt   DateTime?
   createdAt   DateTime    @default(now())
 
   @@index([userId, expiresAt])

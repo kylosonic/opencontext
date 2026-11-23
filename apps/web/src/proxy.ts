@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
+import { safeMutation } from "@/server/security/request-origin";
 
 /**
  * Route protection (identity.md B1/B4/B5):
@@ -17,7 +18,11 @@ const { auth } = NextAuth(authConfig);
 export const proxy = auth((req) => {
   const { pathname, search } = req.nextUrl;
 
-  if (!safeMutation(req.method, req.headers, req.nextUrl.host)) {
+  // Auth.js may normalize nextUrl to its internal bind host inside a
+  // container. The incoming Host header is the value browser Origin must
+  // match; forwarded hosts are still ignored unless proxy trust is explicit.
+  const requestHost = req.headers.get("host") || req.nextUrl.host;
+  if (!safeMutation(req.method, req.headers, requestHost)) {
     return NextResponse.json(
       { error: { code: "FORBIDDEN", message: "Cross-site request rejected" } },
       { status: 403 },
@@ -43,26 +48,3 @@ export const proxy = auth((req) => {
 export const config = {
   matcher: ["/app/:path*", "/api/jobs/:path*", "/api/uploads/:path*"],
 };
-
-/** Browser mutations must be same-origin; non-browser clients omit these headers. */
-export function safeMutation(
-  method: string,
-  headers: Headers,
-  requestHost: string,
-): boolean {
-  if (!["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase())) {
-    return true;
-  }
-  const fetchSite = headers.get("sec-fetch-site")?.trim().toLowerCase();
-  if (fetchSite === "cross-site") return false;
-
-  const origin = headers.get("origin");
-  if (!origin) return true;
-  try {
-    const expectedHost =
-      headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim() || requestHost;
-    return new URL(origin).host.toLowerCase() === expectedHost.toLowerCase();
-  } catch {
-    return false;
-  }
-}

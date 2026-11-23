@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { prisma } from "@/server/db/prisma";
-import { storage } from "@/server/storage";
+import { getStorage, storage } from "@/server/storage";
 import { createJob, jobToDetail } from "@/server/jobs";
 import { createQueuedJob, createUser, resetDatabase, resetStorage, TEST_BYTES } from "./helpers";
 
@@ -49,6 +49,59 @@ describe("createJob (upload commit sequence, blueprint §3 B3)", () => {
     const moved = await storage.get(job.sourceKey as string);
     expect(moved).toEqual(TEST_BYTES);
     await expect(storage.get(tempKey)).resolves.toBeNull();
+  });
+
+  it("does not expose a queued job while its source move is in flight", async () => {
+    const user = await createUser();
+    const tempKey = "incoming/slow-move";
+    await storage.put(tempKey, new Blob([TEST_BYTES]).stream(), {
+      sizeBytes: TEST_BYTES.length,
+    });
+
+    let releaseMove: () => void = () => undefined;
+    let markMoveStarted: () => void = () => undefined;
+    const moveStarted = new Promise<void>((resolve) => {
+      markMoveStarted = resolve;
+    });
+    const moveGate = new Promise<void>((resolve) => {
+      releaseMove = resolve;
+    });
+    const storageBackend = getStorage();
+    const originalMove = storageBackend.move.bind(storageBackend);
+    const moveSpy = vi.spyOn(storageBackend, "move").mockImplementation(
+      async (fromKey, toKey, options) => {
+        markMoveStarted();
+        await moveGate;
+        await originalMove(fromKey, toKey, options);
+      },
+    );
+
+    try {
+      const pending = createJob({
+        userId: user.id,
+        displayName: "slow.mp4",
+        detailLevel: "MEDIUM",
+        sourceExt: "mp4",
+        sourceSize: TEST_BYTES.length,
+        sourceMime: "video/mp4",
+        tempKey,
+      });
+      await moveStarted;
+
+      // This is the worker's claim predicate. There must be no QUEUED row
+      // until the source object is available at its final key.
+      expect(
+        await prisma.job.count({ where: { userId: user.id, status: "QUEUED" } }),
+      ).toBe(0);
+
+      releaseMove();
+      const job = await pending;
+      expect(job.status).toBe("QUEUED");
+      await expect(storage.get(job.sourceKey as string)).resolves.not.toBeNull();
+    } finally {
+      releaseMove();
+      moveSpy.mockRestore();
+    }
   });
 
   it("rolls back rows and cleans temp when the storage move fails", async () => {

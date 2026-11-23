@@ -11,6 +11,8 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from oc_worker.mcp_server import require_remote_permission
+
 
 def _context(path: Path) -> None:
     path.write_text(
@@ -32,6 +34,17 @@ def _context(path: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def test_mcp_requires_operator_opt_in_for_remote_analysis() -> None:
+    require_remote_permission(True, False)
+    require_remote_permission(False, True)
+    try:
+        require_remote_permission(False, False)
+    except ValueError as exc:
+        assert "--allow-remote" in str(exc)
+    else:
+        raise AssertionError("remote MCP analysis was allowed without opt-in")
 
 
 def test_mcp_server_lists_and_calls_tools(tmp_path: Path) -> None:

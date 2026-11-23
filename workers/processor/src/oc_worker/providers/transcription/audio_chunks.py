@@ -9,7 +9,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-MAX_AUDIO_REQUEST_BYTES = 24 * 1024 * 1024
+# A WAV chunk is base64-encoded inside a JSON chat-completions request. Keep
+# the raw payload below 18 MB so the resulting JSON body stays under common
+# 25 MB provider limits even after framing and prompt overhead.
+MAX_AUDIO_REQUEST_BYTES = 18_000_000
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,9 @@ def bounded_audio_chunks(
                 data = audio.readframes(frame_count)
                 if not data:
                     break
+                frames_read = min(frame_count, len(data) // frame_width)
+                if frames_read <= 0:
+                    break
                 output = Path(tmp) / f"audio-{index + 1:03d}.wav"
                 with wave.open(str(output), "wb") as chunk:
                     chunk.setnchannels(channels)
@@ -61,8 +67,8 @@ def bounded_audio_chunks(
                     chunk.writeframes(data)
                 offset = start_frame / frame_rate
                 chunks.append(
-                    AudioChunk(output, offset, frame_count / frame_rate)
+                    AudioChunk(output, offset, frames_read / frame_rate)
                 )
-                start_frame += frame_count
+                start_frame += frames_read
                 index += 1
         yield chunks

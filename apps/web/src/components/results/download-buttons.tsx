@@ -45,6 +45,7 @@ export function DownloadButtons({
     <div className={className}>
       <Button
         variant="secondary"
+        disabled={markdown.length === 0}
         onClick={() =>
           downloadFile(`opencontext-${id}.md`, markdown, "text/markdown;charset=utf-8")
         }

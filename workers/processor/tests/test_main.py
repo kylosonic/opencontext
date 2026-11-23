@@ -11,7 +11,7 @@ import pytest
 
 import oc_worker.main as worker_main
 from oc_worker.config import Settings
-from oc_worker.errors import TransientFailure
+from oc_worker.errors import PermanentFailure, TransientFailure
 
 
 def test_logging_suppresses_signed_http_urls() -> None:
@@ -76,6 +76,17 @@ def test_drain_with_zero_seconds_claims_once_then_exits() -> None:
     worker_main._drain(api, _FakePipeline(), 0)  # type: ignore[arg-type]
 
     assert api.claims == 1
+
+
+def test_drain_returns_failure_for_unauthorized_worker() -> None:
+    class UnauthorizedApi(_FakeApi):
+        def claim(self) -> None:
+            self.claims += 1
+            raise PermanentFailure("worker token rejected")
+
+    api = UnauthorizedApi()
+
+    assert worker_main._drain(api, _FakePipeline(), 0) == 1
 
 
 def test_stopper_interruptible_sleep_stops_immediately() -> None:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -132,6 +132,7 @@ export function NewJobForm() {
   const abortTransferRef = useRef<(() => void) | null>(null);
   const activeUploadIdsRef = useRef<string[]>([]);
   const attemptRef = useRef(0);
+  const navigationTimerRef = useRef<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [detailLevel, setDetailLevel] = useState<DetailLevelId>("MEDIUM");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -140,6 +141,22 @@ export function NewJobForm() {
   const [busyNotice, setBusyNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      attemptRef.current += 1;
+      abortTransferRef.current?.();
+      if (navigationTimerRef.current !== null) {
+        window.clearTimeout(navigationTimerRef.current);
+      }
+      for (const uploadId of activeUploadIdsRef.current) {
+        void fetch(`/api/uploads/${encodeURIComponent(uploadId)}`, {
+          method: "DELETE",
+        }).catch(() => undefined);
+      }
+      activeUploadIdsRef.current = [];
+    };
+  }, []);
 
   const uploading = phase === "uploading" || phase === "finalizing";
   const transferring = phase === "uploading";
@@ -270,7 +287,7 @@ export function NewJobForm() {
       activeUploadIdsRef.current = [];
       setCreatedId(summary.id);
       setPhase("created");
-      window.setTimeout(() => {
+      navigationTimerRef.current = window.setTimeout(() => {
         router.push(`/app/jobs/${encodeURIComponent(summary.id ?? "")}`);
       }, 450);
     } catch (caught) {
@@ -505,6 +522,7 @@ export function NewJobForm() {
                     value={level.id}
                     checked={detailLevel === level.id}
                     onChange={() => setDetailLevel(level.id)}
+                    disabled={uploading}
                     className="sr-only"
                   />
                   <span className="flex items-center gap-2">

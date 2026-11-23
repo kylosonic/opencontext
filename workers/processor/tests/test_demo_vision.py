@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 REFERENCE = REPO_ROOT / "docs/assets/real-vision-checkout.png"
 FIXTURE_REFERENCE = REPO_ROOT / "scripts/generate-fixture.mjs"
 LAUNCHER = REPO_ROOT / "scripts/real-vision-demo.mjs"
+LAUNCHER_CONFIG = REPO_ROOT / "scripts/real-vision-demo-config.mjs"
 
 
 def test_fixture_remains_default_and_reference_is_static() -> None:
@@ -81,7 +82,7 @@ def test_real_mode_builds_gemini_vision_from_settings() -> None:
 
     assert isinstance(provider, GeminiVisionProvider)
     assert provider.model == "gemini-test-model"
-    assert "gemini-4-hydrogen" in LAUNCHER.read_text(encoding="utf-8")
+    assert "gemini-4-hydrogen" in LAUNCHER_CONFIG.read_text(encoding="utf-8")
     assert "OPENCONTEXT_DEMO_OPENAI_BASE_URL" in LAUNCHER.read_text(encoding="utf-8")
 
 

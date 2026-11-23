@@ -51,7 +51,11 @@ export async function createUploadIntent(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + UPLOAD_LIMITS.intentTtlSec * 1000);
   const expired = await prisma.uploadIntent.findMany({
-    where: { userId: input.userId, expiresAt: { lte: now } },
+    where: {
+      userId: input.userId,
+      expiresAt: { lte: now },
+      claimedAt: null,
+    },
     select: { id: true, tempKey: true },
   });
   if (expired.length > 0) {
@@ -116,6 +120,7 @@ export type UploadIntentLookup =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
   | { kind: "EXPIRED" }
+  | { kind: "IN_PROGRESS" }
   | { kind: "OK"; intent: NonNullable<Awaited<ReturnType<typeof prisma.uploadIntent.findUnique>>> };
 
 export async function getUploadIntent(
@@ -132,7 +137,46 @@ export async function getUploadIntent(
   if (intent.expiresAt.getTime() <= Date.now()) {
     return { kind: "EXPIRED" };
   }
+  if (intent.claimedAt) {
+    return { kind: "IN_PROGRESS" };
+  }
   return { kind: "OK", intent };
+}
+
+class UploadClaimConflict extends Error {}
+
+async function claimUploadIntents(
+  uploadIds: string[],
+  userId: string,
+): Promise<boolean> {
+  const now = new Date();
+  try {
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.uploadIntent.updateMany({
+        where: {
+          id: { in: uploadIds },
+          userId,
+          claimedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { claimedAt: now },
+      });
+      if (claimed.count !== new Set(uploadIds).size) {
+        throw new UploadClaimConflict();
+      }
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof UploadClaimConflict) return false;
+    throw error;
+  }
+}
+
+async function releaseUploadClaims(uploadIds: string[]): Promise<void> {
+  await prisma.uploadIntent.updateMany({
+    where: { id: { in: uploadIds }, claimedAt: { not: null } },
+    data: { claimedAt: null },
+  });
 }
 
 export async function storeLocalUpload(
@@ -184,6 +228,7 @@ export type CompleteUploadResult =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
   | { kind: "EXPIRED" }
+  | { kind: "IN_PROGRESS" }
   | { kind: "INCOMPLETE" }
   | { kind: "INVALID_CONTENT"; message: string }
   | { kind: "OK"; job: Awaited<ReturnType<typeof createJob>> };
@@ -197,18 +242,38 @@ export async function completeUpload(
     return lookup;
   }
   const { intent } = lookup;
-  const object = await storage.head(intent.tempKey);
+  if (!(await claimUploadIntents([intent.id], userId))) {
+    return { kind: "IN_PROGRESS" };
+  }
+  let object: Awaited<ReturnType<typeof storage.head>>;
+  try {
+    object = await storage.head(intent.tempKey);
+  } catch (error) {
+    await releaseUploadClaims([intent.id]).catch(() => undefined);
+    throw error;
+  }
   if (!object || object.sizeBytes !== intent.sizeBytes) {
+    await releaseUploadClaims([intent.id]);
     return { kind: "INCOMPLETE" };
   }
   if (object.contentType && object.contentType.toLowerCase() !== intent.mime.toLowerCase()) {
+    await releaseUploadClaims([intent.id]);
     return { kind: "INCOMPLETE" };
   }
   if (/^(png|jpe?g|webp|pdf|mp4|mov|webm|mkv)$/.test(intent.sourceExt)) {
-    const bytes = /^(mp4|mov|webm|mkv)$/.test(intent.sourceExt)
-      ? await readStoredPrefix(intent.tempKey, 32)
-      : await storage.get(intent.tempKey);
+    let bytes: Uint8Array | null;
+    try {
+      bytes = /^(mp4|mov|webm|mkv)$/.test(intent.sourceExt)
+        ? await readStoredPrefix(intent.tempKey, 64)
+        : intent.sourceExt === "pdf"
+          ? await readStoredPrefix(intent.tempKey, 5)
+          : await storage.get(intent.tempKey);
+    } catch (error) {
+      await releaseUploadClaims([intent.id]).catch(() => undefined);
+      throw error;
+    }
     if (!bytes) {
+      await releaseUploadClaims([intent.id]);
       return { kind: "INCOMPLETE" };
     }
     const content = await validateStoredMedia(bytes, intent.sourceExt);
@@ -218,16 +283,22 @@ export async function completeUpload(
     }
   }
 
-  const job = await createJob({
-    userId,
-    displayName: intent.filename,
-    detailLevel: intent.detailLevel,
-    sourceExt: intent.sourceExt,
-    sourceSize: intent.sizeBytes,
-    sourceMime: intent.mime,
-    tempKey: intent.tempKey,
-    etag: object.etag ?? undefined,
-  });
+  let job: Awaited<ReturnType<typeof createJob>>;
+  try {
+    job = await createJob({
+      userId,
+      displayName: intent.filename,
+      detailLevel: intent.detailLevel,
+      sourceExt: intent.sourceExt,
+      sourceSize: intent.sizeBytes,
+      sourceMime: intent.mime,
+      tempKey: intent.tempKey,
+      etag: object.etag ?? undefined,
+    });
+  } catch (error) {
+    await releaseUploadClaims([intent.id]).catch(() => undefined);
+    throw error;
+  }
   await prisma.uploadIntent.delete({ where: { id: intent.id } }).catch(() => undefined);
   return { kind: "OK", job };
 }
@@ -236,6 +307,7 @@ export type CompleteUploadBatchResult =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
   | { kind: "EXPIRED" }
+  | { kind: "IN_PROGRESS" }
   | { kind: "INCOMPLETE" }
   | { kind: "INVALID_CONTENT"; message: string }
   | { kind: "OK"; job: Awaited<ReturnType<typeof createJobSources>> };
@@ -275,35 +347,47 @@ export async function completeUploadBatch(
     };
   }
 
+  if (!(await claimUploadIntents(uploadIds, userId))) {
+    return { kind: "IN_PROGRESS" };
+  }
+
   const validated: CreateJobSource[] = [];
-  for (const intent of ordered) {
-    const object = await storage.head(intent.tempKey);
-    if (!object || object.sizeBytes !== intent.sizeBytes) {
-      return { kind: "INCOMPLETE" };
+  try {
+    for (const intent of ordered) {
+      const object = await storage.head(intent.tempKey);
+      if (!object || object.sizeBytes !== intent.sizeBytes) {
+        await releaseUploadClaims(uploadIds);
+        return { kind: "INCOMPLETE" };
+      }
+      if (
+        object.contentType &&
+        object.contentType.toLowerCase() !== intent.mime.toLowerCase()
+      ) {
+        await releaseUploadClaims(uploadIds);
+        return { kind: "INCOMPLETE" };
+      }
+      const bytes = await storage.get(intent.tempKey);
+      if (!bytes) {
+        await releaseUploadClaims(uploadIds);
+        return { kind: "INCOMPLETE" };
+      }
+      const content = await validateStoredMedia(bytes, intent.sourceExt);
+      if (!content.ok) {
+        await discardIntents(ordered);
+        return { kind: "INVALID_CONTENT", message: content.message };
+      }
+      validated.push({
+        filename: intent.filename,
+        extension: intent.sourceExt,
+        sizeBytes: intent.sizeBytes,
+        mime: intent.mime,
+        tempKey: intent.tempKey,
+        etag: object.etag ?? undefined,
+      });
     }
-    if (
-      object.contentType &&
-      object.contentType.toLowerCase() !== intent.mime.toLowerCase()
-    ) {
-      return { kind: "INCOMPLETE" };
-    }
-    const bytes = await storage.get(intent.tempKey);
-    if (!bytes) {
-      return { kind: "INCOMPLETE" };
-    }
-    const content = await validateStoredMedia(bytes, intent.sourceExt);
-    if (!content.ok) {
-      await discardIntents(ordered);
-      return { kind: "INVALID_CONTENT", message: content.message };
-    }
-    validated.push({
-      filename: intent.filename,
-      extension: intent.sourceExt,
-      sizeBytes: intent.sizeBytes,
-      mime: intent.mime,
-      tempKey: intent.tempKey,
-      etag: object.etag ?? undefined,
-    });
+  } catch (error) {
+    await releaseUploadClaims(uploadIds).catch(() => undefined);
+    throw error;
   }
 
   const firstName = ordered[0].filename;
@@ -311,12 +395,18 @@ export async function completeUploadBatch(
     ordered.length === 1
       ? firstName
       : `${ordered.length} images — ${firstName}`;
-  const job = await createJobSources({
-    userId,
-    displayName: sanitizeDisplayName(displayName),
-    detailLevel,
-    sources: validated,
-  });
+  let job: Awaited<ReturnType<typeof createJobSources>>;
+  try {
+    job = await createJobSources({
+      userId,
+      displayName: sanitizeDisplayName(displayName),
+      detailLevel,
+      sources: validated,
+    });
+  } catch (error) {
+    await releaseUploadClaims(uploadIds).catch(() => undefined);
+    throw error;
+  }
   await prisma.uploadIntent.deleteMany({ where: { id: { in: uploadIds } } });
   return { kind: "OK", job };
 }
@@ -324,6 +414,7 @@ export async function completeUploadBatch(
 export type CancelUploadResult =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
+  | { kind: "IN_PROGRESS" }
   | { kind: "OK" };
 
 /**
@@ -341,9 +432,12 @@ export async function cancelUpload(
   if (intent.userId !== userId) {
     return { kind: "FORBIDDEN" };
   }
+  if (intent.claimedAt) {
+    return { kind: "IN_PROGRESS" };
+  }
 
-  await storage.delete(intent.tempKey);
-  await prisma.uploadIntent.delete({ where: { id: intent.id } });
+  await storage.deleteMany([intent.tempKey]);
+  await prisma.uploadIntent.deleteMany({ where: { id: intent.id } });
   return { kind: "OK" };
 }
 

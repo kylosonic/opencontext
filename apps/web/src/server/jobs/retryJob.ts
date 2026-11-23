@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { type StageState } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
 import { computeProgress } from "./progress";
@@ -33,9 +34,11 @@ export async function retryJob(jobId: string, userId: string): Promise<RetryResu
     return { kind: "RETRY_NOT_ALLOWED", reason: "FORBIDDEN" };
   }
 
+  // PERMANENT failures and completed jobs cannot be retried, even when a
+  // permanent failure left an earlier stage's PARTIAL output visible.
   const allowed =
-    job.status === "PARTIAL" ||
-    (job.status === "FAILED" && job.failureKind === "TRANSIENT");
+    (job.status === "PARTIAL" || job.status === "FAILED") &&
+    job.failureKind === "TRANSIENT";
   if (!allowed) {
     return {
       kind: "RETRY_NOT_ALLOWED",
@@ -57,31 +60,73 @@ export async function retryJob(jobId: string, userId: string): Promise<RetryResu
     if (ALWAYS_RESET_STAGES.has(state.stage)) {
       return resetStage(state);
     }
-    if (state.status === "FAILED") {
+    if (state.status === "FAILED" || state.status === "RUNNING") {
       return resetStage(state);
     }
     return state;
   });
 
-  const updated = await prisma.job.update({
-    where: { id: jobId },
-    data: {
-      status: "QUEUED",
-      progress: computeProgress(stageStates),
-      error: null,
-      errorStage: null,
-      failureKind: "NONE",
-      retryCount: { increment: 1 },
-      stageStates,
-      claimedBy: null,
-      leaseUntil: null,
-      availableAt: null,
-      attempts: 0,
-    },
-  });
-  const sourceMedia = await prisma.media.findMany({
-    where: { jobId, kind: "SOURCE" },
-  });
+  const resetStages = new Set(
+    ((job.stageStates as StageState[]) ?? [])
+      .filter(
+        (state) =>
+          ALWAYS_RESET_STAGES.has(state.stage) ||
+          state.status === "FAILED" ||
+          state.status === "RUNNING",
+      )
+      .map((state) => state.stage),
+  );
 
-  return { kind: "OK", job: jobToDetail(updated, sourceMedia) };
+  const result = await prisma.$transaction(async (tx) => {
+    // CAS on the terminal state prevents a concurrent delete/retry from
+    // resurrecting a job that was removed after the initial read.
+    const changed = await tx.job.updateMany({
+      where: {
+        id: jobId,
+        userId,
+        status: job.status,
+        failureKind: job.failureKind,
+        updatedAt: job.updatedAt,
+      },
+      data: {
+        status: "QUEUED",
+        progress: computeProgress(stageStates),
+        error: null,
+        errorStage: null,
+        failureKind: "NONE",
+        retryCount: { increment: 1 },
+        stageStates,
+        timeline: Prisma.DbNull,
+        claimedBy: null,
+        leaseUntil: null,
+        availableAt: null,
+        attempts: 0,
+      },
+    });
+    if (changed.count === 0) return null;
+
+    if (resetStages.has("ANALYZING") || resetStages.has("TRANSCRIBING")) {
+      await tx.visualObservation.deleteMany({ where: { jobId } });
+      await tx.ocrObservation.deleteMany({ where: { jobId } });
+    }
+    if (resetStages.has("TRANSCRIBING")) {
+      await tx.transcriptSegment.deleteMany({ where: { jobId } });
+    }
+    await tx.processingResult.deleteMany({ where: { jobId } });
+
+    const updated = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
+    const sourceMedia = await tx.media.findMany({
+      where: { jobId, kind: "SOURCE" },
+    });
+    return jobToDetail(updated, sourceMedia);
+  });
+  if (result === null) {
+    const current = await prisma.job.findUnique({ where: { id: jobId } });
+    return {
+      kind: "RETRY_NOT_ALLOWED",
+      reason: current ? "CONFLICT" : "NOT_FOUND",
+    };
+  }
+
+  return { kind: "OK", job: result };
 }

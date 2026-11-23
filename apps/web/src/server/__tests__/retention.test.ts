@@ -27,6 +27,21 @@ beforeEach(async () => {
 });
 
 describe("retentionSweep (jobs.md B9)", () => {
+  it("honors configurable retention windows", async () => {
+    const user = await createUser();
+    await makeJob(user.id, new Date(Date.now() - 4 * DAY), null);
+    const previous = process.env.RETENTION_INCOMPLETE_DAYS;
+    process.env.RETENTION_INCOMPLETE_DAYS = "3";
+    try {
+      const result = await retentionSweep();
+      expect(result.deleted).toBe(1);
+      expect(await prisma.job.count()).toBe(0);
+    } finally {
+      if (previous === undefined) delete process.env.RETENTION_INCOMPLETE_DAYS;
+      else process.env.RETENTION_INCOMPLETE_DAYS = previous;
+    }
+  });
+
   it("deletes completed jobs older than 14 days", async () => {
     const user = await createUser();
     const stale = await makeJob(

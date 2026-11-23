@@ -12,7 +12,7 @@
 import { sourceKindForExtension, UPLOAD_LIMITS } from "@kylosonic/opencontext-schemas";
 
 export const ALLOWED_EXTENSIONS = UPLOAD_LIMITS.allowedExtensions;
-export const MAX_BYTES = 500 * 1024 * 1024;
+export const MAX_BYTES = UPLOAD_LIMITS.maxBytes;
 export const MAX_IMAGE_BYTES = UPLOAD_LIMITS.maxImageBytes;
 export const MAX_PDF_BYTES = UPLOAD_LIMITS.maxPdfBytes;
 export const MAX_IMAGE_COUNT = UPLOAD_LIMITS.maxImageCount;

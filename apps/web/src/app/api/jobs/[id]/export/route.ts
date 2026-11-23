@@ -1,5 +1,9 @@
 import { auth } from "@/auth";
-import { errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  errorResponse,
+  rateLimitDeniedResponse,
+  withErrorHandling,
+} from "@/server/api-helpers";
 import { getJob } from "@/server/jobs";
 import { buildResultView } from "@/server/jobs/jobViews";
 import { loadJobResultsData } from "@/server/jobs/loadJobResults";
@@ -26,10 +30,7 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
       RATE_LIMITS.export.windowMs,
     );
     if (!limit.allowed) {
-      return applyRateLimitHeaders(
-        errorResponse("RATE_LIMITED", `Try again in ${limit.retryAfterSec} seconds`),
-        limit,
-      );
+      return rateLimitDeniedResponse(limit, "Export");
     }
 
     const format = new URL(request.url).searchParams.get("format") ?? "markdown";

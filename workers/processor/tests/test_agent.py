@@ -127,6 +127,16 @@ def test_context_loader_rejects_incomplete_results(tmp_path: Path) -> None:
         load_context_payload(path)
 
 
+def test_context_loader_rejects_oversized_files_without_full_read(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "context.json"
+    path.write_bytes(b"{" + b" " * 1_000_001 + b"}")
+
+    with pytest.raises(ValueError, match="too large"):
+        load_context_payload(path)
+
+
 def test_repository_scan_ignores_symlinked_special_files(tmp_path: Path) -> None:
     (tmp_path / "package.json").symlink_to("/dev/zero")
     (tmp_path / "app.py").write_text("print('safe')", encoding="utf-8")

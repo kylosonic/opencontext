@@ -56,11 +56,13 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
     await storage.put("jobs/head/source.mp4", testStream(), {
       sizeBytes: TEST_BYTES.length,
     });
-    expect(await storage.head("jobs/head/source.mp4")).toEqual({
+    expect(await storage.head("jobs/head/source.mp4")).toMatchObject({
       sizeBytes: TEST_BYTES.length,
       contentType: null,
-      etag: null,
     });
+    expect((await storage.head("jobs/head/source.mp4"))?.etag).toMatch(
+      /^\d+-\d+(?:\.\d+)?$/,
+    );
     expect(await storage.head("jobs/head/missing.mp4")).toBeNull();
   });
 
@@ -73,6 +75,26 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
 
   it("move throws when the source does not exist", async () => {
     await expect(storage.move("incoming/nope", "jobs/j4/source.mp4")).rejects.toThrow();
+  });
+
+  it("move refuses an object changed after content validation", async () => {
+    await storage.put("incoming/changing", testStream(), {
+      sizeBytes: TEST_BYTES.length,
+    });
+    const validatedEtag = (await storage.head("incoming/changing"))?.etag;
+    expect(validatedEtag).toBeTruthy();
+    await storage.put(
+      "incoming/changing",
+      new Blob([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9])]).stream(),
+      { sizeBytes: 9 },
+    );
+
+    await expect(
+      storage.move("incoming/changing", "jobs/j4/changed.mp4", {
+        etag: validatedEtag ?? undefined,
+      }),
+    ).rejects.toThrow(/changed after validation/);
+    expect(await storage.get("incoming/changing")).toHaveLength(9);
   });
 
   it("delete and deleteMany remove objects", async () => {

@@ -20,15 +20,18 @@ async function limited(
     RATE_LIMITS.auth.windowMs,
   );
   if (!limit.allowed) {
+    const unavailable = limit.unavailable === true;
     return applyRateLimitHeaders(
       NextResponse.json(
         {
           error: {
-            code: "RATE_LIMITED",
-            message: `Authentication limit reached — try again in ${limit.retryAfterSec} seconds`,
+            code: unavailable ? "INTERNAL" : "RATE_LIMITED",
+            message: unavailable
+              ? "Authentication is temporarily unavailable — try again shortly"
+              : `Authentication limit reached — try again in ${limit.retryAfterSec} seconds`,
           },
         },
-        { status: 429 },
+        { status: unavailable ? 500 : 429 },
       ),
       limit,
     );
