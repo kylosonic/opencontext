@@ -65,7 +65,12 @@ HF_HOME=/models`}
             On <code>SIGTERM</code> or <code>SIGINT</code>, the supervisor stops making new claims and waits up to the configured grace period for current work. If work exceeds that period, the host terminates the process and the job lease expires for a later retry.
           </p>
           <p className="mt-3">
-            The worker renews each claimed job&apos;s lease every minute. A process that disappears stops renewing; the queued job becomes available after the five-minute lease expires. Stage state and stored artifacts are authoritative, so a resumed worker does not repeat completed server-side stages.
+            The worker renews each claimed job&apos;s lease every minute. A
+            process that disappears stops renewing; the queued job becomes
+            available after the five-minute lease expires. Stage state and
+            stored artifacts remain authoritative, and a resumed worker does
+            not re-report completed stages. The current resume path can
+            re-derive local stage inputs needed by downstream stages.
           </p>
           <p className="mt-3">
             A job that exceeds <code>WORKER_JOB_TIMEOUT_SECONDS</code> (900 seconds by default) is failed with a specific timeout. Set the container host&apos;s CPU and memory quotas to match the provider configuration; those quotas remain host policy.
