@@ -6,7 +6,6 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 - Deploy the hosted container definition to a persistent worker host and
   record its live restart, immediate claiming, and alerting evidence.
-- Publish the next Python and npm versions through protected environments.
 
 ## Next
 
