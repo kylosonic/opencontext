@@ -132,8 +132,10 @@ about the current Vercel deployment or future releases.
 The deployment at
 [opencontext-swart.vercel.app](https://opencontext-swart.vercel.app) runs the
 full upload-to-export path: GitHub OAuth, Neon PostgreSQL, S3 through a
-Vercel-managed OIDC role, and a Python worker. `/api/health/ready` returned
-HTTP 200 with all six configuration checks on 2026-11-21.
+Vercel-managed OIDC role, and a Python worker. On 2026-11-24 the public
+`/api/health/ready` response returned HTTP 200 with aggregate readiness only;
+the authenticated diagnostics contract is covered by the scheduled worker's
+operations check.
 
 On 2026-11-09 job `cmw9naxem000108ic8u0nvfyr` completed all five stages at
 100% in production, producing evidence IDs, source timestamps, certainty
@@ -152,6 +154,14 @@ video with audio, transcript segments, and one visual observation, and the
 visual observations. Live result ledgers contained 84, 8, 14, and 76 evidence
 records respectively. Every exported ledger replayed successfully without
 provider credentials or source media.
+
+The 2026-11-24 post-audit production smoke applied the upload-intent claim
+migration to Neon and verified no schema drift. A temporary authenticated user
+then completed a two-photo JPEG set with 18 evidence records, a derived PNG
+with 8 records, and a 5.06-second downloaded CC0 video with 43 records and six
+Faster Whisper transcript segments. All three Markdown/JSON exports replayed,
+the scheduled worker and authenticated operations check completed, and the
+temporary user and jobs were removed after verification.
 
 The worker renews each claimed job's lease every minute so long stages do not
 lose their claim between progress updates. CI verifies the heartbeat through
