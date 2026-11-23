@@ -30,10 +30,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrismaClient(): PrismaClient {
+  const client = globalForPrisma.prisma ?? createPrismaClient();
+  globalForPrisma.prisma = client;
+  return client;
 }
+
+// Next.js evaluates route modules while collecting build configuration. Resolve
+// the database only when code actually queries it so credential-free builds do
+// not weaken the runtime requirement or open a connection during compilation.
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = getPrismaClient();
+    const value = Reflect.get(client, property, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 export type { Job, Media, User } from "@prisma/client";
