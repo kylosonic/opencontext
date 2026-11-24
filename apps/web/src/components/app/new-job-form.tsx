@@ -11,6 +11,7 @@ import {
   formatFileSize,
   MAX_IMAGE_COUNT,
   MAX_IMAGE_SIZE_LABEL,
+  MAX_AUDIO_SIZE_LABEL,
   MAX_DURATION_LABEL,
   MAX_PDF_SIZE_LABEL,
   MAX_SIZE_LABEL,
@@ -27,6 +28,12 @@ interface DetailLevelOption {
   name: string;
   description: string;
   default?: boolean;
+}
+
+interface WorkspaceOption {
+  id: string;
+  name: string;
+  role: "OWNER" | "ADMIN" | "MEMBER";
 }
 
 const DETAIL_LEVELS: DetailLevelOption[] = [
@@ -59,8 +66,9 @@ interface UploadError {
 }
 
 const ALLOWED_ACCEPT =
-  ".mp4,.mov,.webm,.mkv,.png,.jpg,.jpeg,.webp,.pdf," +
+  ".mp4,.mov,.webm,.mkv,.mp3,.m4a,.wav,.ogg,.aac,.flac,.png,.jpg,.jpeg,.webp,.pdf," +
   "video/mp4,video/quicktime,video/webm,video/x-matroska," +
+  "audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/aac,audio/flac," +
   "image/png,image/jpeg,image/webp,application/pdf";
 
 class UploadRequestError extends Error {
@@ -126,7 +134,7 @@ function putFileWithProgress(
  *   URL, then asks the server to verify and finalize the object.
  * - One transfer at a time; a failed transfer never creates a job.
  */
-export function NewJobForm() {
+export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[] }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const abortTransferRef = useRef<(() => void) | null>(null);
@@ -135,6 +143,7 @@ export function NewJobForm() {
   const navigationTimerRef = useRef<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [detailLevel, setDetailLevel] = useState<DetailLevelId>("MEDIUM");
+  const [workspaceId, setWorkspaceId] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<UploadError | null>(null);
@@ -232,6 +241,7 @@ export function NewJobForm() {
             sizeBytes: selected.size,
             mime: selected.type || undefined,
             detailLevel,
+            workspaceId: workspaceId || undefined,
           }),
         });
         if (!intentResponse.ok) throw await uploadError(intentResponse);
@@ -271,7 +281,11 @@ export function NewJobForm() {
                 Accept: "application/json",
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ uploadIds, detailLevel }),
+              body: JSON.stringify({
+                uploadIds,
+                detailLevel,
+                workspaceId: workspaceId || undefined,
+              }),
             })
           : await fetch(
               `/api/uploads/${encodeURIComponent(uploadIds[0])}/complete`,
@@ -364,13 +378,16 @@ export function NewJobForm() {
       <p className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
         <span className="label-mono">Accepted formats</span>
         <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
-          Video, images, PDF
+          Video, audio, images, PDF
         </span>
         <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
           video ≤ {MAX_SIZE_LABEL}
         </span>
         <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
           image ≤ {MAX_IMAGE_SIZE_LABEL}
+        </span>
+        <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
+          audio ≤ {MAX_AUDIO_SIZE_LABEL}
         </span>
         <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
           PDF ≤ {MAX_PDF_SIZE_LABEL}
@@ -398,7 +415,7 @@ export function NewJobForm() {
         role="button"
         tabIndex={uploading ? -1 : 0}
         aria-disabled={uploading}
-        aria-label={file ? `Selected ${files.length} file(s). Choose different files.` : "Choose a video, image, or PDF file"}
+        aria-label={file ? `Selected ${files.length} file(s). Choose different files.` : "Choose a video, audio, image, or PDF file"}
         onClick={() => {
           if (!uploading) inputRef.current?.click();
         }}
@@ -460,11 +477,11 @@ export function NewJobForm() {
         ) : (
           <>
             <p className="text-sm font-medium text-ink">
-              Drag and drop a video, PDF, or up to {MAX_IMAGE_COUNT} images, or{" "}
+              Drag and drop a video, audio file, PDF, or up to {MAX_IMAGE_COUNT} images, or{" "}
               <span className="text-accent underline underline-offset-2">browse</span>
             </p>
             <p className="mt-2 text-xs text-ink-faint">
-              Choose one video or PDF, or up to {MAX_IMAGE_COUNT} ordered
+              Choose one video, audio file, or PDF, or up to {MAX_IMAGE_COUNT} ordered
               images. Names render as plain text and are never executed.
             </p>
           </>
@@ -500,6 +517,28 @@ export function NewJobForm() {
 
       {files.length > 0 && selectionValid && (
         <>
+          {workspaces.length > 0 && (
+            <label className="block max-w-md">
+              <span className="label-mono mb-2 block">Destination</span>
+              <select
+                value={workspaceId}
+                onChange={(event) => setWorkspaceId(event.target.value)}
+                disabled={uploading}
+                className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+              >
+                <option value="">Personal workspace</option>
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name} · {workspace.role.toLowerCase()}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-ink-faint">
+                Team jobs are visible to every member. Team admins can add members
+                and manage jobs.
+              </span>
+            </label>
+          )}
           {/* Detail level (analysis-modes.md B2: three selectable cards). */}
           <fieldset>
             <legend className="label-mono mb-3">
@@ -557,6 +596,8 @@ export function NewJobForm() {
                       ? "Analyze image"
                       : pickedKind === "pdf"
                         ? "Analyze PDF"
+                        : pickedKind === "audio"
+                          ? "Transcribe audio"
                     : "Analyze video"}
             </Button>
             <Button

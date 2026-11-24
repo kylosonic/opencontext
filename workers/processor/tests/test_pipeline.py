@@ -398,7 +398,7 @@ def test_fork_preserves_bounded_production_frame_extraction(monkeypatch) -> None
 
     assert child is not pipeline
     assert child._bounded_frame_extraction is True
-    assert child.run_job(_job(detail_level="LOW")) == "completed"
+    assert child.run_job(_job(detail_level="MEDIUM")) == "completed"
     assert captured["max_frames"] == 4
     assert float(captured["fps"]) == pytest.approx(4 / 30)
     assert [call[1]["timestampSec"] for call in vision.calls] == [
@@ -449,6 +449,43 @@ def test_pipeline_uses_configured_ffmpeg_path(monkeypatch) -> None:
         ("audio", "source.mp4", "/custom/ffmpeg"),
         ("frames", "source.mp4", "/custom/ffmpeg"),
     ]
+
+
+def test_audio_only_pipeline_extracts_audio_and_skips_visual_analysis() -> None:
+    handler = _Handler()
+    transcription = FakeTranscription(
+        segments=[Segment(start=0.0, end=3.0, text="A conversational sentence.")]
+    )
+    vision = FakeVision()
+
+    def unexpected_frames(source: str, output_dir: str) -> list[dict]:
+        raise AssertionError("audio-only jobs must not extract video frames")
+
+    pipeline = _make_pipeline(
+        handler,
+        transcription=transcription,
+        vision=vision,
+        probe=_probe_ok(video_present=False, audio_present=True, duration=4.0),
+        extract_frames=unexpected_frames,
+    )
+
+    job = _job(source={"kind": "audio", "ext": "wav"})
+    assert pipeline.run_job(job) == "completed"
+    assert len(transcription.calls) == 1
+    assert vision.calls == []
+    assert len(handler.artifact_bodies()) == 1  # normalized AUDIO artifact only
+
+    stage_results = [
+        body
+        for path, body in handler.json_requests()
+        if path.endswith("/stage-result")
+    ]
+    analyzing = next(body for body in stage_results if body["stage"] == "ANALYZING")
+    assert analyzing["outcome"] == "SKIPPED"
+    assert analyzing["reason"] == "NO_VISUAL_MEDIA"
+    extracting = next(body for body in stage_results if body["stage"] == "EXTRACTING")
+    assert extracting["data"]["audioPresent"] is True
+    assert extracting["data"]["frameCount"] == 0
 
 
 def test_happy_path_full_stage_sequence_with_factories(monkeypatch) -> None:
@@ -1308,3 +1345,60 @@ def test_context_records_the_actual_vision_model() -> None:
 
     assert payload["visualFindings"][0]["provider"] == "gemini"
     assert payload["visualFindings"][0]["model"] == "gemini-test-model"
+
+
+def test_bounded_extraction_honors_low_detail_stride(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def bounded_extract(
+        source: str,
+        output_dir: str,
+        *,
+        fps: float,
+        max_frames: int,
+        ffmpeg_path: str | None = None,
+    ) -> list[dict]:
+        captured.update({"fps": fps, "max_frames": max_frames})
+        directory = Path(output_dir)
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / "frame_000001.jpg"
+        path.write_bytes(b"fake-jpeg")
+        return [{"timestamp": 0.0, "path": str(path)}]
+
+    monkeypatch.setattr(pipeline_module, "extract_frames", bounded_extract)
+    pipeline = Pipeline(
+        _api(_Handler()),
+        Settings(worker_api_url=API_BASE, worker_id="worker-1", vision_max_frames=12),
+        transcription_provider=FakeTranscription(),
+        vision_provider=FakeVision(),
+        text_provider=FakeText(),
+        probe_fn=_probe_ok(duration=30.0),
+        extract_audio_fn=_extract_audio_ok(),
+        extract_image_fn=_extract_image_ok(),
+        extract_pdf_fn=_extract_pdf_ok(),
+    )
+
+    assert pipeline.fork().run_job(_job(detail_level="LOW")) == "completed"
+    assert float(captured["fps"]) == pytest.approx(0.1)
+
+
+@pytest.mark.parametrize("width", [None, 0])
+def test_image_missing_or_zero_dimensions_fails_closed(width: int | None) -> None:
+    handler = _Handler()
+
+    def bad_image_probe(_source: str) -> dict:
+        return {
+            "duration": None,
+            "width": width,
+            "height": 360,
+            "video_present": True,
+            "audio_present": False,
+        }
+
+    pipeline = _make_pipeline(handler, probe=bad_image_probe)
+    assert pipeline.run_job(_job(source={"kind": "image", "ext": "png"})) == "failed"
+    fail_bodies = [
+        body for path, body in handler.json_requests() if path.endswith("/fail")
+    ]
+    assert fail_bodies[0]["failureKind"] == "PERMANENT"
+    assert "valid image" in fail_bodies[0]["error"]

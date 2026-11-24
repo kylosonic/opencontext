@@ -1,6 +1,7 @@
 import type { Job } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import { activeLease, LeaseLostError } from "./lease";
+import { recordAnalysisUsage } from "@/server/billing/usage";
 
 export type CompleteResult =
   | { kind: "NOT_FOUND" }
@@ -21,6 +22,12 @@ export async function completeJob(jobId: string, workerId: string): Promise<Comp
     return { kind: "NOT_FOUND" };
   }
   if (job.status === "COMPLETED") {
+    // Completion retries are idempotent for job state and for the usage
+    // ledger. This also repairs a missing best-effort write without waiting
+    // for the scheduled reconcile pass.
+    await recordAnalysisUsage(job.id, "COMPLETED").catch((error) => {
+      console.error("Usage record write failed; reconciliation will retry:", error);
+    });
     return { kind: "OK", job };
   }
   const now = new Date();
@@ -56,9 +63,16 @@ export async function completeJob(jobId: string, workerId: string): Promise<Comp
   if (updated.count === 0) {
     const current = await prisma.job.findUnique({ where: { id: jobId } });
     if (current?.status === "COMPLETED") {
+      await recordAnalysisUsage(current.id, "COMPLETED").catch((error) => {
+        console.error("Usage record write failed; reconciliation will retry:", error);
+      });
       return { kind: "OK", job: current };
     }
     throw new LeaseLostError(jobId);
   }
-  return { kind: "OK", job: await prisma.job.findUniqueOrThrow({ where: { id: jobId } }) };
+  const completed = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+  await recordAnalysisUsage(jobId, "COMPLETED").catch((error) => {
+    console.error("Usage record write failed; reconciliation will retry:", error);
+  });
+  return { kind: "OK", job: completed };
 }

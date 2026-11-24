@@ -80,11 +80,18 @@ work. It is not a penetration-test report.
 
 ## Remaining deployment work
 
-- Tune database connection pools and add platform/WAF controls based on
-  sustained production traffic.
+- Validate the new PostgreSQL pool limits and Vercel WAF policy against
+  representative sustained traffic before treating their thresholds as tuned.
 - Apply and verify the checked-in PostgreSQL migration before deploying code
   that depends on a schema change.
 - Run an independent penetration test before claiming production security.
+
+The repository now includes bounded PostgreSQL pool configuration, an auditable
+Vercel WAF preview/apply script, and a weekly OWASP ZAP baseline workflow.
+Those controls are implementation evidence, not substitutes for production
+traffic review or independent testing. The independent-assessment scope and
+acceptance checklist are in
+[`docs/security/independent-assessment.md`](security/independent-assessment.md).
 
 The production bucket now uses a Vercel-managed OIDC role instead of long-lived
 AWS keys, and its CORS policy allows only the production web origin for

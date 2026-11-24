@@ -1,0 +1,29 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 38338; Jobs - Job Search - Careers.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-38338",
+    "sourceName": "visual/images/screen-09-38338.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "My alerts",
+      "0",
+      "4",
+      "oracle",
+      "San Francisco, CA",
+      "a"
+    ],
+    "visualKeywords": [
+      "search",
+      "alerts",
+      "information",
+      "hunting",
+      "shows",
+      "jobs"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 38338; Jobs - Job Search - Careers.",
+    "license": "CC-BY-4.0"
+  }
+}

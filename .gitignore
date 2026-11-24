@@ -32,6 +32,7 @@ coverage
 
 # local agent tooling (not part of the product repository)
 .opencode/
+.dsh-import
 
 # private build instructions (not public documentation)
 MASTER BUILD PROMPT*.md

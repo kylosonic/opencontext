@@ -8,7 +8,7 @@ import { safeMutation } from "@/server/security/request-origin";
  * - /app/**          → session required; anonymous visitors are sent to
  *                      /auth/signin with a callbackUrl back to where they
  *                      were going.
- * - /api/jobs/**     → session required; anonymous callers get a 401 JSON
+ * - /api/jobs/** and /api/workspaces/** → session required; anonymous callers get a 401 JSON
  *                      error envelope (the API never renders sign-in UI).
  * - everything else (/api/demo/**, /api/worker/**, /api/admin/**,
  *   /auth/**, landing, docs) is open or authenticated by its own layer.
@@ -46,5 +46,11 @@ export const proxy = auth((req) => {
 });
 
 export const config = {
-  matcher: ["/app/:path*", "/api/jobs/:path*", "/api/uploads/:path*"],
+  matcher: [
+    "/app/:path*",
+    "/api/jobs/:path*",
+    "/api/uploads/:path*",
+    "/api/workspaces/:path*",
+    "/api/imports/:path*",
+  ],
 };

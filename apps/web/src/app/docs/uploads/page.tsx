@@ -9,6 +9,11 @@ export const metadata: Metadata = {
 
 const INPUTS = [
   ["Video", "MP4, MOV, WebM, or MKV", "500 MB; 30 minutes"],
+  [
+    "Audio",
+    "MP3, M4A, WAV, OGG, AAC, or FLAC",
+    "100 MB; 30 minutes",
+  ],
   ["Still image", "PNG, JPG, JPEG, or WebP", "25 MB; 40 megapixels"],
   [
     "Image set",
@@ -23,7 +28,7 @@ export default function UploadsPage() {
     <DocsShell
       kicker="Get started"
       title="Uploading media"
-      description="Choose a video, an ordered image set, or a PDF. Files are checked before transfer and again before the job is queued."
+      description="Choose video, audio, an ordered image set, or a PDF. Files are checked before transfer and again before the job is queued."
       accessory={
         <Badge tone="success" mono>
           Upload flows verified
@@ -70,9 +75,9 @@ export default function UploadsPage() {
             </table>
           </div>
           <p className="mt-4">
-            A video job runs speech transcription when an audio track is
-            present. Images and PDFs skip transcription and use visual analysis,
-            including text found in the source.
+            Video and audio-only jobs run speech transcription. Images and PDFs
+            skip transcription and use visual analysis, including text found in
+            the source. Audio-only jobs skip visual analysis.
           </p>
         </section>
 
@@ -123,6 +128,12 @@ export default function UploadsPage() {
             not decodable, or is longer than 30 minutes, is rejected when
             extraction begins and cannot be retried without uploading a
             corrected file.
+          </p>
+          <p className="mt-3">
+            You can also paste a public HTTP(S) media URL. OpenContext rejects
+            local/private network addresses, credentials, custom ports, and
+            responses without a usable Content-Length, then applies the same
+            byte and stored-content checks as a browser upload.
           </p>
         </section>
 

@@ -17,10 +17,10 @@ from oc_worker.providers.http_status import (
 )
 from oc_worker.providers.transcription.audio_chunks import (
     MAX_AUDIO_REQUEST_BYTES,
+    MAX_SEGMENT_TEXT_CHARS,  # noqa: F401 - re-exported for existing callers/tests
     bounded_audio_chunks,
+    timed_segments,
 )
-
-MAX_SEGMENT_TEXT_CHARS = 20_000
 
 _SYSTEM_PROMPT = (
     "Transcribe the spoken audio exactly. Return only the transcript text. "
@@ -46,47 +46,6 @@ def _message_text(message: dict) -> str:
     if isinstance(content, str) and content.strip():
         return content.strip()
     return ""
-
-
-def _split_transcript(text: str) -> list[str]:
-    """Split model output into schema-safe pieces, preferring word boundaries."""
-    remaining = text.strip()
-    pieces: list[str] = []
-    while len(remaining) > MAX_SEGMENT_TEXT_CHARS:
-        cut = remaining.rfind(" ", 0, MAX_SEGMENT_TEXT_CHARS + 1)
-        if cut < MAX_SEGMENT_TEXT_CHARS // 2:
-            cut = MAX_SEGMENT_TEXT_CHARS
-        piece = remaining[:cut].strip()
-        if piece:
-            pieces.append(piece)
-        remaining = remaining[cut:].strip()
-    if remaining:
-        pieces.append(remaining)
-    return pieces
-
-
-def _timed_segments(text: str, start: float, duration: float) -> list[Segment]:
-    pieces = _split_transcript(text)
-    if not pieces:
-        return []
-    total_chars = sum(len(piece) for piece in pieces)
-    cursor = start
-    segments: list[Segment] = []
-    for index, piece in enumerate(pieces):
-        end = (
-            start + duration
-            if index == len(pieces) - 1
-            else cursor + duration * (len(piece) / total_chars)
-        )
-        segments.append(
-            Segment(
-                start=round(cursor, 3),
-                end=round(max(cursor, end), 3),
-                text=piece,
-            )
-        )
-        cursor = end
-    return segments
 
 
 class OpenAIAudioChatTranscriptionProvider:
@@ -193,7 +152,7 @@ class OpenAIAudioChatTranscriptionProvider:
                             _audio_duration(chunk.path) or chunk.duration_seconds
                         )
                         segments.extend(
-                            _timed_segments(text, chunk.offset_seconds, duration)
+                            timed_segments(text, chunk.offset_seconds, duration)
                         )
         except (OSError, EOFError, wave.Error, ZeroDivisionError, ValueError) as exc:
             raise TransientFailure(f"could not process transcription audio: {exc}") from exc

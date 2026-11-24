@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from oc_worker.errors import check_abort
 from oc_worker.models import Segment
 
 try:  # pragma: no cover - depends on optional dependency
@@ -39,6 +40,7 @@ class FasterWhisperTranscriptionProvider:
         segments_iter, _info = self._model.transcribe(audio_path)
         segments: list[Segment] = []
         for segment in segments_iter:
+            check_abort()
             text = str(getattr(segment, "text", "") or "").strip()
             if not text:
                 continue

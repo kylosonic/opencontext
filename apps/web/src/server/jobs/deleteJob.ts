@@ -1,5 +1,6 @@
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
+import { canManageJob } from "@/server/workspaces";
 
 export type DeleteJobResult =
   | { kind: "NOT_FOUND" }
@@ -16,11 +17,11 @@ export type DeleteJobResult =
 export async function deleteJob(jobId: string, userId: string): Promise<DeleteJobResult> {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) return { kind: "NOT_FOUND" };
-  if (job.userId !== userId) return { kind: "FORBIDDEN" };
+  if (!(await canManageJob(job, userId))) return { kind: "FORBIDDEN" };
 
   const deletion = await prisma.$transaction(async (tx) => {
     const revoked = await tx.job.updateMany({
-      where: { id: jobId, userId },
+      where: { id: jobId },
       data: {
         status: "FAILED",
         failureKind: "PERMANENT",
@@ -49,7 +50,7 @@ export async function deleteJob(jobId: string, userId: string): Promise<DeleteJo
   await storage.deleteMany([...keys]).catch(() => undefined);
   // deleteMany makes concurrent/replayed deletion idempotent instead of
   // surfacing Prisma P2025 as a 500.
-  await prisma.job.deleteMany({ where: { id: jobId, userId } });
+  await prisma.job.deleteMany({ where: { id: jobId } });
 
   return { kind: "OK" };
 }

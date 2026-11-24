@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { errorResponse, readJsonBody, withErrorHandling } from "@/server/api-helpers";
 import { prisma } from "@/server/db/prisma";
-import { getJob } from "@/server/jobs";
+import { getOwnedJobRow } from "@/server/jobs";
 import {
   applyRateLimitHeaders,
   consumeRateLimit,
@@ -66,7 +66,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
       );
     }
 
-    const jobResult = await getJob(id, session.user.id);
+    const jobResult = await getOwnedJobRow(id, session.user.id);
     if (jobResult.kind === "NOT_FOUND") {
       return errorResponse("NOT_FOUND", "Job not found");
     }

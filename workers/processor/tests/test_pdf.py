@@ -95,3 +95,35 @@ def test_extract_pdf_pages_bounds_both_dimensions_and_pixels(
 
     assert len(rendered) == 1
     assert observed_scales == [0.005]
+
+
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [(float("nan"), 100.0), (100.0, float("inf")), (0.0, 100.0)],
+)
+def test_extract_pdf_pages_rejects_non_finite_or_non_positive_dimensions(
+    tmp_path: Path, monkeypatch, width: float, height: float
+) -> None:
+    class Page:
+        def get_size(self):
+            return (width, height)
+
+        def close(self) -> None:
+            return None
+
+    class Document:
+        def __init__(self, _path: str) -> None:
+            self.page = Page()
+
+        def __len__(self) -> int:
+            return 1
+
+        def __getitem__(self, _index: int):
+            return self.page
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(pdf_module.pdfium, "PdfDocument", Document)
+    with pytest.raises(PermanentFailure, match="invalid dimensions"):
+        extract_pdf_pages(tmp_path / "bad-dim.pdf", tmp_path / "pages")

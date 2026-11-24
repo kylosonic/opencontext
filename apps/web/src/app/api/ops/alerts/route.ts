@@ -20,7 +20,7 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
     const limited = await enforceRateLimit(
-      requestRateKey(request, "operations-alerts"),
+      requestRateKey(request, "operations-alerts", { trustBearer: true }),
       RATE_LIMITS.operations.limit,
       RATE_LIMITS.operations.windowMs,
     );

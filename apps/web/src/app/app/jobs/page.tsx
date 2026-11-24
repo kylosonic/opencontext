@@ -46,9 +46,10 @@ export default async function JobsPage() {
                   structured developer context document.
                 </p>
               </div>
-              <ButtonLink href="/app/new" size="sm">
-                New analysis
-              </ButtonLink>
+              <div className="flex gap-2">
+                <ButtonLink href="/app/teams" variant="ghost" size="sm">Teams</ButtonLink>
+                <ButtonLink href="/app/new" size="sm">New analysis</ButtonLink>
+              </div>
             </div>
 
             <JobsList initialJobs={jobs} />

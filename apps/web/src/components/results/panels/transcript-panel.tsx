@@ -6,7 +6,7 @@ export interface TranscriptPanelProps {
   segments: TranscriptSegmentView[];
   /** False when the probed source had no audio stream. */
   audioPresent?: boolean | null;
-  sourceKind?: "video" | "image" | "pdf";
+  sourceKind?: "video" | "image" | "pdf" | "audio";
 }
 
 /** Transcript tab. Empty output distinguishes "no track" from "no speech". */
@@ -24,6 +24,8 @@ export function TranscriptPanel({
               ? "Still image — transcription does not apply"
               : sourceKind === "pdf"
                 ? "PDF source — transcription does not apply"
+              : sourceKind === "audio"
+                ? "Audio source — no speech detected"
               : "No audio track detected — transcription was skipped"
           }
           body={
@@ -31,6 +33,8 @@ export function TranscriptPanel({
               ? "The source is an image, so there was no audio to transcribe. Its visual details are available in Visual Analysis and Agent Context."
               : sourceKind === "pdf"
                 ? "The source is a PDF, so there was no audio to transcribe. Its embedded text and rendered pages are available in OCR, Visual Analysis, and Agent Context."
+              : sourceKind === "audio"
+                ? "The uploaded audio was analyzed, but no speech was detected. This is not an error."
               : "The source video has no audio track, so there was nothing to transcribe. This is not an error."
           }
         />

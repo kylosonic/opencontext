@@ -1,0 +1,27 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 19718; Chrome Dev.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-19718",
+    "sourceName": "visual/images/screen-05-19718.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Accept & continue",
+      "Welcome to Chrome",
+      "By using this application, you agree to Chrome’s Terms of Service and Privacy Notice.",
+      "Help make Chrome better by sending usage statistics and crash reports to Google."
+    ],
+    "visualKeywords": [
+      "terms",
+      "conditions",
+      "information",
+      "about",
+      "requesting",
+      "accept"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 19718; Chrome Dev.",
+    "license": "CC-BY-4.0"
+  }
+}

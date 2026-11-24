@@ -4,6 +4,7 @@ import { prisma } from "@/server/db/prisma";
 import { computeProgress } from "@/server/jobs/progress";
 import { requeueJob, transientBudgetExhausted } from "./requeueJob";
 import { activeLease, LeaseLostError } from "./lease";
+import { recordAnalysisUsage } from "@/server/billing/usage";
 
 export interface FailInput {
   stage: string;
@@ -88,8 +89,14 @@ export async function failJob(jobId: string, workerId: string, input: FailInput)
     throw new LeaseLostError(jobId);
   }
 
+  const terminal = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+  if (status === "PARTIAL") {
+    await recordAnalysisUsage(jobId, "PARTIAL").catch((error) => {
+      console.error("Usage record write failed; reconciliation will retry:", error);
+    });
+  }
   return {
     kind: "TERMINAL",
-    job: await prisma.job.findUniqueOrThrow({ where: { id: jobId } }),
+    job: terminal,
   };
 }

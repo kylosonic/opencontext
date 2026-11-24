@@ -27,7 +27,7 @@ export default function QuickstartPage() {
               </Link>{" "}
               and sign in with GitHub.
             </li>
-            <li>Choose a video, still image, image set, or PDF and select the detail level.</li>
+            <li>Choose video, audio, a still image, image set, or PDF, or import a public media URL, then select the detail level.</li>
             <li>Wait for extraction, transcription, analysis, and context generation to finish.</li>
             <li>Review the evidence, then copy the context or download Markdown or JSON.</li>
           </ol>

@@ -4,12 +4,15 @@ import { jobToSummary } from "./serialize";
 /** Max jobs returned by the list endpoint (blueprint §2: "latest 50"). */
 export const LIST_LIMIT = 50;
 
-/**
- * The caller's own jobs, newest first (jobs.md B8). Empty list → `[]`.
- */
+/** Jobs owned by the caller or shared through one of their teams. */
 export async function listJobs(userId: string) {
   const jobs = await prisma.job.findMany({
-    where: { userId },
+    where: {
+      OR: [
+        { userId },
+        { workspace: { members: { some: { userId } } } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     take: LIST_LIMIT,
   });

@@ -27,8 +27,12 @@ export default function StatusPage() {
             {[
               "GitHub sign-in, direct uploads, job tracking, and results",
               "Video, still image, ordered image set, and PDF processing",
+              "Audio-only transcription for MP3, M4A, WAV, OGG, AAC, and FLAC",
               "Faster Whisper, OpenAI-compatible audio, and Ollama provider paths",
+              "Team-shared jobs, expiring read-only public links, and URL imports",
+              "Live job events with automatic polling fallback",
               "Evidence review, Markdown and JSON exports, and retry",
+              "Idempotent usage accounting for future provider-cost rebilling",
               "Local CLI, repository-aware briefs, replay checks, and an MCP server",
             ].map((item) => (
               <li key={item} className="flex gap-2">
@@ -72,21 +76,32 @@ export default function StatusPage() {
           </h2>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>
-              The quality evidence covers a small synthetic visual flow and a
-              clean English speech sample. It does not establish general
-              accuracy.
+              Quality evidence now includes a clean read-speech sample,
+              32 far-field AMI conversational clips, and 16 real Screen2Words
+              screenshots. The local tiny English speech model scored 61.83%
+              WER and 43.81% CER on the concatenated noisy corpus, so this is
+              evidence of difficulty rather than general accuracy. The
+              real-world visual set currently verifies ingestion and scoring
+              plumbing with fixture output; a measured image-capable model run
+              is still required.
             </li>
             <li>
-              No sustained high-traffic or independent penetration test against
-              the hosted service exists.
+              A PostgreSQL pool configuration, Vercel WAF policy script, and
+              weekly OWASP ZAP workflow are present, but sustained hosted
+              traffic tuning and an independent human penetration test remain.
             </li>
             <li>
               The scheduled worker and authenticated operations-alert checker
-              are verified, but no persistent worker host has been verified.
+              are verified. A Render persistent-worker blueprint is checked in,
+              but no live persistent host has been verified.
             </li>
             <li>
-              Teams, public result sharing, URL ingestion, audio-only uploads,
-              and real-time processing are not available.
+              Public sharing and URL ingestion are read-only/import workflows,
+              not collaboration on a live media stream. URL servers must expose
+              `Content-Length`, and serverless duration limits bound very large
+              imports. Usage accounting does not activate payment processing or
+              collect money until billing-provider, price, tax, and customer
+              mapping choices are configured.
             </li>
             <li>
               npm audit currently reports no known vulnerabilities in

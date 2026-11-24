@@ -23,7 +23,7 @@ export const TimelineEntrySchema = z
 
 export type TimelineEntry = z.infer<typeof TimelineEntrySchema>;
 
-export const TimelinePayloadSchema = z.array(TimelineEntrySchema);
+export const TimelinePayloadSchema = z.array(TimelineEntrySchema).max(10_000);
 
 export type TimelinePayload = z.infer<typeof TimelinePayloadSchema>;
 

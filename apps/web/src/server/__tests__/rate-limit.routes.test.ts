@@ -184,6 +184,21 @@ describe("trusted client-address extraction", () => {
       headers: { Authorization: "Bearer worker-token-two" },
     });
 
-    expect(requestRateKey(first, "worker")).not.toBe(requestRateKey(second, "worker"));
+    expect(
+      requestRateKey(first, "worker", { trustBearer: true }),
+    ).not.toBe(requestRateKey(second, "worker", { trustBearer: true }));
+  });
+
+  it("ignores untrusted bearer tokens by default on standalone hosts", () => {
+    vi.stubEnv("VERCEL", "0");
+    vi.stubEnv("TRUST_PROXY", "");
+    const first = new Request("http://test.local", {
+      headers: { Authorization: "Bearer spoof-one" },
+    });
+    const second = new Request("http://test.local", {
+      headers: { Authorization: "Bearer spoof-two" },
+    });
+
+    expect(requestRateKey(first, "auth")).toBe(requestRateKey(second, "auth"));
   });
 });

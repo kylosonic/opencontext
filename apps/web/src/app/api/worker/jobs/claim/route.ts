@@ -33,7 +33,9 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse("VALIDATION_ERROR", "Missing or invalid `workerId`");
     }
     const limited = await enforceRateLimit(
-      requestRateKey(request, `worker-claim:${parsed.data.workerId}`),
+      requestRateKey(request, `worker-claim:${parsed.data.workerId}`, {
+        trustBearer: true,
+      }),
       RATE_LIMITS.workerClaim.limit,
       RATE_LIMITS.workerClaim.windowMs,
     );

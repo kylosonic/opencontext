@@ -1,0 +1,35 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 42622; Break - Funny Videos and Pics.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-42622",
+    "sourceName": "visual/images/screen-10-42622.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "All The Animals",
+      "And You Thought Gazelles Just Had To Worry About Lions",
+      "Even Goats Can't Resist Yoga Pants",
+      "15,591",
+      "When Your Cat's Really Into 90s Hip Hop",
+      "16,734",
+      "Who Ya Gonna Call?  Snakebusters",
+      "23,200",
+      "We Have A Major Cat Combat Malfunction",
+      "32,420",
+      "Now Who's The Ocean's Most Vicious Predator?",
+      "35,285"
+    ],
+    "visualKeywords": [
+      "different",
+      "type",
+      "news",
+      "number",
+      "views",
+      "list"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 42622; Break - Funny Videos and Pics.",
+    "license": "CC-BY-4.0"
+  }
+}

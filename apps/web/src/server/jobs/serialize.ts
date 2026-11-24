@@ -14,8 +14,8 @@ export function jobToDetail(job: Job, sourceMedia: Media[] = []): JobDetail {
   const stageStates = (job.stageStates as StageState[]) ?? [];
   const sourceExt = job.sourceExt ?? "";
   const retryAllowed =
-    job.status === "PARTIAL" ||
-    (job.status === "FAILED" && job.failureKind === "TRANSIENT");
+    (job.status === "PARTIAL" || job.status === "FAILED") &&
+    job.failureKind !== "PERMANENT";
   return {
     id: job.id,
     displayName: job.displayName,

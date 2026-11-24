@@ -268,9 +268,13 @@ describe("completion fencing", () => {
 
     const first = await completeJob(job.id, "worker-a");
     expect(first.kind).toBe("OK");
+    // Simulate a process interruption after the job transition but before the
+    // best-effort usage write. The idempotent completion retry must repair it.
+    await prisma.usageRecord.deleteMany({ where: { jobId: job.id } });
     const retried = await completeJob(job.id, "worker-a");
     expect(retried.kind).toBe("OK");
     expect(retried.kind === "OK" && retried.job.status).toBe("COMPLETED");
+    expect(await prisma.usageRecord.count({ where: { jobId: job.id } })).toBe(1);
   });
 
   it("never promotes a job containing a failed stage", async () => {

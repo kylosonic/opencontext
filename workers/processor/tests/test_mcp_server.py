@@ -11,7 +11,7 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from oc_worker.mcp_server import require_remote_permission
+from oc_worker.mcp_server import _settings_for_analysis, require_remote_permission
 
 
 def _context(path: Path) -> None:
@@ -97,3 +97,11 @@ def test_mcp_server_lists_and_calls_tools(tmp_path: Path) -> None:
                 assert "[E0001 · 00:00 · Observed]" in text
 
     asyncio.run(exercise())
+
+
+def test_mcp_offline_settings_disable_demo_vision(monkeypatch) -> None:
+    monkeypatch.setenv("OPENCONTEXT_DEMO_VISION", "real")
+    monkeypatch.setenv("VISION_PROVIDER", "fixture")
+
+    assert _settings_for_analysis(True).demo_vision is False
+    assert _settings_for_analysis(False).demo_vision is True

@@ -5,8 +5,9 @@
 
 **Visual context for text-only AI.**
 
-Text-only models and coding agents cannot inspect a screen recording, image, or
-PDF. OpenContext extracts speech, visual structure, visible text, UI elements,
+Text-only models and coding agents cannot inspect a screen recording, audio
+file, image, or PDF. OpenContext extracts speech, visual structure, visible
+text, UI elements,
 interactions, and state changes, then returns a structured developer handoff
 where every claim links to source evidence and a certainty label.
 
@@ -98,6 +99,11 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 
 - Authenticated jobs, owner checks, job list/detail, retry, delete, and evidence
   review.
+- Team workspaces with existing-user membership by email or GitHub login.
+  Personal jobs remain private; team jobs are available to every workspace
+  member.
+- Read-only public links with hashed bearer tokens, 30-day expiration, rotation,
+  revocation, and a source stream scoped to the shared result.
 - Direct upload intents with presigned S3 `PUT` support and local-disk
   development storage.
 - PNG, JPEG, and WebP uploads support one image or an ordered set of up to 10.
@@ -107,6 +113,12 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - PDFs up to 50 MB and 30 pages are rendered into ordered pages. Embedded text
   becomes OCR evidence and each rendered page follows the same vision,
   evidence, and export path as an image.
+- Audio-only MP3, M4A, WAV, OGG, AAC, and FLAC uploads run the same transcription,
+  evidence, duration-bound, and export pipeline without requiring a video track.
+- Public URL import with DNS/IP SSRF rejection, pinned address resolution,
+  redirect revalidation, Content-Length enforcement, byte caps, and stored-content
+  validation.
+- Live server-sent job updates with an automatic three-second polling fallback.
 - Explicit size/MIME validation, worker-token authentication, rate limits,
   retention cleanup, and tested FFmpeg argument handling.
 - Upload cancellation with temporary-object cleanup and immediate retry.
@@ -119,6 +131,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Independently selectable Tesseract OCR or vision-derived OCR compatibility.
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
+- Idempotent analysis usage records with configurable resale prices,
+  authenticated aggregation, and scheduled reconciliation for future metered
+  billing.
 - Generated-video end-to-end test from upload through worker output.
 - Audio-backed worker end-to-end test that transcribes the committed Harvard
   recording with real Faster Whisper in CI and checks transcript WER/CER and
@@ -132,6 +147,10 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - OpenCode Go hosted vision smoke and measured synthetic UI/OCR evidence with
   published context, scores, configuration, and limitations. The opt-in smoke
   also checks a generated checkout image through the full image pipeline.
+- A held-out workflow covering 32 noisy far-field AMI conversational clips and
+  16 real Screen2Words screenshots. The local Faster Whisper `tiny.en` pass
+  measured 61.83% WER and 43.81% CER; real-world visual output is still awaiting
+  a measured image-capable model run.
 - Standalone `opencontext analyze`, `brief`, `replay`, `evaluate`, and `doctor` CLI
   workflows with release-ready shared schemas.
 - Repository-aware implementation briefs and a local MCP server that expose
@@ -141,19 +160,23 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 ## What is not ready
 
 - The public worker drains the queue from a five-minute GitHub Actions schedule,
-  so job start latency is up to one interval. A long-running container host is
-  the recommended next step for sustained traffic.
-- Published measured quality covers one simple synthetic visual flow and one
-  clean attributed speech recording. It does not establish broad real-world vision
-  or speech accuracy.
+  so job start latency is up to one interval. A Render persistent-worker
+  blueprint is checked in, but a live persistent host has not yet been verified.
+- Quality evidence now includes noisy conversational speech and real app
+  screenshots, but it is still a bounded smoke corpus. It does not establish
+  broad production accuracy; the measured visual pass is not complete.
 - Docker Compose is verified through a real upload and completed
   PostgreSQL-backed web/worker job in CI.
-- A broader real-world evaluation set with conversational speech, noisy
-  recordings, and dense UI remains pending.
+- The repository has a WAF preview/apply script and bounded PostgreSQL pool
+  configuration, but production traffic tuning remains pending.
 - The default demo fixture has no audio track, so the production smoke job
   exercised vision, OCR, aggregation, and exports; use a speech recording to
   exercise transcription.
 - No independent penetration test has been performed.
+
+- Usage accounting is implemented, but payment-provider integration, prices,
+  tax policy, refunds, and customer-to-subscription mapping are intentionally not
+  activated without product/owner decisions.
 
 Current verification and remaining work:
 [docs/status.md](docs/status.md) ·
@@ -161,8 +184,8 @@ Current verification and remaining work:
 
 ## How it works
 
-1. The browser creates an upload intent and uploads a video, PDF, or image set
-   directly to object storage.
+1. The browser creates an upload intent for video, audio, PDF, or an image set,
+   or the server imports a validated public URL.
 2. The server verifies object size and MIME type, then creates a queued job.
 3. The worker claims the job and probes or renders the source with FFmpeg and
    PDFium.
@@ -172,7 +195,7 @@ Current verification and remaining work:
 6. Context generation emits evidence-linked Markdown and JSON.
 
 ```text
-Video/image/PDF → Upload intent → Object storage → Queue → FFmpeg/PDFium
+Video/audio/image/PDF → Upload intent → Object storage → Queue → FFmpeg/PDFium
                  → Speech/Vision/OCR → Timeline → Evidence ledger → Markdown + JSON
 ```
 

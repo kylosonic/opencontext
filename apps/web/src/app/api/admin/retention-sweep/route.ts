@@ -21,7 +21,7 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse("WORKER_UNAUTHORIZED", "Invalid or missing worker token");
     }
     const limited = await enforceRateLimit(
-      requestRateKey(request, "retention-sweep"),
+      requestRateKey(request, "retention-sweep", { trustBearer: true }),
       RATE_LIMITS.retentionSweep.limit,
       RATE_LIMITS.retentionSweep.windowMs,
     );

@@ -19,9 +19,11 @@ pipeline tests prove the stride is applied before aggregation.
 
 from oc_worker.aggregation import (
     build_timeline,
+    detail_stride_seconds,
     frame_selected,
     limit_frames,
     mark_interaction_certainty,
+    target_frame_fps,
 )
 from oc_worker.models import (
     Certainty,
@@ -332,3 +334,14 @@ def test_mark_interaction_certainty_ignores_missing_interactions() -> None:
     assert mark_interaction_certainty(observation) == observation
     observation = {"interactions": "not-a-list"}
     assert mark_interaction_certainty(observation) == observation
+
+
+def test_target_frame_fps_honors_detail_level_and_frame_budget() -> None:
+    assert detail_stride_seconds(DetailLevel.LOW) == 10
+    assert detail_stride_seconds(DetailLevel.MEDIUM) == 3
+    assert detail_stride_seconds(DetailLevel.HIGH) == 1
+    assert target_frame_fps(30.0, DetailLevel.LOW, 24) == 0.1
+    assert target_frame_fps(30.0, DetailLevel.MEDIUM, 24) == 1.0 / 3.0
+    assert target_frame_fps(30.0, DetailLevel.HIGH, 40) == 1.0
+    # Budget caps long HIGH-detail clips instead of blowing past vision_max_frames.
+    assert target_frame_fps(120.0, DetailLevel.HIGH, 24) == 0.2

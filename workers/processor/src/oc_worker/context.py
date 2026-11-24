@@ -409,6 +409,8 @@ def template_markdown(payload: dict[str, Any]) -> str:
             if source.get("kind") == "image"
             else "- **Source type:** PDF"
             if source.get("kind") == "pdf"
+            else "- **Source type:** Audio"
+            if source.get("kind") == "audio"
             else f"- **Duration:** {format_timestamp(source.get('durationSec') or 0)}"
         ),
         f"- **Generated:** {payload.get('generatedAt')}",
@@ -475,6 +477,8 @@ def template_markdown(payload: dict[str, Any]) -> str:
                 if source.get("kind") == "image"
                 else "_PDF source has no audio — transcription was skipped._"
                 if source.get("kind") == "pdf"
+                else "_Audio file contained no speech._"
+                if source.get("kind") == "audio"
                 else "_No audio track detected — transcription was skipped._"
             )
         else:

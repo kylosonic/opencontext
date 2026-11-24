@@ -26,13 +26,20 @@ const MIMES_BY_EXTENSION: Record<string, readonly string[]> = {
   jpeg: ["image/jpeg", "image/jpg"],
   webp: ["image/webp"],
   pdf: ["application/pdf"],
+  mp3: ["audio/mpeg"],
+  m4a: ["audio/mp4", "audio/x-m4a"],
+  wav: ["audio/wav", "audio/x-wav"],
+  ogg: ["audio/ogg"],
+  aac: ["audio/aac"],
+  flac: ["audio/flac"],
 };
 
 export const SUPPORTED_FORMAT_MESSAGE =
-  "This format is not supported — use MP4, MOV, WebM, MKV, PNG, JPG, JPEG, WebP, or PDF";
+  "This format is not supported — use MP4, MOV, WebM, MKV, MP3, M4A, WAV, OGG, AAC, FLAC, PNG, JPG, JPEG, WebP, or PDF";
 export const VIDEO_SIZE_MESSAGE = "File is too large — the limit is 500 MB";
 export const IMAGE_SIZE_MESSAGE = "Image is too large — the limit is 25 MB";
 export const PDF_SIZE_MESSAGE = "PDF is too large — the limit is 50 MB";
+export const AUDIO_SIZE_MESSAGE = "Audio is too large — the limit is 100 MB";
 
 export function validateUpload(
   filename: string,
@@ -76,6 +83,8 @@ export function validateUpload(
       ? UPLOAD_LIMITS.maxImageBytes
       : kind === "pdf"
         ? UPLOAD_LIMITS.maxPdfBytes
+        : kind === "audio"
+          ? UPLOAD_LIMITS.maxAudioBytes
         : UPLOAD_LIMITS.maxBytes;
   if (sizeBytes > byteLimit) {
     return {
@@ -86,6 +95,8 @@ export function validateUpload(
           ? IMAGE_SIZE_MESSAGE
           : kind === "pdf"
             ? PDF_SIZE_MESSAGE
+            : kind === "audio"
+              ? AUDIO_SIZE_MESSAGE
             : VIDEO_SIZE_MESSAGE,
     };
   }
@@ -103,7 +114,14 @@ export function validateUpload(
     !normalizedMime ||
     !(UPLOAD_LIMITS.allowedMimeTypes as readonly string[]).includes(normalizedMime)
   ) {
-    const noun = kind === "image" ? "image" : kind === "pdf" ? "PDF" : "video";
+    const noun =
+      kind === "image"
+        ? "image"
+        : kind === "pdf"
+          ? "PDF"
+          : kind === "audio"
+            ? "audio"
+            : "video";
     return {
       ok: false,
       code: "FORMAT_UNSUPPORTED",
@@ -148,6 +166,9 @@ export async function validateStoredMedia(
       : { ok: false, message: "The uploaded PDF is not a valid PDF file" };
   }
   if (!(ext in IMAGE_FORMAT_BY_EXTENSION)) {
+    if (["mp3", "m4a", "wav", "ogg", "aac", "flac"].includes(ext)) {
+      return validateAudioSignature(bytes, ext);
+    }
     if (["mp4", "mov", "webm", "mkv"].includes(ext)) {
       const head = Buffer.from(bytes.subarray(0, 16));
       const isIsoBase = isIsoBmffHead(Buffer.from(bytes));
@@ -206,6 +227,27 @@ export async function validateStoredMedia(
       message: "The uploaded image is corrupt or exceeds the 40-megapixel limit",
     };
   }
+}
+
+function validateAudioSignature(
+  bytes: Uint8Array,
+  extension: string,
+): StoredMediaValidation {
+  const buffer = Buffer.from(bytes.subarray(0, 16));
+  const ascii = buffer.toString("ascii");
+  const valid =
+    (extension === "mp3" &&
+      (ascii.startsWith("ID3") || (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0))) ||
+    (extension === "m4a" && buffer.subarray(4, 8).toString("ascii") === "ftyp") ||
+    (extension === "wav" &&
+      ascii.startsWith("RIFF") &&
+      buffer.subarray(8, 12).toString("ascii") === "WAVE") ||
+    (extension === "ogg" && ascii.startsWith("OggS")) ||
+    (extension === "flac" && ascii.startsWith("fLaC")) ||
+    (extension === "aac" && buffer[0] === 0xff && (buffer[1] & 0xf6) === 0xf0);
+  return valid
+    ? { ok: true }
+    : { ok: false, message: "The uploaded audio content does not match its file format" };
 }
 
 function isIsoBmffHead(bytes: Buffer): boolean {

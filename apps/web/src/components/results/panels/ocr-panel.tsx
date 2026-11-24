@@ -4,7 +4,7 @@ import { EmptyState } from "./empty-state";
 
 export interface OcrPanelProps {
   entries: OcrEntryView[];
-  sourceKind?: "video" | "image" | "pdf";
+  sourceKind?: "video" | "image" | "pdf" | "audio";
 }
 
 /** OCR tab. Empty (no visible text) → the results.md B4 notice. */
@@ -17,6 +17,8 @@ export function OcrPanel({ entries, sourceKind }: OcrPanelProps) {
             ? "No visible text was detected in this image"
             : sourceKind === "pdf"
               ? "No visible or embedded text was detected in this PDF"
+              : sourceKind === "audio"
+                ? "OCR does not apply to an audio-only source"
               : "No visible text was detected in this video"
         }
         body={
@@ -24,6 +26,8 @@ export function OcrPanel({ entries, sourceKind }: OcrPanelProps) {
             ? "Visual analysis produced no text entries for the image."
             : sourceKind === "pdf"
               ? "PDF text extraction and visual analysis produced no text entries."
+              : sourceKind === "audio"
+                ? "Speech is available in the Transcript tab; audio has no visual text to recognize."
               : "OCR runs during visual analysis; this job produced no text entries."
         }
       />

@@ -16,7 +16,11 @@ _LANGUAGE_RE = re.compile(r"^[A-Za-z0-9_+.-]{1,64}$")
 
 def parse_tesseract_tsv(output: str) -> list[dict[str, Any]]:
     """Group recognized words into lines with average confidence."""
-    reader = csv.DictReader(io.StringIO(output), delimiter="\t")
+    reader = csv.DictReader(
+        io.StringIO(output),
+        delimiter="\t",
+        quoting=csv.QUOTE_NONE,
+    )
     lines: OrderedDict[tuple[str, ...], dict[str, Any]] = OrderedDict()
     for row in reader:
         text = (row.get("text") or "").strip()

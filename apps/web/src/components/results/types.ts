@@ -66,7 +66,7 @@ export interface JobHeaderView {
   /** False when the probed source had no audio stream. */
   audioPresent?: boolean | null;
   /** Still images use the same vision pipeline but have no duration/audio. */
-  sourceKind?: "video" | "image" | "pdf";
+  sourceKind?: "video" | "image" | "pdf" | "audio";
   /** ISO timestamp. */
   createdAt: string;
   /** ISO timestamp; hidden when unknown. */
@@ -145,6 +145,8 @@ export interface ResultViewerProps {
   active?: boolean;
   /** Persistent "Demo Analysis" badges (job header + tab strip). */
   demo?: boolean;
+  /** Public share mode: omit owner-only downloads and review controls. */
+  readOnly?: boolean;
   /** Timeline and evidence reference click → seek to a source timestamp. */
   onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   /** A real `<video>` or `<img>` element. Omitted → placeholder panel. */

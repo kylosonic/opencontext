@@ -1,0 +1,29 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 8963; Messenger for LoL (Unofficial).",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-8963",
+    "sourceName": "visual/images/screen-03-8963.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Account Login",
+      "North America",
+      "Sign in",
+      "Remember",
+      "Auto-Login",
+      "Login as Offline"
+    ],
+    "visualKeywords": [
+      "login",
+      "sign",
+      "credentials",
+      "requesting",
+      "enter",
+      "social"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 8963; Messenger for LoL (Unofficial).",
+    "license": "CC-BY-4.0"
+  }
+}

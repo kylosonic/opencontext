@@ -38,7 +38,7 @@ export type DetailLevel = (typeof DETAIL_LEVELS)[number];
 export const DetailLevelSchema = z.enum(DETAIL_LEVELS);
 
 /** Source media accepted by the analysis pipeline. */
-export const SOURCE_KINDS = ["video", "image", "pdf"] as const;
+export const SOURCE_KINDS = ["video", "image", "pdf", "audio"] as const;
 
 export type SourceKind = (typeof SOURCE_KINDS)[number];
 
@@ -49,6 +49,7 @@ export const UPLOAD_LIMITS = {
   maxBytes: 500 * 1024 * 1024,
   maxImageBytes: 25 * 1024 * 1024,
   maxPdfBytes: 50 * 1024 * 1024,
+  maxAudioBytes: 100 * 1024 * 1024,
   maxImageCount: 10,
   maxImagePixels: 40_000_000,
   maxPdfPages: 30,
@@ -63,6 +64,12 @@ export const UPLOAD_LIMITS = {
     ".jpeg",
     ".webp",
     ".pdf",
+    ".mp3",
+    ".m4a",
+    ".wav",
+    ".ogg",
+    ".aac",
+    ".flac",
   ],
   allowedMimeTypes: [
     "video/mp4",
@@ -74,8 +81,17 @@ export const UPLOAD_LIMITS = {
     "image/jpg",
     "image/webp",
     "application/pdf",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/x-m4a",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/ogg",
+    "audio/aac",
+    "audio/flac",
   ],
   imageExtensions: [".png", ".jpg", ".jpeg", ".webp"],
+  audioExtensions: [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac"],
   intentTtlSec: 15 * 60,
 } as const;
 
@@ -84,6 +100,9 @@ export function sourceKindForExtension(extension: string): SourceKind {
   const normalized = extension.startsWith(".")
     ? extension.toLowerCase()
     : `.${extension.toLowerCase()}`;
+  if ((UPLOAD_LIMITS.audioExtensions as readonly string[]).includes(normalized)) {
+    return "audio";
+  }
   return (UPLOAD_LIMITS.imageExtensions as readonly string[]).includes(
     normalized,
   )
@@ -99,7 +118,7 @@ export const RETENTION = {
   incompleteDays: 7,
 } as const;
 
-/** Client polling cadence for job status updates (ms). */
+/** Client polling fallback cadence for job status updates (ms). */
 export const POLL_INTERVAL_MS = 3000;
 
 /** Pipeline stage identifiers persisted in `Job.stageStates`. */

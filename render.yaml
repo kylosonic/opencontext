@@ -1,0 +1,55 @@
+services:
+  - type: worker
+    name: opencontext-worker
+    runtime: docker
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    dockerfilePath: ./docker/worker-hosted.Dockerfile
+    dockerContext: .
+    maxShutdownDelaySeconds: 180
+    disk:
+      name: opencontext-model-cache
+      mountPath: /models
+      sizeGB: 5
+    envVars:
+      - key: OPENCONTEXT_SKIP_DOTENV
+        value: "1"
+      - key: WORKER_ID
+        value: render-worker
+      - key: WORKER_CONCURRENCY
+        value: "1"
+      - key: WORKER_SHUTDOWN_GRACE_SECONDS
+        value: "120"
+      - key: WORKER_JOB_TIMEOUT_SECONDS
+        value: "900"
+      - key: HF_HOME
+        value: /models
+      - key: WORKER_API_URL
+        sync: false
+      - key: WORKER_API_TOKEN
+        sync: false
+      - key: TRANSCRIPTION_PROVIDER
+        value: faster_whisper
+      - key: TRANSCRIPTION_MODEL
+        value: base
+      - key: VISION_PROVIDER
+        value: openai_compatible
+      - key: VISION_MODEL
+        value: hy4-flash-free
+      - key: VISION_FALLBACK_MODELS
+        value: glm-5.3-flash
+      - key: VISION_REQUEST_INTERVAL_SECONDS
+        value: "5"
+      - key: VISION_CONCURRENCY
+        value: "1"
+      - key: VISION_MAX_FRAMES
+        value: "60"
+      - key: OCR_PROVIDER
+        value: vision
+      - key: TEXT_PROVIDER
+        value: template
+      - key: OPENAI_BASE_URL
+        value: https://opencode.ai/inference/go/openai/v1
+      - key: OPENAI_API_KEY
+        sync: false

@@ -83,3 +83,19 @@ def test_tesseract_reads_generated_text_frame(tmp_path: Path) -> None:
     recognized = " ".join(str(row["text"]) for row in rows).lower()
     assert "opencontext" in recognized
     assert "123" in recognized
+
+
+def test_tesseract_tsv_preserves_unmatched_double_quotes() -> None:
+    tsv = "\n".join(
+        [
+            "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext",
+            '5\t1\t1\t1\t1\t1\t0\t0\t10\t10\t90\t"Unclosed',
+            "5\t1\t1\t1\t1\t2\t10\t0\t10\t10\t90\tquote",
+            "5\t1\t1\t1\t2\t1\t0\t20\t10\t10\t80\tSecond",
+        ]
+    )
+
+    assert parse_tesseract_tsv(tsv) == [
+        {"text": '"Unclosed quote', "confidence": 0.9},
+        {"text": "Second", "confidence": 0.8},
+    ]

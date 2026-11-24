@@ -3,15 +3,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { NewJobForm } from "@/components/app/new-job-form";
+import { UrlImportForm } from "@/components/app/url-import-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { listWorkspaces } from "@/server/workspaces";
 
 export const metadata: Metadata = {
   title: "New analysis — OpenContext",
   description:
-    "Upload a video, screen recording, image set, or PDF and generate structured developer context for text-only AI agents.",
+    "Upload a video, screen recording, audio file, image set, or PDF and generate structured developer context for text-only AI agents.",
 };
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,7 @@ export default async function NewAnalysisPage() {
   if (!session?.user?.id) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent("/app/new")}`);
   }
+  const workspaces = await listWorkspaces(session.user.id);
 
   return (
     <>
@@ -40,7 +43,7 @@ export default async function NewAnalysisPage() {
                   New analysis
                 </h1>
                 <p className="mt-3 max-w-xl text-base leading-relaxed text-ink-muted">
-                  Upload a video, screen recording, image set, or PDF.
+                  Upload a video, screen recording, audio file, image set, or PDF.
                   OpenContext extracts speech and visual details into an
                   evidence-linked developer context document you can copy into
                   any text-only agent.
@@ -51,7 +54,11 @@ export default async function NewAnalysisPage() {
               </ButtonLink>
             </div>
 
-            <NewJobForm />
+            <NewJobForm workspaces={workspaces} />
+
+            <div className="mt-6">
+              <UrlImportForm workspaces={workspaces} />
+            </div>
 
             <p className="mt-6 text-xs leading-relaxed text-ink-faint">
               Want to see the output format first? The{" "}

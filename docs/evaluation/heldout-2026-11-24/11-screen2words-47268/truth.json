@@ -1,0 +1,39 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 47268; Hi.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-47268",
+    "sourceName": "visual/images/screen-11-47268.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Speaker",
+      "Instant video: preload 1.1MB video segment.",
+      "Preload Videos",
+      "PRIVACY",
+      "Allow others to be notified when you have read their messages.",
+      "Share Read Reports",
+      "Turn this option on to stop receiving any friend requests.",
+      "Deny Friend Requests",
+      "Last Seen",
+      "Everybody",
+      "Block List",
+      "Terminate all other sessions",
+      "SUPPORT",
+      "Web Chat",
+      "About Hi",
+      "Log Out"
+    ],
+    "visualKeywords": [
+      "list",
+      "settings",
+      "message",
+      "different",
+      "setting",
+      "options"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 47268; Hi.",
+    "license": "CC-BY-4.0"
+  }
+}

@@ -175,7 +175,7 @@ export interface ResultMetadata {
   id: string;
   displayName: string;
   sourceName: string;
-  sourceKind?: "video" | "image" | "pdf";
+  sourceKind?: "video" | "image" | "pdf" | "audio";
   detailLevel: JobHeaderView["detailLevel"];
   status: "COMPLETED" | "PARTIAL";
   formatVersion: number;

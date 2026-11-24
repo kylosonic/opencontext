@@ -56,6 +56,25 @@ def _fixture(path: Path) -> None:
     )
 
 
+def _audio_fixture(path: Path) -> None:
+    subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:sample_rate=16000:duration=1",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 def test_offline_cli_writes_markdown_and_json(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("FIXTURE_TRANSCRIPT", "CLI fixture transcript.")
     monkeypatch.setenv("FIXTURE_VISIBLE_TEXT", "CLI fixture text")
@@ -133,6 +152,36 @@ def test_cli_clamps_transcript_end_to_video_duration(
     ]
     assert transcript_evidence[0]["endSec"] == duration
     assert validate_context(payload)["ok"] is True
+
+
+def test_audio_only_cli_does_not_require_a_vision_provider(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("FIXTURE_TRANSCRIPT", "Audio-only fixture transcript.")
+    monkeypatch.setenv("VISION_PROVIDER", "off")
+    monkeypatch.setenv("OCR_PROVIDER", "off")
+    monkeypatch.setenv("TEXT_PROVIDER", "template")
+    audio = tmp_path / "fixture.wav"
+    _audio_fixture(audio)
+    json_path = tmp_path / "context.json"
+
+    code = main(
+        [
+            "analyze",
+            str(audio),
+            "--transcription-provider",
+            "fixture",
+            "--json",
+            str(json_path),
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["source"]["kind"] == "audio"
+    assert payload["transcript"][0]["text"] == "Audio-only fixture transcript."
+    assert payload["visualFindings"] == []
+    capsys.readouterr()
 
 
 def test_directory_batch_writes_collision_safe_outputs(
@@ -454,3 +503,32 @@ def test_evaluate_command_writes_metric_report(tmp_path: Path) -> None:
     assert result["ocr"]["f1"] == 1.0
     assert result["visual"]["recall"] == 1.0
     assert result["dataset"]["license"] == "CC0-1.0"
+
+
+@pytest.mark.parametrize("text_provider", ["none", "off"])
+def test_doctor_accepts_disabled_text_provider(
+    monkeypatch, capsys, text_provider: str
+) -> None:
+    monkeypatch.setenv("FFMPEG_PATH", FFMPEG or "ffmpeg")
+    monkeypatch.setenv("TRANSCRIPTION_PROVIDER", "fixture")
+    monkeypatch.setenv("VISION_PROVIDER", "fixture")
+    monkeypatch.setenv("TEXT_PROVIDER", text_provider)
+
+    code = main(["doctor", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    checks = {check["name"]: check for check in payload["checks"]}
+    assert code == 0
+    assert checks["text"]["status"] == "ok"
+
+
+def test_offline_cli_disables_demo_vision_env(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("OPENCONTEXT_DEMO_VISION", "real")
+    video = tmp_path / "fixture.mp4"
+    _fixture(video)
+    markdown = tmp_path / "context.md"
+
+    code = main(["analyze", str(video), "--offline", "--out", str(markdown)])
+
+    assert code == 0
+    assert markdown.is_file()

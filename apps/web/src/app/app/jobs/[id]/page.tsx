@@ -70,7 +70,11 @@ export default async function JobPage({
     detail.status === "PARTIAL" ||
     ["EXTRACTING", "TRANSCRIBING", "ANALYZING", "AGGREGATING", "GENERATING_CONTEXT"].includes(detail.status);
   if (playerReached && detail.source?.key) {
-    if (detail.source.kind === "image" || detail.source.kind === "pdf") {
+    if (
+      detail.source.kind === "image" ||
+      detail.source.kind === "pdf" ||
+      detail.source.kind === "audio"
+    ) {
       sourceUrl = `/api/jobs/${encodeURIComponent(detail.id)}/source`;
     } else {
       try {
@@ -81,7 +85,7 @@ export default async function JobPage({
       }
       if (sourceUrl === null) {
         sourceUnavailableNote =
-          "This deployment stores media on local disk, so the source video is not streamed back to the browser. Transcripts, analysis, and exports are unaffected.";
+          "This deployment stores media on local disk, so the source recording is not streamed back to the browser. Transcripts, analysis, and exports are unaffected.";
       }
     }
   }

@@ -81,3 +81,19 @@ jobs:
             exit 0
           fi
           node scripts/check-operations.mjs
+
+      - name: Reconcile terminal usage records
+        if: always()
+        env:
+          OPENCONTEXT_BASE_URL: ${{ vars.WORKER_API_URL }}
+          OPS_API_TOKEN: ${{ secrets.OPS_API_TOKEN }}
+        run: |
+          if [ -z "$OPENCONTEXT_BASE_URL" ] || [ -z "$OPS_API_TOKEN" ]; then
+            echo "::warning::Usage reconciliation skipped because WORKER_API_URL or OPS_API_TOKEN is unset."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-all-errors --max-time 30 \
+            -X POST \
+            -H "Authorization: Bearer $OPS_API_TOKEN" \
+            "$OPENCONTEXT_BASE_URL/api/ops/usage/reconcile"

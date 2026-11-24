@@ -12,6 +12,7 @@ export const UploadIntentRequestSchema = z
       .max(UPLOAD_LIMITS.maxBytes),
     mime: z.string().max(128).optional(),
     detailLevel: DetailLevelSchema.default("MEDIUM"),
+    workspaceId: z.string().min(1).max(128).optional(),
   })
   .strict();
 
@@ -36,6 +37,7 @@ export const CompleteUploadBatchRequestSchema = z
       .min(2)
       .max(UPLOAD_LIMITS.maxImageCount),
     detailLevel: DetailLevelSchema.default("MEDIUM"),
+    workspaceId: z.string().min(1).max(128).optional(),
   })
   .strict();
 

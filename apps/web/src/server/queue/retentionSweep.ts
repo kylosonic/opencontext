@@ -1,4 +1,5 @@
 import { prisma } from "@/server/db/prisma";
+import { retentionDaysFromEnv } from "@/server/jobs/retention";
 import { storage } from "@/server/storage";
 
 export interface RetentionSweepResult {
@@ -15,14 +16,7 @@ export interface RetentionSweepResult {
 export async function retentionSweep(): Promise<RetentionSweepResult> {
   const now = Date.now();
   const DAY = 24 * 60 * 60 * 1000;
-  const completedDays = positiveInteger(
-    process.env.RETENTION_COMPLETED_DAYS,
-    14,
-  );
-  const incompleteDays = positiveInteger(
-    process.env.RETENTION_INCOMPLETE_DAYS,
-    7,
-  );
+  const { completedDays, incompleteDays } = retentionDaysFromEnv();
   const completedCutoff = new Date(now - completedDays * DAY);
   const incompleteCutoff = new Date(now - incompleteDays * DAY);
 
@@ -91,9 +85,4 @@ export async function retentionSweep(): Promise<RetentionSweepResult> {
   });
 
   return { scanned, deleted };
-}
-
-function positiveInteger(value: string | undefined, fallback: number): number {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }

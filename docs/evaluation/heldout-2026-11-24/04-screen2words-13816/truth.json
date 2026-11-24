@@ -1,0 +1,28 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 13816; Google Primer.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-13816",
+    "sourceName": "visual/images/screen-04-13816.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "ADVERTISING",
+      "CONTENT",
+      "MEASUREMENT",
+      "STRATEGY",
+      "ALL LESSONS"
+    ],
+    "visualKeywords": [
+      "number",
+      "elements",
+      "home",
+      "list",
+      "categories",
+      "displayed"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 13816; Google Primer.",
+    "license": "CC-BY-4.0"
+  }
+}

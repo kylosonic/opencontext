@@ -1,0 +1,41 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 34321; Weigh - Truck Weigh Stations.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-34321",
+    "sourceName": "visual/images/screen-08-34321.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Manual Lookup",
+      "A",
+      "Alabama",
+      "Alberta",
+      "Arizona",
+      "Arkansas",
+      "B",
+      "British Columbia",
+      "C",
+      "California",
+      "Colorado",
+      "Connecticut",
+      "D",
+      "Delaware",
+      "F",
+      "Florida",
+      "G",
+      "Georgia"
+    ],
+    "visualKeywords": [
+      "catalog",
+      "various",
+      "cities",
+      "displayed",
+      "places",
+      "list"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 34321; Weigh - Truck Weigh Stations.",
+    "license": "CC-BY-4.0"
+  }
+}

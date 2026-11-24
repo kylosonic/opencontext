@@ -57,7 +57,12 @@ def extract_pdf_pages(
                 ) from exc
             try:
                 width, height = (float(value) for value in page.get_size())
-                if width <= 0 or height <= 0:
+                if (
+                    not math.isfinite(width)
+                    or not math.isfinite(height)
+                    or width <= 0
+                    or height <= 0
+                ):
                     raise PermanentFailure(f"PDF page {index + 1} has invalid dimensions")
                 pixel_scale = math.sqrt(max_page_pixels / (width * height))
                 scale = min(

@@ -1,0 +1,94 @@
+{
+  "audioPresent": false,
+  "crossImageFindings": [],
+  "evidence": [
+    {
+      "certainty": "UNCERTAIN",
+      "id": 1,
+      "kind": "VISUAL",
+      "source": {
+        "assetIndex": 0,
+        "collection": "visualFindings",
+        "index": 0
+      },
+      "text": "Fixture scene",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 2,
+      "kind": "VISUAL",
+      "source": {
+        "assetIndex": 0,
+        "collection": "visualFindings",
+        "index": 1
+      },
+      "text": "Deterministic fixture observation at 0.0s (no vision model used).",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "id": 3,
+      "kind": "VISUAL",
+      "source": {
+        "assetIndex": 0,
+        "collection": "visibleText",
+        "index": 0
+      },
+      "text": "OpenContext fixture frame",
+      "timestampSec": 0.0
+    }
+  ],
+  "evidenceVersion": 1,
+  "formatVersion": 2,
+  "generatedAt": "2026-11-24T17:31:34+00:00",
+  "implementationObservations": [],
+  "interactions": [],
+  "source": {
+    "detailLevel": "MEDIUM",
+    "durationSec": 0.0,
+    "kind": "image",
+    "name": "screen-01-118.jpg"
+  },
+  "sourceAssets": [
+    {
+      "kind": "image",
+      "name": "screen-01-118.jpg",
+      "order": 0
+    }
+  ],
+  "stateTransitions": [],
+  "timeline": [
+    {
+      "end": 0.0,
+      "start": 0.0,
+      "summary": "Deterministic fixture observation at 0.0s (no vision model used). (inferred)",
+      "title": "Fixture scene"
+    }
+  ],
+  "transcript": [],
+  "uiHierarchy": [],
+  "visibleText": [
+    "OpenContext fixture frame"
+  ],
+  "visualFindings": [
+    {
+      "certainty": "UNCERTAIN",
+      "field": "sceneTitle",
+      "frameId": "image-01",
+      "model": null,
+      "provider": "fixture",
+      "text": "Fixture scene",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "UNCERTAIN",
+      "field": "visualDescription",
+      "frameId": "image-01",
+      "model": null,
+      "provider": "fixture",
+      "text": "Deterministic fixture observation at 0.0s (no vision model used).",
+      "timestampSec": 0.0
+    }
+  ]
+}

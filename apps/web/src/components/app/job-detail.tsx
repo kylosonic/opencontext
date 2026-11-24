@@ -77,7 +77,7 @@ export function JobDetailClient({
   sourceUnavailableNote = null,
 }: JobDetailClientProps) {
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement | null>(null);
   const pollEpochRef = useRef(0);
   const [job, setJob] = useState<JobDetail>(initialDetail);
   // Constant per mount: the parent remounts this island (via `key`) when
@@ -86,6 +86,7 @@ export function JobDetailClient({
   const [preparing, setPreparing] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
+  const [liveConnected, setLiveConnected] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -117,9 +118,57 @@ export function JobDetailClient({
     return () => window.clearTimeout(timer);
   }, [preparing, router]);
 
+  // Prefer server-sent state changes while the job is active. The regular
+  // three-second poll remains a transparent fallback for proxies or platforms
+  // that terminate long-lived streams.
+  useEffect(() => {
+    if (!active || preparing || signedOut || typeof EventSource === "undefined") {
+      return;
+    }
+    const epoch = pollEpochRef.current;
+    const source = new EventSource(`/api/jobs/${encodeURIComponent(job.id)}/events`);
+    let closed = false;
+    const finish = () => {
+      closed = true;
+      source.close();
+      setLiveConnected(false);
+    };
+    const accept = (event: MessageEvent<string>) => {
+      if (closed || epoch !== pollEpochRef.current) return;
+      try {
+        const next = JSON.parse(event.data) as JobDetail;
+        setJob(next);
+        setReconnecting(false);
+        if (next.status === "COMPLETED" || next.status === "PARTIAL") {
+          setPreparing(true);
+          router.refresh();
+          finish();
+        } else if (next.status === "FAILED") {
+          finish();
+        }
+      } catch {
+        finish();
+      }
+    };
+    source.addEventListener("open", () => {
+      if (!closed && epoch === pollEpochRef.current) {
+        setLiveConnected(true);
+        setReconnecting(false);
+      }
+    });
+    source.addEventListener("job", accept as EventListener);
+    source.addEventListener("deleted", finish);
+    source.addEventListener("access-revoked", () => {
+      setSignedOut(true);
+      finish();
+    });
+    source.addEventListener("error", finish);
+    return finish;
+  }, [active, job.id, preparing, router, signedOut]);
+
   // Poll every 3s while the job is active (jobs.md B3).
   useEffect(() => {
-    if (!active || preparing || signedOut) return;
+    if (!active || preparing || signedOut || liveConnected) return;
     let stopped = false;
     let inFlight = false;
     const tick = async () => {
@@ -156,7 +205,7 @@ export function JobDetailClient({
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [active, preparing, signedOut, job.id, router]);
+  }, [active, liveConnected, preparing, signedOut, job.id, router]);
 
   const renderMode = useMemo(() => {
     if (signedOut) return "signed-out" as const;
@@ -196,11 +245,11 @@ export function JobDetailClient({
   const seekTo = useCallback((timestampSec: number, sourceAssetIndex?: number) => {
     setSelectedTimestamp(timestampSec);
     if (sourceAssetIndex !== undefined) setSelectedAssetIndex(sourceAssetIndex);
-    if (sourceKind !== "video") return;
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = timestampSec;
-    void video.play().catch(() => undefined);
+    if (sourceKind !== "video" && sourceKind !== "audio") return;
+    const media = mediaRef.current;
+    if (!media) return;
+    media.currentTime = timestampSec;
+    void media.play().catch(() => undefined);
   }, [sourceKind]);
 
   const elapsedNow = useMemo(() => {
@@ -277,9 +326,19 @@ export function JobDetailClient({
           onSelectedIndexChange={setSelectedAssetIndex}
           onError={() => setSourceBroken(true)}
         />
+      ) : sourceKind === "audio" ? (
+        <audio
+          ref={mediaRef}
+          src={sourceUrl}
+          controls
+          preload="metadata"
+          className="w-full bg-panel p-4"
+          aria-label="Source audio"
+          onError={() => setSourceBroken(true)}
+        />
       ) : (
         <video
-          ref={videoRef}
+          ref={mediaRef}
           src={sourceUrl}
           controls
           preload="metadata"
@@ -328,6 +387,8 @@ export function JobDetailClient({
             </div>
           )}
           <ManageCard
+            jobId={job.id}
+            shareable={false}
             onDelete={() => setConfirmDeleteOpen(true)}
             error={actionError}
           />
@@ -380,18 +441,21 @@ export function JobDetailClient({
                 </p>
               )}
               <p className="mt-1 text-xs leading-relaxed text-ink-faint">
-                The content that completed stays viewable below. Retrying
-                re-runs only the failed stages.
+                {job.retryAllowed
+                  ? "The content that completed stays viewable below. Retrying re-runs only the failed stages."
+                  : "The content that completed stays viewable below. Retrying cannot help with a permanent failure."}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void handleRetry()}
-                  disabled={retrying}
-                >
-                  {retrying ? "Retrying…" : "Retry failed stages"}
-                </Button>
+                {job.retryAllowed && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleRetry()}
+                    disabled={retrying}
+                  >
+                    {retrying ? "Retrying…" : "Retry failed stages"}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -420,6 +484,8 @@ export function JobDetailClient({
             sourceSlot={sourceSlot}
           />
           <ManageCard
+            jobId={job.id}
+            shareable
             onDelete={() => setConfirmDeleteOpen(true)}
             error={actionError}
           />
@@ -532,9 +598,13 @@ export function JobDetailClient({
 }
 
 function ManageCard({
+  jobId,
+  shareable,
   onDelete,
   error,
 }: {
+  jobId: string;
+  shareable: boolean;
   onDelete: () => void;
   error: string | null;
 }) {
@@ -551,7 +621,125 @@ function ManageCard({
           </p>
         )}
       </div>
+      {shareable && <ShareControls jobId={jobId} />}
     </Card>
+  );
+}
+
+function ShareControls({ jobId }: { jobId: string }) {
+  const [active, setActive] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`/api/jobs/${encodeURIComponent(jobId)}/share`, {
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("status unavailable");
+        return (await response.json()) as { active?: boolean; expiresAt?: string };
+      })
+      .then((status) => {
+        if (cancelled) return;
+        setActive(Boolean(status.active));
+        setExpiresAt(status.expiresAt ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load the public-link status.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId]);
+
+  async function createLink() {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/share`, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { url?: string; expiresAt?: string; error?: { message?: string } }
+        | null;
+      if (!response.ok || !payload?.url) {
+        throw new Error(payload?.error?.message ?? "Could not create the share link.");
+      }
+      const absolute = new URL(payload.url, window.location.origin).href;
+      setPublicUrl(absolute);
+      setActive(true);
+      setExpiresAt(payload.expiresAt ?? null);
+      await navigator.clipboard?.writeText(absolute).catch(() => undefined);
+      setMessage("Read-only link created and copied.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not create the link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revokeLink() {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/share`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Could not revoke the share link.");
+      setActive(false);
+      setPublicUrl(null);
+      setExpiresAt(null);
+      setMessage("Public access revoked.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not revoke the link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <h3 className="text-sm font-semibold text-ink">Public share</h3>
+      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+        Anyone with the link can view the results and source media in read-only
+        mode. Creating a new link revokes the previous one. Links expire after
+        30 days.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button variant="secondary" size="sm" onClick={() => void createLink()} disabled={busy}>
+          {busy ? "Working…" : active ? "Rotate share link" : "Create share link"}
+        </Button>
+        {active && (
+          <Button variant="ghost" size="sm" onClick={() => void revokeLink()} disabled={busy}>
+            Stop sharing
+          </Button>
+        )}
+        {publicUrl && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void navigator.clipboard?.writeText(publicUrl)}
+          >
+            Copy link
+          </Button>
+        )}
+      </div>
+      {active && expiresAt && (
+        <p className="mt-2 text-xs text-ink-faint">
+          Active until {new Date(expiresAt).toLocaleString()}.
+        </p>
+      )}
+      {message && <p role="status" className="mt-2 text-xs text-ok">{message}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-err">{error}</p>}
+    </div>
   );
 }
 

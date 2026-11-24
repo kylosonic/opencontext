@@ -1,0 +1,22 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 5320; Free Samsung Emojis.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-5320",
+    "sourceName": "visual/images/screen-02-5320.jpg",
+    "transcript": "",
+    "ocrTexts": [],
+    "visualKeywords": [
+      "emojis",
+      "emoji",
+      "different",
+      "multiple",
+      "various",
+      "variety"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 5320; Free Samsung Emojis.",
+    "license": "CC-BY-4.0"
+  }
+}

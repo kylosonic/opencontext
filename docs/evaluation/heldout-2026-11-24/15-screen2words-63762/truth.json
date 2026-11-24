@@ -1,0 +1,25 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 63762; Animal Planet GO.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-63762",
+    "sourceName": "visual/images/screen-15-63762.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Oops! Cannot connect to the Internet. Please try again.",
+      "Retry Operation"
+    ],
+    "visualKeywords": [
+      "error",
+      "searched",
+      "website",
+      "displayed",
+      "retry",
+      "operation"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 63762; Animal Planet GO.",
+    "license": "CC-BY-4.0"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 55597; Santa Call Prank.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-55597",
+    "sourceName": "visual/images/screen-13-55597.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Santa Prank Call Joke"
+    ],
+    "visualKeywords": [
+      "various",
+      "options",
+      "calling",
+      "list",
+      "customize",
+      "chatting"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 55597; Santa Call Prank.",
+    "license": "CC-BY-4.0"
+  }
+}

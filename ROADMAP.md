@@ -6,18 +6,26 @@ This roadmap lists work that is not complete. It is not a release promise.
 
 - Deploy the hosted container definition to a persistent worker host and
   record its live restart, immediate claiming, and alerting evidence.
+- Apply the reviewed Vercel WAF policy and tune PostgreSQL pool limits from a
+  representative sustained-traffic window.
 
 ## Next
 
 - Connect the operations alert endpoint to a production notification receiver
   and record a real delivery after the persistent worker is live.
-- Add CORS for any custom production domain.
+- Run the held-out Screen2Words corpus with an image-capable measured model and
+  publish the per-item result.
+- Commission an independent penetration test using the checked-in scope and
+  retest checklist.
+- Decide the billing provider, currency, tax, refund, and customer mapping;
+  activate the existing idempotent usage ledger for actual metered billing.
+- Add email invitations, workspace roles beyond owner/admin/member, and optional
+  org-level SSO.
 
 ## Later
 
-- Expand the measured evaluation beyond one synthetic visual flow and one clean
-  speech sample to multiple speakers, noisy audio, dense UI, and degraded
-  captures; publish per-item and aggregate results.
+- Expand the bounded held-out corpus into a statistically reviewed benchmark
+  covering more speakers, microphones, languages, devices, and degraded captures.
 
 ## Non-goals
 

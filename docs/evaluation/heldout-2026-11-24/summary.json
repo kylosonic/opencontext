@@ -1,0 +1,697 @@
+{
+  "generatedAt": "2026-11-24T17:31:51.126Z",
+  "measurementKind": "mixed",
+  "corpus": {
+    "audio": "ami-sdm-test-v1",
+    "visual": "screen2words-test-v1"
+  },
+  "models": {
+    "transcription": {
+      "provider": "faster_whisper",
+      "model": "tiny.en"
+    },
+    "vision": {
+      "provider": "fixture",
+      "model": "fixture"
+    },
+    "ocr": {
+      "provider": "vision"
+    }
+  },
+  "audio": {
+    "items": 1,
+    "clips": 32,
+    "wordErrorRate": 0.6183,
+    "characterErrorRate": 0.4381,
+    "score": {
+      "dataset": {
+        "id": "ami-sdm-test-v1",
+        "item": "ami-noisy-conversation",
+        "license": "CC-BY-4.0",
+        "provenance": "AMI Meeting Corpus distant-microphone (SDM) test utterances served by the Hugging Face datasets server."
+      },
+      "evaluationVersion": 1,
+      "model": {
+        "measurementKind": "measured",
+        "name": "faster_whisper",
+        "version": "tiny.en"
+      },
+      "ocr": {
+        "expected": 0,
+        "f1": 1,
+        "matched": 0,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 1
+      },
+      "transcript": {
+        "characterErrorRate": 0.4381,
+        "hypothesis": "Yeah, I mean that's that's still another level of double computer. Yes. Being here is when you're in a higher level, rather than, kind of, you know, the places that hold up offline is still as nice as it. Okay. And then they're much, much smaller. But once more times, we can just, uh, yeah. Yeah. Oh, same. Oh, my goodness. Yeah. We have some. Mm-hmm. Yeah, maybe we could go with some stuff. Rather than the current function looking for remote controls. Yeah. Yeah. Yeah. Yeah. Yeah. Yeah. Because it was better. Yes. I think so. I think absolutely. And fortunately, we all had slides of presentation, which made it all easier. But we didn't put the production cost. Uh, maximum self and all heroes to work. Just to remote, which is suitable for the market. We want to reach because it is 40% of the market. It's a huge bit. And if you so be. No point. Difficult. Difficult. Yeah. It's a bit off. Yeah. Just. Yeah.",
+        "reference": "YEAH I MEAN THAT'S THAT'S STILL ANOTHER LEVEL FURTHER YEAH GOOD FUN AYE YES M YOU KNOW AT A HIGHER LEVEL RATHER THAN KINDA YOU KNOW COOL YEAH IT PROCESSES A WHOLE LOT OFF LINE AND STORES IT AS AN OBJECT AND THEN THEY'RE MUCH MUCH SMALLER YEAH BUT YEAH YEAH OH SO IT'D STILL BE YEAH WE HAD TO BUY ONE YEAH MAYBE WE COULD COME AT SOME SAY FIVE RATHER THAN THE THE CURRENT FUNCTIONAL LOOK AND FEEL OF REMOTE CONTROLS HMM MM WE CAN USE THAT WE CAN PUT IN OUR RECOMMENDATIONS YOU CAN MAKE A BANANA SHAPED ONE MM-HMM OKAY YES I THINK SO I THINK ABSOLUTELY AND FORTUNATELY WE ALL HAD SLIDES PRESENTATION WHICH MADE IT A LITTLE EASIER BUTTON AND PRODUCTION COST UH MAXIMAL TWELVE AND A HALF EUROS OR JUST A REMOTE WHICH IS SUITABLE FOR THE MARKET WE WANNA REACH BECAUSE IT IS FORTY PERCENT OF THE MARKET AND UH STILL FAILING USABILI YEAH EASE OF USE WILL BE A LOT MORE DIFFICULT AND THEN IT'S LOOKS A BIT ODD MAYBE QUESTIONNAIRE",
+        "wordErrorRate": 0.6183
+      },
+      "visual": {
+        "keywords": {},
+        "recall": 1
+      }
+    }
+  },
+  "visual": {
+    "items": 16,
+    "ocrPrecision": 0,
+    "ocrRecall": 0.0625,
+    "ocrF1": 0,
+    "visualRecall": 0,
+    "score": [
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-118",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 118; BMI and Weight Loss Tracker."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 18,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "fitness": false,
+            "image": false,
+            "information": false,
+            "profile": false,
+            "tracking": false,
+            "weight": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-5320",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 5320; Free Samsung Emojis."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 0,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 1
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "different": false,
+            "emoji": false,
+            "emojis": false,
+            "multiple": false,
+            "variety": false,
+            "various": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-8963",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 8963; Messenger for LoL (Unofficial)."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 6,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "credentials": false,
+            "enter": false,
+            "login": false,
+            "requesting": false,
+            "sign": false,
+            "social": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-13816",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 13816; Google Primer."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 5,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "categories": false,
+            "displayed": false,
+            "elements": false,
+            "home": false,
+            "list": false,
+            "number": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-19718",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 19718; Chrome Dev."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 4,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "about": false,
+            "accept": false,
+            "conditions": false,
+            "information": false,
+            "requesting": false,
+            "terms": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-24379",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 24379; Metro Transit."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 3,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "about": false,
+            "click": false,
+            "contents": false,
+            "option": false,
+            "shows": false,
+            "tickets": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-30185",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 30185; iFax - Send Fax from Phone."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 22,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "codes": false,
+            "countries": false,
+            "different": false,
+            "list": false,
+            "search": false,
+            "their": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-34321",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 34321; Weigh - Truck Weigh Stations."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 18,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "catalog": false,
+            "cities": false,
+            "displayed": false,
+            "list": false,
+            "places": false,
+            "various": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-38338",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 38338; Jobs - Job Search - Careers."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 6,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "alerts": false,
+            "hunting": false,
+            "information": false,
+            "jobs": false,
+            "search": false,
+            "shows": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-42622",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 42622; Break - Funny Videos and Pics."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 12,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "different": false,
+            "list": false,
+            "news": false,
+            "number": false,
+            "type": false,
+            "views": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-47268",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 47268; Hi."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 16,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "different": false,
+            "list": false,
+            "message": false,
+            "options": false,
+            "setting": false,
+            "settings": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-50749",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 50749; Thenics."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 11,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "description": false,
+            "displayed": false,
+            "fitness": false,
+            "muscle": false,
+            "progress": false,
+            "shows": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-55597",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 55597; Santa Call Prank."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 1,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "calling": false,
+            "chatting": false,
+            "customize": false,
+            "list": false,
+            "options": false,
+            "various": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-60246",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 60246; Confide."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 3,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "about": false,
+            "chat": false,
+            "confidential": false,
+            "home": false,
+            "information": false,
+            "initial": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-63762",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 63762; Animal Planet GO."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 2,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "displayed": false,
+            "error": false,
+            "operation": false,
+            "retry": false,
+            "searched": false,
+            "website": false
+          },
+          "recall": 0
+        }
+      },
+      {
+        "dataset": {
+          "id": "screen2words-test-v1",
+          "item": "screen2words-67315",
+          "license": "CC-BY-4.0",
+          "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 67315; Fun Face Changer: Photo Studio."
+        },
+        "evaluationVersion": 1,
+        "model": {
+          "measurementKind": "fixture-baseline",
+          "name": "fixture",
+          "version": "fixture"
+        },
+        "ocr": {
+          "expected": 1,
+          "f1": 0,
+          "matched": 0,
+          "precision": 0,
+          "predicted": 1,
+          "recall": 0
+        },
+        "transcript": {
+          "characterErrorRate": 0,
+          "hypothesis": "",
+          "reference": "",
+          "wordErrorRate": 0
+        },
+        "visual": {
+          "keywords": {
+            "different": false,
+            "gallery": false,
+            "images": false,
+            "photo": false,
+            "pictures": false,
+            "various": false
+          },
+          "recall": 0
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "AMI SDM utterance clips are concatenated to exercise conversational far-field speech; this is not a full meeting benchmark.",
+    "Screen2Words labels differ from free-form OpenContext captions, so OCR set metrics and caption keyword recall are proxy measures.",
+    "Fixture-provider results are plumbing baselines and must never be presented as model quality."
+  ]
+}

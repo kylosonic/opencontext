@@ -72,6 +72,7 @@ MAX_DURATION_SECONDS = 1800
 NOT_A_VIDEO_MESSAGE = "This file is not a valid video"
 NOT_AN_IMAGE_MESSAGE = "This file is not a valid image"
 NOT_A_PDF_MESSAGE = "This file is not a valid PDF"
+NOT_AN_AUDIO_MESSAGE = "This file is not a valid audio file"
 TOO_LONG_MESSAGE = "Video is longer than the 30-minute limit"
 NO_AUDIO_REASON = "NO_AUDIO"
 LEASE_HEARTBEAT_SECONDS = 60.0
@@ -276,7 +277,12 @@ class Pipeline:
     @staticmethod
     def _source_kind(job: dict[str, Any]) -> str:
         source = job.get("source")
-        if isinstance(source, dict) and source.get("kind") in ("video", "image", "pdf"):
+        if isinstance(source, dict) and source.get("kind") in (
+            "video",
+            "image",
+            "pdf",
+            "audio",
+        ):
             return str(source["kind"])
         extension = ""
         if isinstance(source, dict):
@@ -288,12 +294,18 @@ class Pipeline:
             return "image"
         if extension == "pdf":
             return "pdf"
+        if extension in {"mp3", "m4a", "wav", "ogg", "aac", "flac"}:
+            return "audio"
         return "video"
 
     # -- stages -----------------------------------------------------------
 
     def _extracting(
-        self, job: dict[str, Any], workdir: Path, resume: bool
+        self,
+        job: dict[str, Any],
+        workdir: Path,
+        resume: bool,
+        detail_level: DetailLevel = DetailLevel.MEDIUM,
     ) -> tuple[dict[str, Any], Path | None, list[dict[str, Any]]]:
         self._current_stage = "EXTRACTING"
         job_id = job["id"]
@@ -319,6 +331,16 @@ class Pipeline:
             if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
                 raise PermanentFailure(TOO_LONG_MESSAGE)
             duration = float(duration_value)
+        elif source_kind == "audio":
+            probed = self._probe(str(src))
+            if not probed.get("audio_present"):
+                raise PermanentFailure(NOT_AN_AUDIO_MESSAGE)
+            duration_value = probed.get("duration")
+            if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
+                raise PermanentFailure(
+                    "Audio is longer than the 30-minute limit"
+                )
+            duration = float(duration_value)
         elif source_kind == "image":
             if len(sources) > 10:
                 raise PermanentFailure("Image-set jobs accept at most 10 images")
@@ -328,6 +350,8 @@ class Pipeline:
                     raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
                 width = int(image_probe.get("width") or 0)
                 height = int(image_probe.get("height") or 0)
+                if width <= 0 or height <= 0:
+                    raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
                 if width * height > 40_000_000:
                     raise PermanentFailure(
                         "Image dimensions are too large — the limit is 40 megapixels"
@@ -339,7 +363,7 @@ class Pipeline:
             raise PermanentFailure("Unsupported source media")
 
         audio_path: Path | None = None
-        if source_kind == "video" and probed.get("audio_present"):
+        if source_kind in ("video", "audio") and probed.get("audio_present"):
             if not resume:
                 self.api.progress(
                     job_id, stage="EXTRACTING", stage_status="RUNNING", progress=35,
@@ -366,6 +390,8 @@ class Pipeline:
                     if source_kind == "image"
                     else "Rendering PDF pages"
                     if source_kind == "pdf"
+                    else "Preparing audio transcript"
+                    if source_kind == "audio"
                     else "Extracting frames"
                 ),
             )
@@ -405,11 +431,10 @@ class Pipeline:
                 }
                 for page in pages
             ]
-        else:
+        elif source_kind == "video":
             if self._bounded_frame_extraction and duration and duration > 0:
-                frame_fps = max(
-                    0.001,
-                    min(1.0, self.settings.vision_max_frames / duration),
+                frame_fps = aggregation.target_frame_fps(
+                    duration, detail_level, self.settings.vision_max_frames
                 )
                 frames = self._timed(
                     lambda: extract_frames(
@@ -438,6 +463,8 @@ class Pipeline:
                         "frameId": None,
                     }
                 )
+        else:
+            frames = []
         if not resume:
             for frame in frames:
                 self.api.upload_artifact(
@@ -754,6 +781,17 @@ class Pipeline:
         self._current_stage = "ANALYZING"
         self._check_deadline()
         job_id = job["id"]
+        if not frames:
+            if not resume:
+                self.api.stage_result(
+                    job_id,
+                    stage="ANALYZING",
+                    outcome="SKIPPED",
+                    attempt=self._attempt(job, "ANALYZING"),
+                    reason="NO_VISUAL_MEDIA",
+                    data={"observations": [], "ocr": []},
+                )
+            return [], []
         if self.vision_provider is None:
             raise TransientFailure(
                 "No vision provider configured "
@@ -874,7 +912,9 @@ class Pipeline:
             ) as tmp:
                 workdir = Path(tmp)
                 resume_extracting = self._done(job, "EXTRACTING")
-                probe_data, audio_path, frames = self._extracting(job, workdir, resume_extracting)
+                probe_data, audio_path, frames = self._extracting(
+                    job, workdir, resume_extracting, detail_level
+                )
 
                 resume_transcribing = self._done(job, "TRANSCRIBING")
                 segments = self._transcribing(

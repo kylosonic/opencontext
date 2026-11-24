@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "description": "Larger held-out smoke corpus for noisy conversational speech and real mobile UI screenshots. Downloaded artifacts stay outside the repository; this file records reproducible selection and provenance.",
+  "audio": {
+    "id": "ami-sdm-test-v1",
+    "dataset": "edinburghcstr/ami",
+    "config": "sdm",
+    "split": "test",
+    "totalRows": 12643,
+    "stride": 389,
+    "count": 32,
+    "provenance": "AMI Meeting Corpus distant-microphone (SDM) test utterances served by the Hugging Face datasets server.",
+    "license": "CC-BY-4.0",
+    "citation": "Carletta et al., The AMI Meeting Corpus: A Pre-Announcement (2005)."
+  },
+  "visual": {
+    "id": "screen2words-test-v1",
+    "dataset": "bevaya/RICO-Screen2Words",
+    "config": "default",
+    "split": "test",
+    "totalRows": 4310,
+    "stride": 269,
+    "count": 16,
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server.",
+    "license": "CC-BY-4.0",
+    "citation": "Wang et al., Screen2Words: Automatic Mobile UI Summarization with Multimodal Learning (2021)."
+  }
+}

@@ -46,6 +46,7 @@ _LANGUAGE_EXTENSIONS = {
 }
 _MAX_SCAN_FILES = 1_000
 _MAX_TEXT_FILE_BYTES = 1_000_000
+_MAX_CONTEXT_FILE_BYTES = 16 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -178,21 +179,21 @@ def load_context_payload(path: str | Path) -> dict[str, Any]:
     context_path = Path(path).expanduser().resolve()
     try:
         info = context_path.lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_size > _MAX_TEXT_FILE_BYTES:
+        if not stat.S_ISREG(info.st_mode) or info.st_size > _MAX_CONTEXT_FILE_BYTES:
             raise ValueError("Context JSON is too large or not a regular file")
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(context_path, flags)
         with os.fdopen(descriptor, "rb") as handle:
-            raw = handle.read(_MAX_TEXT_FILE_BYTES + 1)
-        if len(raw) > _MAX_TEXT_FILE_BYTES:
+            raw = handle.read(_MAX_CONTEXT_FILE_BYTES + 1)
+        if len(raw) > _MAX_CONTEXT_FILE_BYTES:
             raise ValueError("Context JSON is too large")
         payload = json.loads(raw.decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"Context file is not valid UTF-8: {context_path}") from exc
     except ValueError:
         raise
     except OSError as exc:
         raise ValueError(f"Could not read context JSON: {context_path}") from exc
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"Context file is not valid UTF-8: {context_path}") from exc
     if not isinstance(payload, dict):
         raise ValueError("Context JSON must be an object")
     if not isinstance(payload.get("source"), dict):

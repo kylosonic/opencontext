@@ -1,0 +1,32 @@
+{
+  "dataset": {
+    "id": "ami-sdm-test-v1",
+    "item": "ami-noisy-conversation",
+    "license": "CC-BY-4.0",
+    "provenance": "AMI Meeting Corpus distant-microphone (SDM) test utterances served by the Hugging Face datasets server."
+  },
+  "evaluationVersion": 1,
+  "model": {
+    "measurementKind": "measured",
+    "name": "faster_whisper",
+    "version": "tiny.en"
+  },
+  "ocr": {
+    "expected": 0,
+    "f1": 1.0,
+    "matched": 0,
+    "precision": 1.0,
+    "predicted": 0,
+    "recall": 1.0
+  },
+  "transcript": {
+    "characterErrorRate": 0.4381,
+    "hypothesis": "Yeah, I mean that's that's still another level of double computer. Yes. Being here is when you're in a higher level, rather than, kind of, you know, the places that hold up offline is still as nice as it. Okay. And then they're much, much smaller. But once more times, we can just, uh, yeah. Yeah. Oh, same. Oh, my goodness. Yeah. We have some. Mm-hmm. Yeah, maybe we could go with some stuff. Rather than the current function looking for remote controls. Yeah. Yeah. Yeah. Yeah. Yeah. Yeah. Because it was better. Yes. I think so. I think absolutely. And fortunately, we all had slides of presentation, which made it all easier. But we didn't put the production cost. Uh, maximum self and all heroes to work. Just to remote, which is suitable for the market. We want to reach because it is 40% of the market. It's a huge bit. And if you so be. No point. Difficult. Difficult. Yeah. It's a bit off. Yeah. Just. Yeah.",
+    "reference": "YEAH I MEAN THAT'S THAT'S STILL ANOTHER LEVEL FURTHER YEAH GOOD FUN AYE YES M YOU KNOW AT A HIGHER LEVEL RATHER THAN KINDA YOU KNOW COOL YEAH IT PROCESSES A WHOLE LOT OFF LINE AND STORES IT AS AN OBJECT AND THEN THEY'RE MUCH MUCH SMALLER YEAH BUT YEAH YEAH OH SO IT'D STILL BE YEAH WE HAD TO BUY ONE YEAH MAYBE WE COULD COME AT SOME SAY FIVE RATHER THAN THE THE CURRENT FUNCTIONAL LOOK AND FEEL OF REMOTE CONTROLS HMM MM WE CAN USE THAT WE CAN PUT IN OUR RECOMMENDATIONS YOU CAN MAKE A BANANA SHAPED ONE MM-HMM OKAY YES I THINK SO I THINK ABSOLUTELY AND FORTUNATELY WE ALL HAD SLIDES PRESENTATION WHICH MADE IT A LITTLE EASIER BUTTON AND PRODUCTION COST UH MAXIMAL TWELVE AND A HALF EUROS OR JUST A REMOTE WHICH IS SUITABLE FOR THE MARKET WE WANNA REACH BECAUSE IT IS FORTY PERCENT OF THE MARKET AND UH STILL FAILING USABILI YEAH EASE OF USE WILL BE A LOT MORE DIFFICULT AND THEN IT'S LOOKS A BIT ODD MAYBE QUESTIONNAIRE",
+    "wordErrorRate": 0.6183
+  },
+  "visual": {
+    "keywords": {},
+    "recall": 1.0
+  }
+}

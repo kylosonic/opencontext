@@ -52,6 +52,7 @@ export async function POST(request: Request): Promise<Response> {
       parsed.data.uploadIds,
       session.user.id,
       parsed.data.detailLevel,
+      parsed.data.workspaceId,
     );
     switch (result.kind) {
       case "NOT_FOUND":

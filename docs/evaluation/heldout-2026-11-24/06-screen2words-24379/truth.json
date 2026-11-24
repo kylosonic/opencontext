@@ -1,0 +1,26 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 24379; Metro Transit.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-24379",
+    "sourceName": "visual/images/screen-06-24379.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "My Tickets",
+      "Need Tickets?",
+      "Select the Buy Tickets button below"
+    ],
+    "visualKeywords": [
+      "shows",
+      "about",
+      "tickets",
+      "click",
+      "option",
+      "contents"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 24379; Metro Transit.",
+    "license": "CC-BY-4.0"
+  }
+}

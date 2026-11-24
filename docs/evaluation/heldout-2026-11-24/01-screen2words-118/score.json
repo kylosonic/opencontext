@@ -1,0 +1,39 @@
+{
+  "dataset": {
+    "id": "screen2words-test-v1",
+    "item": "screen2words-118",
+    "license": "CC-BY-4.0",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 118; BMI and Weight Loss Tracker."
+  },
+  "evaluationVersion": 1,
+  "model": {
+    "measurementKind": "fixture-baseline",
+    "name": "fixture",
+    "version": "fixture"
+  },
+  "ocr": {
+    "expected": 18,
+    "f1": 0.0,
+    "matched": 0,
+    "precision": 0.0,
+    "predicted": 1,
+    "recall": 0.0
+  },
+  "transcript": {
+    "characterErrorRate": 0.0,
+    "hypothesis": "",
+    "reference": "",
+    "wordErrorRate": 0.0
+  },
+  "visual": {
+    "keywords": {
+      "fitness": false,
+      "image": false,
+      "information": false,
+      "profile": false,
+      "tracking": false,
+      "weight": false
+    },
+    "recall": 0.0
+  }
+}

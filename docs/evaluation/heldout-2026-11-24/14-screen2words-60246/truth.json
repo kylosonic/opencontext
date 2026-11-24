@@ -1,0 +1,26 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 60246; Confide.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-60246",
+    "sourceName": "visual/images/screen-14-60246.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Your Confidential Messenger.",
+      "Confide lets you send secure messages that self-destruct after they are read.",
+      "SKIP"
+    ],
+    "visualKeywords": [
+      "home",
+      "information",
+      "about",
+      "confidential",
+      "chat",
+      "initial"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 60246; Confide.",
+    "license": "CC-BY-4.0"
+  }
+}

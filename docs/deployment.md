@@ -383,3 +383,101 @@ OPENCONTEXT_DEMO_VISION=real node scripts/compose-smoke.mjs
 
 The default network-free Checks still use fixture mode and require no
 credentials.
+
+## Persistent worker blueprint
+
+The repository includes `render.yaml`, which defines a Render background-worker
+service built from `docker/worker-hosted.Dockerfile`. It keeps the Faster
+Whisper cache on a 5 GB persistent disk mounted at `/models`, drains on
+`SIGTERM`, and reads `WORKER_API_URL`, `WORKER_API_TOKEN`, and
+`OPENAI_API_KEY` from Render secrets.
+
+Before applying the blueprint, set those three secrets and confirm the selected
+plan supports background workers and persistent disks. After the first deploy,
+verify:
+
+```bash
+curl -fsS "$WORKER_API_URL/api/health/ready"
+# Upload one synthetic job, then confirm the first progress update arrives
+# without waiting for the five-minute GitHub Actions schedule.
+curl -fsS -H "Authorization: Bearer $OPS_API_TOKEN" \
+  "$WORKER_API_URL/api/ops/alerts"
+```
+
+Stop or disable `.github/workflows/worker-schedule.yml` only after the
+persistent worker has claimed a real job, survived a redeploy, and passed the
+authenticated operations check. Keeping both workers enabled is safe because
+claims are lease-fenced, but the scheduled worker may then idle.
+
+## PostgreSQL pools
+
+The PostgreSQL adapter accepts `DB_POOL_MAX`,
+`DB_POOL_IDLE_TIMEOUT_MS`, and `DB_POOL_CONNECTION_TIMEOUT_MS`. Vercel defaults
+to three connections per process; persistent containers default to ten. Use a
+provider-provided pooled URL for serverless deployments and set
+`DB_POOL_MAX` from `provider_connection_limit / maximum_concurrent_instances`,
+not from the database's raw connection limit. Leave enough capacity for
+migrations and the worker API.
+
+## Edge WAF
+
+Application limits remain authoritative for user and worker quotas. Before
+enabling edge rate limits, run a representative staging load and inspect
+Vercel Firewall events. Preview the repository policy without changing the
+project:
+
+```bash
+VERCEL_TOKEN=... VERCEL_PROJECT_ID=... \
+  node scripts/configure-vercel-waf.mjs
+```
+
+The preview enables managed scanner, multipart, file-inclusion, execution, XSS,
+SQL-injection, and session-fixation protections. It also upserts conservative
+per-address limits for auth, URL import, and worker paths while preserving
+existing rules. After reviewing the diff and thresholds, apply it explicitly:
+
+```bash
+VERCEL_TOKEN=... VERCEL_PROJECT_ID=... \
+  node scripts/configure-vercel-waf.mjs --apply
+```
+
+Record the Vercel configuration version, traffic window, challenge/deny counts,
+and false-positive review in the operations log. Re-run after substantial
+traffic changes.
+
+## Teams, sharing, and URL imports
+
+Team membership grants read access to jobs explicitly uploaded to that team.
+The creator, team owner, or team admin may delete or retry a team job. Team
+invitations currently target users who have already signed in, by email or
+GitHub login; email delivery and domain auto-join are not included.
+
+Public sharing creates a 256-bit random bearer token, stores only its SHA-256
+hash, expires after 30 days, and can be rotated or revoked. Shared pages omit
+download, review-edit, retry, and delete controls.
+
+URL imports accept only HTTP(S), reject credentials/custom ports/private DNS
+answers, pin the validated address during each request, revalidate every
+redirect, require `Content-Length`, cap bytes by media type, and then run the
+same stored-content validation as browser uploads. Serverless function duration
+limits still bound very large downloads; use direct browser upload when a
+remote server is slow or omits `Content-Length`.
+
+## Usage and rebilling ledger
+
+Every terminal analysis writes one idempotent `UsageRecord`. Prices remain zero
+unless `BILLING_ANALYSIS_MICROS_PER_SECOND` or
+`BILLING_STILL_JOB_MICROS` is configured. The scheduled worker reconciles any
+terminal job whose best-effort ledger write was interrupted.
+
+Operations can inspect aggregate usage with the operations token:
+
+```bash
+curl -fsS -H "Authorization: Bearer $OPS_API_TOKEN" \
+  "$APP_BASE_URL/api/ops/usage?since=2026-11-01T00:00:00Z"
+```
+
+This is the billing-system boundary, not a payment processor. Before automated
+charging, choose the billing provider, configure tax/currency/refund policy,
+map customers to subscriptions, publish prices, and reconcile the exported
+events. Do not represent the zero-priced default ledger as active billing.

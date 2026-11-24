@@ -1,0 +1,24 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 67315; Fun Face Changer: Photo Studio.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-67315",
+    "sourceName": "visual/images/screen-16-67315.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Cancel"
+    ],
+    "visualKeywords": [
+      "various",
+      "images",
+      "pictures",
+      "different",
+      "gallery",
+      "photo"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 67315; Fun Face Changer: Photo Studio.",
+    "license": "CC-BY-4.0"
+  }
+}

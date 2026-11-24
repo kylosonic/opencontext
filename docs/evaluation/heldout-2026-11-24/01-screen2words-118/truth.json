@@ -1,0 +1,41 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 118; BMI and Weight Loss Tracker.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-118",
+    "sourceName": "visual/images/screen-01-118.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Weight Tracker",
+      "7d",
+      "1m",
+      "6m",
+      "1y",
+      "Starting Weight",
+      "Current Weight",
+      "Weight Goal",
+      "53 kg",
+      "50 kg",
+      "0.1 kg",
+      "Diet",
+      "339",
+      "Cals/day",
+      "Body Fat",
+      "6%",
+      "BMI",
+      "13888.9"
+    ],
+    "visualKeywords": [
+      "weight",
+      "tracking",
+      "image",
+      "profile",
+      "information",
+      "fitness"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 118; BMI and Weight Loss Tracker.",
+    "license": "CC-BY-4.0"
+  }
+}

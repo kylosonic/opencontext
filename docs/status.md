@@ -101,6 +101,28 @@ about the current Vercel deployment or future releases.
 - Shared npm package builds and packs compiled ESM plus declarations.
 - Prisma 7.10.1 uses driver adapters for SQLite and PostgreSQL; the migration
   chain applies to fresh SQLite and PostgreSQL databases.
+- Audio-only processing is covered across schema, upload validation, worker
+  extraction, transcription, context generation, source preview, and result UI.
+  Visual analysis is explicitly skipped when no frames exist.
+- Team workspaces, team-scoped jobs, hashed read-only share links, URL imports,
+  and server-sent job events have focused unit and network acceptance coverage.
+  URL import tests cover private IPv4/IPv6 ranges, mapped IPv6, credentials,
+  custom ports, redirect validation, and a real CC0 image fetch.
+- A held-out workflow downloaded 32 far-field AMI conversational clips and 16
+  Screen2Words screenshots. A local Faster Whisper `tiny.en` pass measured
+  61.83% WER and 43.81% CER; the 16 real screenshots completed fixture-provider
+  ingestion and scoring. Raw and aggregate outputs are published under
+  `docs/evaluation/heldout-2026-11-24/`.
+- Every terminal analysis writes one idempotent usage record with configurable
+  resale prices. The scheduled worker reconciles interrupted writes, and an
+  authenticated operations endpoint exposes aggregate usage.
+- PostgreSQL pooling is bounded through environment-controlled connection,
+  idle, and acquisition settings. A repository script can preview or apply a
+  Vercel WAF policy while preserving existing rules, and a weekly OWASP ZAP
+  baseline workflow targets a configured staging URL.
+- `render.yaml` defines a persistent worker with a durable model cache and
+  graceful shutdown. It is a deployment blueprint; live-host evidence is still
+  pending.
 - The production and full `npm audit` reports currently contain zero known
   vulnerabilities, including development tooling.
 - Next.js uses the current `proxy.ts` request interception convention.
@@ -169,10 +191,13 @@ the non-root worker container and the Compose upload-to-export flow.
 
 ## Known gaps
 
-- Published quality evidence covers one synthetic visual flow and one clean
-  English read-speech sample. It does not establish broad vision or speech
-  accuracy, noisy audio performance, or behavior on real application
-  recordings.
+- Published visual quality evidence still relies on a synthetic flow for
+  measured output. The real Screen2Words screenshots exercise the larger
+  workflow, but their current run uses fixture vision and is not a measured
+  model-quality claim.
+- The noisy-conversation result uses a local `tiny.en` model over concatenated
+  far-field AMI utterance clips. Its 61.83% WER is a bounded smoke result, not a
+  full-meeting or general speech benchmark.
 - The live media acceptance corpus contains downloaded photographs and trailer
   footage, not a long real application walkthrough or a statistically
   representative sample of user-uploaded codecs and screen recordings.
@@ -181,11 +206,15 @@ the non-root worker container and the Compose upload-to-export flow.
   Publishing through their protected release workflows.
 - `npm audit` reports zero known vulnerabilities at the time of verification;
   dependency advisories must still be rechecked on every release.
-- No sustained high-traffic test against the deployed HTTP service or
-  independent penetration test exists.
+- No sustained high-traffic tuning run or independent human penetration test
+  exists. The WAF policy and PostgreSQL defaults therefore remain unverified in
+  production.
 - A dedicated persistent worker deployment and runtime alerts have not been
   verified against a live host. Until they are, the recorded production worker
   remains the scheduled GitHub Actions drain.
+- The usage ledger does not collect money or activate a metered billing
+  subscription. Pricing, tax, refunds, currency, and customer mapping need an
+  explicit product decision.
 
 Scoped work is tracked in [ROADMAP.md](../ROADMAP.md) and
 [docs/issues](issues/README.md).

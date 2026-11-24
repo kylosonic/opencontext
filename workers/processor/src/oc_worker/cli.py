@@ -34,10 +34,12 @@ from oc_worker.pdf import extract_pdf_pages
 from oc_worker.pipeline import (
     MAX_DURATION_SECONDS,
     NOT_A_VIDEO_MESSAGE,
+    NOT_AN_AUDIO_MESSAGE,
     NOT_AN_IMAGE_MESSAGE,
     TOO_LONG_MESSAGE,
 )
 from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
+from oc_worker.providers.http_status import provider_session
 from oc_worker.replay import replay_context
 
 log = logging.getLogger("oc_worker.cli")
@@ -45,8 +47,12 @@ log = logging.getLogger("oc_worker.cli")
 SUPPORTED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv"}
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 SUPPORTED_PDF_EXTENSIONS = {".pdf"}
+SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac"}
 SUPPORTED_EXTENSIONS = (
-    SUPPORTED_VIDEO_EXTENSIONS | SUPPORTED_IMAGE_EXTENSIONS | SUPPORTED_PDF_EXTENSIONS
+    SUPPORTED_VIDEO_EXTENSIONS
+    | SUPPORTED_IMAGE_EXTENSIONS
+    | SUPPORTED_PDF_EXTENSIONS
+    | SUPPORTED_AUDIO_EXTENSIONS
 )
 
 
@@ -339,7 +345,7 @@ def _provider_checks(
         )
 
     text = settings.text_provider.lower()
-    if text in ("", "template"):
+    if text in ("", "template", "none", "off"):
         checks.append(
             {"name": "text", "status": "ok", "detail": "deterministic template provider"}
         )
@@ -426,6 +432,8 @@ def analyze_file(
         if source.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
         else "pdf"
         if source.suffix.lower() in SUPPORTED_PDF_EXTENSIONS
+        else "audio"
+        if source.suffix.lower() in SUPPORTED_AUDIO_EXTENSIONS
         else "video"
     )
     probed: dict[str, Any] = {}
@@ -438,12 +446,22 @@ def analyze_file(
         if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
             raise PermanentFailure(TOO_LONG_MESSAGE)
         duration = float(duration_value)
+    elif source_kind == "audio":
+        probed = probe(str(source), settings.ffmpeg_path or None)
+        if not probed.get("audio_present"):
+            raise PermanentFailure(NOT_AN_AUDIO_MESSAGE)
+        duration_value = probed.get("duration")
+        if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
+            raise PermanentFailure("Audio is longer than the 30-minute limit")
+        duration = float(duration_value)
     elif source_kind == "image":
         probed = probe(str(source), settings.ffmpeg_path or None)
         if not probed.get("video_present"):
             raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
         width = int(probed.get("width") or 0)
         height = int(probed.get("height") or 0)
+        if width <= 0 or height <= 0:
+            raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
         if width * height > 40_000_000:
             raise PermanentFailure(
                 "Image dimensions are too large — the limit is 40 megapixels"
@@ -452,10 +470,11 @@ def analyze_file(
         probed = {"video_present": True, "audio_present": False}
 
     transcription = build_transcription(settings)
-    vision = build_vision(settings)
+    needs_vision = source_kind != "audio"
+    vision = build_vision(settings) if needs_vision else None
     ocr_provider = build_ocr(settings)
     text = build_text(settings)
-    if vision is None:
+    if needs_vision and vision is None:
         raise PermanentFailure(
             f"No vision provider configured (VISION_PROVIDER={settings.vision_provider})"
         )
@@ -469,7 +488,7 @@ def analyze_file(
         ).hexdigest()[:16]
         audio_path = workdir / "audio.wav"
         segments = []
-        if source_kind == "video" and probed.get("audio_present"):
+        if source_kind in ("video", "audio") and probed.get("audio_present"):
             if not extract_audio(
                 str(source), str(audio_path), settings.ffmpeg_path or None
             ):
@@ -481,7 +500,8 @@ def analyze_file(
                     f"(TRANSCRIPTION_PROVIDER={settings.transcription_provider})"
                 )
             if audio_path is not None:
-                segments = transcription.transcribe(str(audio_path))
+                with provider_session(session_id):
+                    segments = transcription.transcribe(str(audio_path))
 
         if source_kind == "image":
             frames = [
@@ -510,10 +530,9 @@ def analyze_file(
                 }
                 for page in extract_pdf_pages(source, workdir / "pages")
             ]
-        else:
-            frame_fps = max(
-                0.001,
-                min(1.0, settings.vision_max_frames / max(duration, 1.0)),
+        elif source_kind == "video":
+            frame_fps = aggregation.target_frame_fps(
+                duration, detail_level, settings.vision_max_frames
             )
             frames = extract_frames(
                 str(source),
@@ -533,6 +552,8 @@ def analyze_file(
                         "boundedSampling": True,
                     }
                 )
+        else:
+            frames = []
         selected_frames = aggregation.limit_frames(frames, settings.vision_max_frames)
         observations = []
         ocr = []
@@ -544,16 +565,18 @@ def analyze_file(
                 and not aggregation.frame_selected(timestamp, detail_level)
             ):
                 continue
-            raw = vision.analyze(
-                Path(frame["path"]).read_bytes(),
-                {
-                    "timestampSec": timestamp,
-                    "detailLevel": detail_level.value,
-                    "sourceName": frame.get("sourceName") or source.name,
-                    "durationSec": duration,
-                    "sourceKind": source_kind,
-                },
-            )
+            with provider_session(session_id):
+                raw = vision.analyze(
+                    Path(frame["path"]).read_bytes(),
+                    {
+                        "timestampSec": timestamp,
+                        "detailLevel": detail_level.value,
+                        "sourceName": frame.get("sourceName") or source.name,
+                        "durationSec": duration,
+                        "sourceKind": source_kind,
+                        "sessionId": session_id,
+                    },
+                )
             aggregation.mark_interaction_certainty(raw)
             raw["timestampSec"] = timestamp
             raw["frameId"] = frame.get("frameId")
@@ -874,6 +897,7 @@ def main(argv: list[str] | None = None) -> int:
     text_provider = "template" if args.offline else args.text_provider or base.text_provider
     settings = replace(
         base,
+        demo_vision=False if args.offline else base.demo_vision,
         transcription_provider=transcription_provider,
         transcription_model=args.transcription_model or base.transcription_model,
         vision_provider=vision_provider,

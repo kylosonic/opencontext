@@ -39,6 +39,10 @@ export const RATE_LIMITS = {
   workerSource: { limit: 240, windowMs: 60_000 },
   workerMutation: { limit: 1_200, windowMs: 60_000 },
   workerMedia: { limit: 1_200, windowMs: 60_000 },
+  workspaceMember: { limit: 30, windowMs: 60 * 60_000 },
+  urlImport: { limit: 20, windowMs: 60 * 60_000 },
+  workspaceCreate: { limit: 10, windowMs: 60 * 60_000 },
+  publicShareSource: { limit: 240, windowMs: 60_000 },
   operations: { limit: 120, windowMs: 60_000 },
   retentionSweep: { limit: 6, windowMs: 60_000 },
   demo: { limit: 600, windowMs: 60_000 },
@@ -50,7 +54,11 @@ function trustedProxyHops(): number {
 }
 
 /** Stable, non-reversible request key using only headers from trusted hops. */
-export function requestRateKey(request: Request, namespace: string): string {
+export function requestRateKey(
+  request: Request,
+  namespace: string,
+  options?: { trustBearer?: boolean },
+): string {
   const onVercel = process.env.VERCEL === "1";
   const trustProxy =
     onVercel ||
@@ -80,13 +88,15 @@ export function requestRateKey(request: Request, namespace: string): string {
     }
   }
 
-  // On an unconfigured standalone host no address header is trustworthy.
-  // Authenticated machine routes can still get an independent bound bucket
-  // from their bearer credential, avoiding one global "unknown" bucket.
-  const bearer = request.headers
-    .get("authorization")
-    ?.match(/^Bearer\s+(.+)$/i)?.[1]
-    ?.trim();
+  // Only routes that have already verified a machine credential may opt into
+  // bearer-based bucketing; unauthenticated routes must never let callers
+  // mint arbitrary buckets with random Authorization headers.
+  const bearer = options?.trustBearer
+    ? request.headers
+        .get("authorization")
+        ?.match(/^Bearer\s+(.+)$/i)?.[1]
+        ?.trim()
+    : undefined;
   const identity = address ?? (bearer ? `bearer:${bearer}` : "untrusted-client");
   const digest = createHash("sha256").update(identity).digest("hex").slice(0, 24);
   return `${namespace}:${digest}`;

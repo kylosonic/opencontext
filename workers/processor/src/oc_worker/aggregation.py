@@ -35,6 +35,26 @@ from oc_worker.models import (
 _UNCERTAIN_CERTAINTIES = (Certainty.INFERRED, Certainty.UNCERTAIN)
 
 
+def detail_stride_seconds(detail_level: DetailLevel | str) -> int:
+    """Sampling stride in seconds implied by ``detail_level``."""
+    level = DetailLevel(detail_level)
+    if level is DetailLevel.HIGH:
+        return 1
+    return 10 if level is DetailLevel.LOW else 3
+
+
+def target_frame_fps(
+    duration_sec: float,
+    detail_level: DetailLevel | str,
+    max_frames: int,
+) -> float:
+    """Return the FFmpeg sampling fps honoring both ``detail_level`` and ``max_frames``."""
+    stride = detail_stride_seconds(detail_level)
+    detail_fps = 1.0 / float(stride)
+    budget_fps = float(max(1, max_frames)) / max(float(duration_sec), 1.0)
+    return max(0.001, min(detail_fps, budget_fps))
+
+
 def frame_selected(timestamp_sec: float, detail_level: DetailLevel | str) -> bool:
     """True when the frame at ``timestamp_sec`` is analyzed at this level.
 
@@ -42,10 +62,9 @@ def frame_selected(timestamp_sec: float, detail_level: DetailLevel | str) -> boo
     extracted frames the vision provider analyzes (LOW -> every 10th frame,
     MEDIUM -> every 3rd, HIGH -> every frame).
     """
-    level = DetailLevel(detail_level)
-    if level is DetailLevel.HIGH:
+    stride = detail_stride_seconds(detail_level)
+    if stride <= 1:
         return True
-    stride = 10 if level is DetailLevel.LOW else 3
     return int(round(timestamp_sec)) % stride == 0
 
 

@@ -616,3 +616,104 @@ def test_openai_audio_chat_honors_abort_before_next_chunk(tmp_path: Path) -> Non
         bind_abort(previous)
 
     assert requests == []
+
+
+def test_bounded_audio_chunks_rejects_invalid_wav_stream_on_chunking(
+    tmp_path: Path, monkeypatch
+) -> None:
+    audio = tmp_path / "invalid.wav"
+    audio.write_bytes(b"RIFF" + (b"\0" * 5000))
+
+    class FakeInvalidWave:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def getnchannels(self) -> int:
+            return 0
+
+        def getsampwidth(self) -> int:
+            return 2
+
+        def getframerate(self) -> int:
+            return 0
+
+    monkeypatch.setattr(wave, "open", lambda *_args, **_kwargs: FakeInvalidWave())
+
+    with pytest.raises(ValueError, match="Invalid WAV audio stream"):
+        with bounded_audio_chunks(audio, max_bytes=2048):
+            pass
+
+    provider = OpenAICompatibleTranscriptionProvider(
+        base_url="http://provider.test/v1",
+        api_key="secret",
+        model="whisper-test",
+        max_request_bytes=2048,
+    )
+    with pytest.raises(PermanentFailure, match="could not process transcription audio"):
+        provider.transcribe(str(audio))
+
+
+def test_openai_compatible_splits_long_fallback_text_and_honors_abort(
+    tmp_path: Path,
+) -> None:
+    audio = tmp_path / "speech.wav"
+    _write_wav(audio)
+    long_text = "word " * 10_000
+
+    provider = OpenAICompatibleTranscriptionProvider(
+        base_url="http://provider.test/v1",
+        api_key="secret",
+        model="whisper-test",
+        client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda _req: httpx.Response(200, json={"text": long_text})
+            )
+        ),
+    )
+
+    segments = provider.transcribe(str(audio))
+    assert len(segments) > 1
+    assert all(len(segment.text) <= 20_000 for segment in segments)
+    assert " ".join(segment.text for segment in segments) == long_text.strip()
+
+    abort = JobAbort("cancelled")
+    previous = bind_abort(abort)
+    abort.abort()
+    try:
+        with pytest.raises(ProcessingCancelled):
+            provider.transcribe(str(audio))
+    finally:
+        bind_abort(previous)
+
+
+def test_faster_whisper_honors_abort_during_iteration(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    from oc_worker.providers.transcription.faster_whisper import (
+        FasterWhisperTranscriptionProvider,
+    )
+
+    provider = FasterWhisperTranscriptionProvider.__new__(
+        FasterWhisperTranscriptionProvider
+    )
+
+    class StubModel:
+        def transcribe(self, _path: str):
+            def _iter():
+                yield SimpleNamespace(start=0.0, end=1.0, text="first")
+                abort.abort()
+                yield SimpleNamespace(start=1.0, end=2.0, text="second")
+
+            return _iter(), None
+
+    provider._model = StubModel()
+    abort = JobAbort("cancelled mid-stream")
+    previous = bind_abort(abort)
+    try:
+        with pytest.raises(ProcessingCancelled):
+            provider.transcribe(str(tmp_path / "speech.wav"))
+    finally:
+        bind_abort(previous)

@@ -86,6 +86,17 @@ A measured claim requires at least one documented real model run and published
 raw outputs. Small datasets have high variance and must not be presented as a
 broad model ranking.
 
+## Held-out workflow
+
+The larger AMI conversational-audio and Screen2Words screenshot workflow is
+documented in [heldout-datasets.md](heldout-datasets.md). Downloaded third-party
+media stays under `.artifacts/`; the repository tracks only the deterministic
+selection, provenance, licenses, and scoring methodology.
+
+The [2026-11-24 held-out result](heldout-2026-11-24.md) records a measured local
+Faster Whisper `tiny.en` pass over 32 far-field AMI clips plus a structurally
+verified fixture pass over 16 real Screen2Words screenshots.
+
 ## OpenCode Go measured result
 
 - Date: 2026-11-09

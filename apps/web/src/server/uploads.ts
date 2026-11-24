@@ -16,6 +16,7 @@ import {
   validateStoredMedia,
   validateUpload,
 } from "@/server/validation/upload";
+import { canAccessWorkspace } from "@/server/workspaces";
 
 export interface CreateUploadIntentInput {
   userId: string;
@@ -23,6 +24,7 @@ export interface CreateUploadIntentInput {
   sizeBytes: number;
   mime?: string;
   detailLevel: DetailLevel;
+  workspaceId?: string;
 }
 
 export type CreateUploadIntentResult =
@@ -46,6 +48,16 @@ export async function createUploadIntent(
   const validation = validateUpload(input.filename, input.sizeBytes, input.mime);
   if (!validation.ok) {
     return { kind: "INVALID", code: validation.code, message: validation.message };
+  }
+  if (
+    input.workspaceId &&
+    !(await canAccessWorkspace(input.workspaceId, input.userId))
+  ) {
+    return {
+      kind: "INVALID",
+      code: "FORBIDDEN",
+      message: "You don't have access to that team",
+    };
   }
 
   const now = new Date();
@@ -71,6 +83,7 @@ export async function createUploadIntent(
   const intent = await prisma.uploadIntent.create({
     data: {
       userId: input.userId,
+      workspaceId: input.workspaceId ?? null,
       tempKey,
       filename: sanitizeDisplayName(input.filename),
       sourceExt: validation.extension,
@@ -260,10 +273,10 @@ export async function completeUpload(
     await releaseUploadClaims([intent.id]);
     return { kind: "INCOMPLETE" };
   }
-  if (/^(png|jpe?g|webp|pdf|mp4|mov|webm|mkv)$/.test(intent.sourceExt)) {
+  if (/^(png|jpe?g|webp|pdf|mp4|mov|webm|mkv|mp3|m4a|wav|ogg|aac|flac)$/.test(intent.sourceExt)) {
     let bytes: Uint8Array | null;
     try {
-      bytes = /^(mp4|mov|webm|mkv)$/.test(intent.sourceExt)
+      bytes = /^(mp4|mov|webm|mkv|mp3|m4a|wav|ogg|aac|flac)$/.test(intent.sourceExt)
         ? await readStoredPrefix(intent.tempKey, 64)
         : intent.sourceExt === "pdf"
           ? await readStoredPrefix(intent.tempKey, 5)
@@ -283,6 +296,22 @@ export async function completeUpload(
     }
   }
 
+  // Membership may have been revoked after the short-lived intent was
+  // created. Re-check immediately before committing the durable job so a
+  // removed team member cannot place new work in that workspace.
+  let workspaceAllowed = true;
+  try {
+    workspaceAllowed =
+      !intent.workspaceId || (await canAccessWorkspace(intent.workspaceId, userId));
+  } catch (error) {
+    await releaseUploadClaims([intent.id]).catch(() => undefined);
+    throw error;
+  }
+  if (!workspaceAllowed) {
+    await releaseUploadClaims([intent.id]);
+    return { kind: "FORBIDDEN" };
+  }
+
   let job: Awaited<ReturnType<typeof createJob>>;
   try {
     job = await createJob({
@@ -294,6 +323,7 @@ export async function completeUpload(
       sourceMime: intent.mime,
       tempKey: intent.tempKey,
       etag: object.etag ?? undefined,
+      workspaceId: intent.workspaceId ?? undefined,
     });
   } catch (error) {
     await releaseUploadClaims([intent.id]).catch(() => undefined);
@@ -321,6 +351,7 @@ export async function completeUploadBatch(
   uploadIds: string[],
   userId: string,
   detailLevel: DetailLevel,
+  workspaceId?: string,
 ): Promise<CompleteUploadBatchResult> {
   if (new Set(uploadIds).size !== uploadIds.length) {
     return { kind: "INCOMPLETE" };
@@ -339,6 +370,17 @@ export async function completeUploadBatch(
   }
   if (ordered.some((intent) => intent.expiresAt.getTime() <= now)) {
     return { kind: "EXPIRED" };
+  }
+  if (workspaceId && !(await canAccessWorkspace(workspaceId, userId))) {
+    return { kind: "FORBIDDEN" };
+  }
+  if (
+    ordered.some((intent) => (intent.workspaceId ?? undefined) !== workspaceId)
+  ) {
+    return {
+      kind: "INVALID_CONTENT",
+      message: "All images in a set must belong to the same team",
+    };
   }
   if (ordered.some((intent) => !intent.sourceExt.match(/^(png|jpe?g|webp)$/))) {
     return {
@@ -395,12 +437,24 @@ export async function completeUploadBatch(
     ordered.length === 1
       ? firstName
       : `${ordered.length} images — ${firstName}`;
+  let workspaceAllowed = true;
+  try {
+    workspaceAllowed = !workspaceId || (await canAccessWorkspace(workspaceId, userId));
+  } catch (error) {
+    await releaseUploadClaims(uploadIds).catch(() => undefined);
+    throw error;
+  }
+  if (!workspaceAllowed) {
+    await releaseUploadClaims(uploadIds);
+    return { kind: "FORBIDDEN" };
+  }
   let job: Awaited<ReturnType<typeof createJobSources>>;
   try {
     job = await createJobSources({
       userId,
       displayName: sanitizeDisplayName(displayName),
       detailLevel,
+      workspaceId,
       sources: validated,
     });
   } catch (error) {

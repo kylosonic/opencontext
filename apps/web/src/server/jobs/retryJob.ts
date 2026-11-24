@@ -3,6 +3,7 @@ import { type StageState } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
 import { computeProgress } from "./progress";
 import { jobToDetail } from "./serialize";
+import { canManageJob } from "@/server/workspaces";
 
 /**
  * Stages whose results are always recomputed on manual retry (blueprint
@@ -30,7 +31,7 @@ export async function retryJob(jobId: string, userId: string): Promise<RetryResu
   if (!job) {
     return { kind: "RETRY_NOT_ALLOWED", reason: "NOT_FOUND" };
   }
-  if (job.userId !== userId) {
+  if (!(await canManageJob(job, userId))) {
     return { kind: "RETRY_NOT_ALLOWED", reason: "FORBIDDEN" };
   }
 
@@ -83,7 +84,6 @@ export async function retryJob(jobId: string, userId: string): Promise<RetryResu
     const changed = await tx.job.updateMany({
       where: {
         id: jobId,
-        userId,
         status: job.status,
         failureKind: job.failureKind,
         updatedAt: job.updatedAt,
@@ -105,7 +105,7 @@ export async function retryJob(jobId: string, userId: string): Promise<RetryResu
     });
     if (changed.count === 0) return null;
 
-    if (resetStages.has("ANALYZING") || resetStages.has("TRANSCRIBING")) {
+    if (resetStages.has("ANALYZING")) {
       await tx.visualObservation.deleteMany({ where: { jobId } });
       await tx.ocrObservation.deleteMany({ where: { jobId } });
     }

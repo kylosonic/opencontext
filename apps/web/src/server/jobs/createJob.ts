@@ -6,6 +6,7 @@ import { initialStageStates } from "./progress";
 
 export interface CreateJobInput {
   userId: string;
+  workspaceId?: string;
   /** Already sanitized by `src/server/validation/upload.ts` (upload.md B6). */
   displayName: string;
   detailLevel: DetailLevel;
@@ -29,6 +30,7 @@ export interface CreateJobSource {
 
 export interface CreateJobSourcesInput {
   userId: string;
+  workspaceId?: string;
   displayName: string;
   detailLevel: DetailLevel;
   sources: CreateJobSource[];
@@ -44,6 +46,7 @@ export interface CreateJobSourcesInput {
 export async function createJob(input: CreateJobInput) {
   return createJobSources({
     userId: input.userId,
+    workspaceId: input.workspaceId,
     displayName: input.displayName,
     detailLevel: input.detailLevel,
     sources: [
@@ -93,6 +96,7 @@ export async function createJobSources(input: CreateJobSourcesInput) {
         data: {
           id: jobId,
           userId: input.userId,
+          workspaceId: input.workspaceId ?? null,
           displayName: input.displayName,
           detailLevel: input.detailLevel,
           status: "QUEUED",

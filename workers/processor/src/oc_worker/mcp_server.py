@@ -30,6 +30,7 @@ def _settings_for_analysis(offline: bool) -> Settings:
         return settings
     return replace(
         settings,
+        demo_vision=False,
         transcription_provider="fixture",
         vision_provider="fixture",
         ocr_provider="fixture",

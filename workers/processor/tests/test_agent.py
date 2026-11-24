@@ -131,9 +131,31 @@ def test_context_loader_rejects_oversized_files_without_full_read(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "context.json"
-    path.write_bytes(b"{" + b" " * 1_000_001 + b"}")
+    with path.open("wb") as handle:
+        handle.truncate(16 * 1024 * 1024 + 1)
 
     with pytest.raises(ValueError, match="too large"):
+        load_context_payload(path)
+
+
+def test_context_loader_accepts_large_valid_context_under_16mb(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "large-context.json"
+    encoded = (json.dumps(_payload()) + (" " * 1_100_000)).encode("utf-8")
+    assert len(encoded) > 1_000_000
+    path.write_bytes(encoded)
+
+    loaded = load_context_payload(path)
+
+    assert loaded["source"]["name"] == "checkout.mp4"
+
+
+def test_context_loader_rejects_invalid_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "bad-utf8.json"
+    path.write_bytes(b"\xff\xfe\xfd")
+
+    with pytest.raises(ValueError, match="not valid UTF-8"):
         load_context_payload(path)
 
 

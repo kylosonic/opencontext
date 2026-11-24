@@ -12,3 +12,11 @@ export { deleteJob, type DeleteJobResult } from "./deleteJob";
 export { computeProgress, initialStageStates } from "./progress";
 export { computeExpiresAt, retentionNoteFor } from "./retention";
 export { jobToDetail, jobToSummary } from "./serialize";
+export {
+  activeJobShare,
+  createJobShare,
+  getSharedJob,
+  jobShareStatus,
+  revokeJobShares,
+  SHARE_TTL_DAYS,
+} from "./shares";

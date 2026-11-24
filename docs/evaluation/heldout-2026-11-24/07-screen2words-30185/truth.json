@@ -1,0 +1,45 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 30185; iFax - Send Fax from Phone.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-30185",
+    "sourceName": "visual/images/screen-07-30185.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Country List",
+      "A",
+      "+93",
+      "Afghanistan",
+      "+355",
+      "Albania",
+      "+213",
+      "Algeria",
+      "+684",
+      "American Samoa [USA]",
+      "+376",
+      "Andorra",
+      "+244",
+      "Angola",
+      "+1264",
+      "Anguilla",
+      "+672",
+      "Antarctica",
+      "+1268",
+      "Antigua and Barbuda",
+      "+54",
+      "Argentina"
+    ],
+    "visualKeywords": [
+      "list",
+      "countries",
+      "different",
+      "their",
+      "codes",
+      "search"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 30185; iFax - Send Fax from Phone.",
+    "license": "CC-BY-4.0"
+  }
+}

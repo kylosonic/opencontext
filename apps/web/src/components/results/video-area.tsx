@@ -9,7 +9,7 @@ export interface VideoAreaProps {
   demo?: boolean;
   /** Echoed in the placeholder when a timeline entry was clicked. */
   selectedTimestamp?: number | null;
-  sourceKind?: "video" | "image" | "pdf";
+  sourceKind?: "video" | "image" | "pdf" | "audio";
   /** A real `<video>` or `<img>` element. Rendered as-is when provided. */
   sourceSlot?: ReactNode;
   className?: string;
@@ -40,6 +40,8 @@ export function VideoArea({
             ? "Source image"
             : sourceKind === "pdf"
               ? "Source PDF"
+              : sourceKind === "audio"
+                ? "Source audio"
               : "Source video"
         }
         className={cx("overflow-hidden rounded-lg border border-line", className)}
@@ -58,6 +60,8 @@ export function VideoArea({
           ? "Source image"
           : sourceKind === "pdf"
             ? "Source PDF"
+          : sourceKind === "audio"
+            ? "Source audio"
             : "Source video"
       }
       className={cx(
@@ -79,6 +83,8 @@ export function VideoArea({
               ? "Source image"
               : sourceKind === "pdf"
                 ? "Source PDF"
+                : sourceKind === "audio"
+                  ? "Source audio"
                 : "Source video")}
         </p>
         <p className="text-sm leading-relaxed text-ink-muted">
@@ -86,6 +92,10 @@ export function VideoArea({
             ? demo
               ? "The demo uses pre-authored data with a text-only sample preview."
               : `The uploaded ${sourceKind === "pdf" ? "PDF" : "image"} preview appears here once its context is ready.`
+            : sourceKind === "audio"
+              ? demo
+                ? "The demo uses pre-authored data without external audio."
+                : "The uploaded audio player appears here once its context is ready."
             : demo
             ? "The demo uses pre-authored data — no real video is played. For your own jobs, the source video player appears here."
             : "The source video player appears here once the job reaches the extraction stage. Timeline entries will seek it directly."}

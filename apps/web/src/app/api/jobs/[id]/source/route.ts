@@ -20,11 +20,17 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   jpeg: "image/jpeg",
   webp: "image/webp",
   pdf: "application/pdf",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  aac: "audio/aac",
+  flac: "audio/flac",
 };
 
 /**
- * GET /api/jobs/[id]/source — owner-authenticated image/PDF preview.
- * Videos continue to use direct object-storage playback.
+ * GET /api/jobs/[id]/source — owner-authenticated still/audio preview.
+ * Videos use direct object-storage playback.
  */
 export async function GET(
   request: Request,

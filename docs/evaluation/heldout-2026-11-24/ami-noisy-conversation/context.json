@@ -1,0 +1,688 @@
+{
+  "audioPresent": true,
+  "crossImageFindings": [],
+  "evidence": [
+    {
+      "certainty": "OBSERVED",
+      "endSec": 3.44,
+      "id": 1,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 0
+      },
+      "text": "Yeah, I mean that's that's still another level of double computer.",
+      "timestampSec": 0.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 4.44,
+      "id": 2,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 1
+      },
+      "text": "Yes.",
+      "timestampSec": 3.44
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 8.16,
+      "id": 3,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 2
+      },
+      "text": "Being here is when you're in a higher level, rather than, kind of, you know,",
+      "timestampSec": 4.44
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 10.8,
+      "id": 4,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 3
+      },
+      "text": "the places that hold up offline is still as nice as it.",
+      "timestampSec": 8.16
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 12.96,
+      "id": 5,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 4
+      },
+      "text": "Okay. And then they're much, much smaller.",
+      "timestampSec": 10.8
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 16.0,
+      "id": 6,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 5
+      },
+      "text": "But once more times, we can just, uh, yeah.",
+      "timestampSec": 12.96
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 17.0,
+      "id": 7,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 6
+      },
+      "text": "Yeah.",
+      "timestampSec": 16.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 18.0,
+      "id": 8,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 7
+      },
+      "text": "Oh, same.",
+      "timestampSec": 17.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 19.0,
+      "id": 9,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 8
+      },
+      "text": "Oh, my goodness.",
+      "timestampSec": 18.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 20.0,
+      "id": 10,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 9
+      },
+      "text": "Yeah.",
+      "timestampSec": 19.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 21.0,
+      "id": 11,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 10
+      },
+      "text": "We have some.",
+      "timestampSec": 20.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 22.0,
+      "id": 12,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 11
+      },
+      "text": "Mm-hmm.",
+      "timestampSec": 21.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 24.0,
+      "id": 13,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 12
+      },
+      "text": "Yeah, maybe we could go with some stuff.",
+      "timestampSec": 22.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 29.0,
+      "id": 14,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 13
+      },
+      "text": "Rather than the current function looking for remote controls.",
+      "timestampSec": 24.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 30.0,
+      "id": 15,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 14
+      },
+      "text": "Yeah.",
+      "timestampSec": 29.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 31.0,
+      "id": 16,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 15
+      },
+      "text": "Yeah.",
+      "timestampSec": 30.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 32.0,
+      "id": 17,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 16
+      },
+      "text": "Yeah.",
+      "timestampSec": 31.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 33.0,
+      "id": 18,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 17
+      },
+      "text": "Yeah.",
+      "timestampSec": 32.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 34.0,
+      "id": 19,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 18
+      },
+      "text": "Yeah.",
+      "timestampSec": 33.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 35.0,
+      "id": 20,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 19
+      },
+      "text": "Yeah.",
+      "timestampSec": 34.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 36.0,
+      "id": 21,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 20
+      },
+      "text": "Because it was better.",
+      "timestampSec": 35.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 37.0,
+      "id": 22,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 21
+      },
+      "text": "Yes.",
+      "timestampSec": 36.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 38.0,
+      "id": 23,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 22
+      },
+      "text": "I think so.",
+      "timestampSec": 37.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 39.0,
+      "id": 24,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 23
+      },
+      "text": "I think absolutely.",
+      "timestampSec": 38.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 43.0,
+      "id": 25,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 24
+      },
+      "text": "And fortunately, we all had slides of presentation, which made it all easier.",
+      "timestampSec": 39.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 45.0,
+      "id": 26,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 25
+      },
+      "text": "But we didn't put the production cost.",
+      "timestampSec": 43.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 48.0,
+      "id": 27,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 26
+      },
+      "text": "Uh, maximum self and all heroes to work.",
+      "timestampSec": 45.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 50.0,
+      "id": 28,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 27
+      },
+      "text": "Just to remote, which is suitable for the market.",
+      "timestampSec": 48.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 55.0,
+      "id": 29,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 28
+      },
+      "text": "We want to reach because it is 40% of the market.",
+      "timestampSec": 50.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 57.0,
+      "id": 30,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 29
+      },
+      "text": "It's a huge bit.",
+      "timestampSec": 55.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 59.0,
+      "id": 31,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 30
+      },
+      "text": "And if you so be.",
+      "timestampSec": 57.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 60.0,
+      "id": 32,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 31
+      },
+      "text": "No point.",
+      "timestampSec": 59.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 61.0,
+      "id": 33,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 32
+      },
+      "text": "Difficult.",
+      "timestampSec": 60.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 62.0,
+      "id": 34,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 33
+      },
+      "text": "Difficult.",
+      "timestampSec": 61.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 63.0,
+      "id": 35,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 34
+      },
+      "text": "Yeah.",
+      "timestampSec": 62.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 64.0,
+      "id": 36,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 35
+      },
+      "text": "It's a bit off.",
+      "timestampSec": 63.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 65.0,
+      "id": 37,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 36
+      },
+      "text": "Yeah.",
+      "timestampSec": 64.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 65.69,
+      "id": 38,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 37
+      },
+      "text": "Just.",
+      "timestampSec": 65.0
+    },
+    {
+      "certainty": "OBSERVED",
+      "endSec": 65.69,
+      "id": 39,
+      "kind": "TRANSCRIPT",
+      "source": {
+        "collection": "transcript",
+        "index": 38
+      },
+      "text": "Yeah.",
+      "timestampSec": 65.69
+    }
+  ],
+  "evidenceVersion": 1,
+  "formatVersion": 2,
+  "generatedAt": "2026-11-24T17:31:32+00:00",
+  "implementationObservations": [],
+  "interactions": [],
+  "source": {
+    "detailLevel": "MEDIUM",
+    "durationSec": 65.69,
+    "kind": "audio",
+    "name": "ami-noisy-conversation.wav"
+  },
+  "sourceAssets": [],
+  "stateTransitions": [],
+  "timeline": [],
+  "transcript": [
+    {
+      "end": 3.44,
+      "start": 0.0,
+      "text": "Yeah, I mean that's that's still another level of double computer."
+    },
+    {
+      "end": 4.44,
+      "start": 3.44,
+      "text": "Yes."
+    },
+    {
+      "end": 8.16,
+      "start": 4.44,
+      "text": "Being here is when you're in a higher level, rather than, kind of, you know,"
+    },
+    {
+      "end": 10.8,
+      "start": 8.16,
+      "text": "the places that hold up offline is still as nice as it."
+    },
+    {
+      "end": 12.96,
+      "start": 10.8,
+      "text": "Okay. And then they're much, much smaller."
+    },
+    {
+      "end": 16.0,
+      "start": 12.96,
+      "text": "But once more times, we can just, uh, yeah."
+    },
+    {
+      "end": 17.0,
+      "start": 16.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 18.0,
+      "start": 17.0,
+      "text": "Oh, same."
+    },
+    {
+      "end": 19.0,
+      "start": 18.0,
+      "text": "Oh, my goodness."
+    },
+    {
+      "end": 20.0,
+      "start": 19.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 21.0,
+      "start": 20.0,
+      "text": "We have some."
+    },
+    {
+      "end": 22.0,
+      "start": 21.0,
+      "text": "Mm-hmm."
+    },
+    {
+      "end": 24.0,
+      "start": 22.0,
+      "text": "Yeah, maybe we could go with some stuff."
+    },
+    {
+      "end": 29.0,
+      "start": 24.0,
+      "text": "Rather than the current function looking for remote controls."
+    },
+    {
+      "end": 30.0,
+      "start": 29.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 31.0,
+      "start": 30.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 32.0,
+      "start": 31.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 33.0,
+      "start": 32.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 34.0,
+      "start": 33.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 35.0,
+      "start": 34.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 36.0,
+      "start": 35.0,
+      "text": "Because it was better."
+    },
+    {
+      "end": 37.0,
+      "start": 36.0,
+      "text": "Yes."
+    },
+    {
+      "end": 38.0,
+      "start": 37.0,
+      "text": "I think so."
+    },
+    {
+      "end": 39.0,
+      "start": 38.0,
+      "text": "I think absolutely."
+    },
+    {
+      "end": 43.0,
+      "start": 39.0,
+      "text": "And fortunately, we all had slides of presentation, which made it all easier."
+    },
+    {
+      "end": 45.0,
+      "start": 43.0,
+      "text": "But we didn't put the production cost."
+    },
+    {
+      "end": 48.0,
+      "start": 45.0,
+      "text": "Uh, maximum self and all heroes to work."
+    },
+    {
+      "end": 50.0,
+      "start": 48.0,
+      "text": "Just to remote, which is suitable for the market."
+    },
+    {
+      "end": 55.0,
+      "start": 50.0,
+      "text": "We want to reach because it is 40% of the market."
+    },
+    {
+      "end": 57.0,
+      "start": 55.0,
+      "text": "It's a huge bit."
+    },
+    {
+      "end": 59.0,
+      "start": 57.0,
+      "text": "And if you so be."
+    },
+    {
+      "end": 60.0,
+      "start": 59.0,
+      "text": "No point."
+    },
+    {
+      "end": 61.0,
+      "start": 60.0,
+      "text": "Difficult."
+    },
+    {
+      "end": 62.0,
+      "start": 61.0,
+      "text": "Difficult."
+    },
+    {
+      "end": 63.0,
+      "start": 62.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 64.0,
+      "start": 63.0,
+      "text": "It's a bit off."
+    },
+    {
+      "end": 65.0,
+      "start": 64.0,
+      "text": "Yeah."
+    },
+    {
+      "end": 65.69,
+      "start": 65.0,
+      "text": "Just."
+    },
+    {
+      "end": 65.69,
+      "start": 65.69,
+      "text": "Yeah."
+    }
+  ],
+  "uiHierarchy": [],
+  "visibleText": [],
+  "visualFindings": []
+}

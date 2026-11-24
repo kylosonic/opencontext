@@ -33,12 +33,13 @@ export default function DemoPage() {
 
   useEffect(() => {
     if (phase !== "running") return;
-    let stopped = false;
+    let unmounted = false;
+    let finished = false;
     let inFlight = false;
     const startedAt = performance.now();
 
     const timer = window.setInterval(async () => {
-      if (stopped || inFlight) return;
+      if (unmounted || finished || inFlight) return;
       inFlight = true;
       const elapsedSec = (performance.now() - startedAt) / 1000;
       try {
@@ -49,25 +50,27 @@ export default function DemoPage() {
           throw new Error(`Progress request failed (HTTP ${res.status})`);
         }
         const data: DemoProgress = await res.json();
-        if (stopped) return;
+        if (unmounted) return;
         setElapsed(elapsedSec);
         setStages(data.stages as StageState[]);
         setProgress(data.progress);
 
         if (data.completed) {
-          stopped = true;
+          finished = true;
           window.clearInterval(timer);
           const resultRes = await fetch("/api/demo/result");
-          if (stopped) return;
+          if (unmounted) return;
           if (!resultRes.ok) {
             throw new Error(`Result request failed (HTTP ${resultRes.status})`);
           }
-          setResult((await resultRes.json()) as DemoResult);
+          const resultData = (await resultRes.json()) as DemoResult;
+          if (unmounted) return;
+          setResult(resultData);
           setPhase("done");
         }
       } catch (err) {
-        if (stopped) return;
-        stopped = true;
+        if (unmounted) return;
+        finished = true;
         window.clearInterval(timer);
         setError(err instanceof Error ? err.message : "Something went wrong");
         setPhase("error");
@@ -77,7 +80,7 @@ export default function DemoPage() {
     }, TICK_MS);
 
     return () => {
-      stopped = true;
+      unmounted = true;
       window.clearInterval(timer);
     };
   }, [phase]);

@@ -1,0 +1,35 @@
+{
+  "datasetId": "screen2words-test-v1",
+  "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 50749; Thenics.",
+  "license": "CC-BY-4.0",
+  "item": {
+    "id": "screen2words-50749",
+    "sourceName": "visual/images/screen-12-50749.jpg",
+    "transcript": "",
+    "ocrTexts": [
+      "Muscle Up",
+      "Lvl: 1 Pull Up",
+      "Progress:",
+      "0%",
+      "Description",
+      "Expert",
+      "Muscles:",
+      "Technique Summary:",
+      "* Pull behind bar \n* Keep elbows in \n* Rotate your wrists over the bar",
+      "Description:",
+      "The Muscle-Up can be divided into 3 phases:\n\n          1. Pull\n\n         2. Transition\n\n         3. Push\n\nFirst you pull your body as high as you can (chest or even hip on level with bar). The probably toughest part is the transition. To succeed you'll need to rotate your wrists on top of the bar and throw your shoulders over the bar. The last step is a bar Dip.\n\nThe Muscle-up needs almost all muscles in your upper body. It needs explosivness and a good coordination of the muscles. The Muscle-up can also be performed with gymnastic rings. On the rings you'll often see a false grip (start dead hang with wrists over rings).",
+      "An error occurred while initializing the YouTube player."
+    ],
+    "visualKeywords": [
+      "fitness",
+      "shows",
+      "description",
+      "progress",
+      "displayed",
+      "muscle"
+    ],
+    "datasetId": "screen2words-test-v1",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server. Screen 50749; Thenics.",
+    "license": "CC-BY-4.0"
+  }
+}
