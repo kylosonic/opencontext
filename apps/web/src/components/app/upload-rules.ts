@@ -10,6 +10,15 @@
  */
 
 import { sourceKindForExtension, UPLOAD_LIMITS } from "@kylosonic/opencontext-schemas";
+import {
+  AUDIO_SIZE_MESSAGE,
+  IMAGE_SIZE_MESSAGE,
+  PDF_SIZE_MESSAGE,
+  sizeLimitForKind,
+  sizeMessageForKind,
+  SUPPORTED_FORMAT_MESSAGE,
+  VIDEO_SIZE_MESSAGE,
+} from "@/lib/media-formats";
 
 export const ALLOWED_EXTENSIONS = UPLOAD_LIMITS.allowedExtensions;
 export const MAX_BYTES = UPLOAD_LIMITS.maxBytes;
@@ -26,13 +35,10 @@ export const MAX_AUDIO_SIZE_LABEL = "100 MB";
 export const MAX_DURATION_LABEL = "30 minutes";
 
 /** Mirrors src/server/validation/upload.ts wording exactly. */
-export const FORMAT_MESSAGE =
-  "This format is not supported — use MP4, MOV, WebM, MKV, MP3, M4A, WAV, OGG, AAC, FLAC, PNG, JPG, JPEG, WebP, or PDF";
+export const FORMAT_MESSAGE = SUPPORTED_FORMAT_MESSAGE;
 /** Mirrors src/server/validation/upload.ts wording exactly. */
-export const SIZE_MESSAGE = "File is too large — the limit is 500 MB";
-export const IMAGE_SIZE_MESSAGE = "Image is too large — the limit is 25 MB";
-export const PDF_SIZE_MESSAGE = "PDF is too large — the limit is 50 MB";
-export const AUDIO_SIZE_MESSAGE = "Audio is too large — the limit is 100 MB";
+export const SIZE_MESSAGE = VIDEO_SIZE_MESSAGE;
+export { AUDIO_SIZE_MESSAGE, IMAGE_SIZE_MESSAGE, PDF_SIZE_MESSAGE };
 
 export type ClientFileCheck =
   | { ok: true; extension: string; kind: "video" | "image" | "pdf" | "audio" }
@@ -59,26 +65,8 @@ export function checkFileBeforeUpload(
   }
   const normalizedExtension = extension.slice(1);
   const kind = sourceKindForExtension(normalizedExtension);
-  const limit =
-    kind === "image"
-      ? MAX_IMAGE_BYTES
-      : kind === "pdf"
-        ? MAX_PDF_BYTES
-        : kind === "audio"
-          ? MAX_AUDIO_BYTES
-          : MAX_BYTES;
-  if (sizeBytes > limit) {
-    return {
-      ok: false,
-      message:
-        kind === "image"
-          ? IMAGE_SIZE_MESSAGE
-          : kind === "pdf"
-            ? PDF_SIZE_MESSAGE
-            : kind === "audio"
-              ? AUDIO_SIZE_MESSAGE
-            : SIZE_MESSAGE,
-    };
+  if (sizeBytes > sizeLimitForKind(kind)) {
+    return { ok: false, message: sizeMessageForKind(kind) };
   }
   return { ok: true, extension: normalizedExtension, kind };
 }

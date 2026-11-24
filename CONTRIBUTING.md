@@ -115,7 +115,8 @@ Python worker
 The database-backed queue uses leases rather than an external queue. PostgreSQL
 is used by the Compose stack and production; SQLite keeps native tests fast.
 Worker stage payloads are validated against the same contracts in both
-TypeScript and Python.
+TypeScript and Python. See [docs/architecture.md](docs/architecture.md) for a
+module map and extension guide.
 
 ## Checks
 

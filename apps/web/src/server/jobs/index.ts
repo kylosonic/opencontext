@@ -13,6 +13,11 @@ export { computeProgress, initialStageStates } from "./progress";
 export { computeExpiresAt, retentionNoteFor } from "./retention";
 export { jobToDetail, jobToSummary } from "./serialize";
 export {
+  buildSourceStreamResponse,
+  resolveSourceAsset,
+  type ResolvedSourceAsset,
+} from "./sourceStream";
+export {
   activeJobShare,
   createJobShare,
   getSharedJob,

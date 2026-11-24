@@ -5,6 +5,16 @@ import {
   type SourceKind,
 } from "@kylosonic/opencontext-schemas";
 import sharp from "sharp";
+import {
+  AUDIO_SIZE_MESSAGE,
+  IMAGE_SIZE_MESSAGE,
+  MIMES_BY_EXTENSION,
+  PDF_SIZE_MESSAGE,
+  SUPPORTED_FORMAT_MESSAGE,
+  VIDEO_SIZE_MESSAGE,
+  sizeLimitForKind,
+  sizeMessageForKind,
+} from "@/lib/media-formats";
 
 /**
  * Server-side upload validation (upload.md B1 + blueprint §3). The client
@@ -12,34 +22,17 @@ import sharp from "sharp";
  * Named reasons: FILE_TOO_LARGE, FORMAT_UNSUPPORTED, VALIDATION_ERROR.
  */
 
+export {
+  AUDIO_SIZE_MESSAGE,
+  IMAGE_SIZE_MESSAGE,
+  PDF_SIZE_MESSAGE,
+  SUPPORTED_FORMAT_MESSAGE,
+  VIDEO_SIZE_MESSAGE,
+};
+
 export type UploadValidation =
   | { ok: true; extension: string; mime: string; kind: SourceKind }
   | { ok: false; code: ErrorCode; message: string };
-
-const MIMES_BY_EXTENSION: Record<string, readonly string[]> = {
-  mp4: ["video/mp4"],
-  mov: ["video/quicktime"],
-  webm: ["video/webm"],
-  mkv: ["video/x-matroska"],
-  png: ["image/png"],
-  jpg: ["image/jpeg", "image/jpg"],
-  jpeg: ["image/jpeg", "image/jpg"],
-  webp: ["image/webp"],
-  pdf: ["application/pdf"],
-  mp3: ["audio/mpeg"],
-  m4a: ["audio/mp4", "audio/x-m4a"],
-  wav: ["audio/wav", "audio/x-wav"],
-  ogg: ["audio/ogg"],
-  aac: ["audio/aac"],
-  flac: ["audio/flac"],
-};
-
-export const SUPPORTED_FORMAT_MESSAGE =
-  "This format is not supported — use MP4, MOV, WebM, MKV, MP3, M4A, WAV, OGG, AAC, FLAC, PNG, JPG, JPEG, WebP, or PDF";
-export const VIDEO_SIZE_MESSAGE = "File is too large — the limit is 500 MB";
-export const IMAGE_SIZE_MESSAGE = "Image is too large — the limit is 25 MB";
-export const PDF_SIZE_MESSAGE = "PDF is too large — the limit is 50 MB";
-export const AUDIO_SIZE_MESSAGE = "Audio is too large — the limit is 100 MB";
 
 export function validateUpload(
   filename: string,
@@ -78,26 +71,11 @@ export function validateUpload(
   }
   const normalizedExtension = extension.slice(1);
   const kind = sourceKindForExtension(normalizedExtension);
-  const byteLimit =
-    kind === "image"
-      ? UPLOAD_LIMITS.maxImageBytes
-      : kind === "pdf"
-        ? UPLOAD_LIMITS.maxPdfBytes
-        : kind === "audio"
-          ? UPLOAD_LIMITS.maxAudioBytes
-        : UPLOAD_LIMITS.maxBytes;
-  if (sizeBytes > byteLimit) {
+  if (sizeBytes > sizeLimitForKind(kind)) {
     return {
       ok: false,
       code: "FILE_TOO_LARGE",
-      message:
-        kind === "image"
-          ? IMAGE_SIZE_MESSAGE
-          : kind === "pdf"
-            ? PDF_SIZE_MESSAGE
-            : kind === "audio"
-              ? AUDIO_SIZE_MESSAGE
-            : VIDEO_SIZE_MESSAGE,
+      message: sizeMessageForKind(kind),
     };
   }
 

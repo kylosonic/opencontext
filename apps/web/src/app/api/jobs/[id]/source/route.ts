@@ -4,8 +4,11 @@ import {
   rateLimitDeniedResponse,
   withErrorHandling,
 } from "@/server/api-helpers";
-import { getJob } from "@/server/jobs";
-import { storage } from "@/server/storage";
+import {
+  buildSourceStreamResponse,
+  getJob,
+  resolveSourceAsset,
+} from "@/server/jobs";
 import {
   applyRateLimitHeaders,
   consumeRateLimit,
@@ -13,20 +16,6 @@ import {
 } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
-
-const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  webp: "image/webp",
-  pdf: "application/pdf",
-  mp3: "audio/mpeg",
-  m4a: "audio/mp4",
-  wav: "audio/wav",
-  ogg: "audio/ogg",
-  aac: "audio/aac",
-  flac: "audio/flac",
-};
 
 /**
  * GET /api/jobs/[id]/source — owner-authenticated still/audio preview.
@@ -59,48 +48,20 @@ export async function GET(
       return errorResponse("FORBIDDEN", "You don't have access to this job");
     }
 
-    const detail = result.job;
-    const requestedIndex = Number(new URL(request.url).searchParams.get("asset") ?? "0");
-    const assets = detail.source?.assets ?? [];
-    const hasValidIndex =
-      Number.isInteger(requestedIndex) &&
-      requestedIndex >= 0 &&
-      requestedIndex < assets.length;
-    if (requestedIndex !== 0 && !hasValidIndex) {
+    const asset = resolveSourceAsset(
+      result.job.source,
+      new URL(request.url).searchParams.get("asset"),
+      { allowVideo: false },
+    );
+    if (!asset) {
       return errorResponse("NOT_FOUND", "Source preview not found");
     }
-    const asset = hasValidIndex ? assets[requestedIndex] : assets[0];
-    const sourceExt = asset
-      ? asset.ext
-      : detail.source?.ext;
-    const contentType =
-      sourceExt
-        ? CONTENT_TYPE_BY_EXTENSION[sourceExt.toLowerCase()]
-        : undefined;
-    const key = asset?.key ?? detail.source?.key;
-    if (!key || !contentType) {
+    const response = await buildSourceStreamResponse(asset, {
+      pdfFilenameDisposition: true,
+    });
+    if (!response) {
       return errorResponse("NOT_FOUND", "Source preview not found");
     }
-    const body = await storage.stream(key);
-    if (!body) {
-      return errorResponse("NOT_FOUND", "Source preview not found");
-    }
-    return applyRateLimitHeaders(new Response(body, {
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
-        ...(contentType === "application/pdf"
-          ? {
-              "Content-Disposition": "inline; filename=source.pdf",
-              // This overrides the app-wide CSP for the PDF document. A
-              // sandbox/default-src none policy prevents browser PDF viewers
-              // (and Firefox PDF.js) from initializing, while this same-origin
-              // framing restriction still prevents third-party embedding.
-              "Content-Security-Policy": "frame-ancestors 'self'",
-            }
-          : {}),
-      },
-    }), limit);
+    return applyRateLimitHeaders(response, limit);
   });
 }

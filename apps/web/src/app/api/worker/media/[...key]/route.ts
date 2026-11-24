@@ -1,3 +1,4 @@
+import { contentTypeForExtension } from "@/lib/media-formats";
 import { storage } from "@/server/storage";
 import {
   enforceRateLimit,
@@ -10,22 +11,6 @@ import { prisma } from "@/server/db/prisma";
 import { RATE_LIMITS } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
-
-const MIME_BY_EXTENSION: Record<string, string> = {
-  mp4: "video/mp4",
-  mov: "video/quicktime",
-  webm: "video/webm",
-  mkv: "video/x-matroska",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  pdf: "application/pdf",
-  aac: "audio/aac",
-  m4a: "audio/mp4",
-  wav: "audio/wav",
-  mp3: "audio/mpeg",
-};
 
 /**
  * GET /api/worker/media/[...key] — stream a local object only when the
@@ -73,7 +58,8 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
     const extension = (dot >= 0 ? key.slice(dot + 1) : "").toLowerCase();
     return new Response(body, {
       headers: {
-        "Content-Type": MIME_BY_EXTENSION[extension] ?? "application/octet-stream",
+        "Content-Type":
+          contentTypeForExtension(extension) ?? "application/octet-stream",
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
       },

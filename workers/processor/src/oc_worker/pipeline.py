@@ -300,6 +300,130 @@ class Pipeline:
 
     # -- stages -----------------------------------------------------------
 
+    def _probe_and_validate_source(
+        self,
+        source_kind: str,
+        src: Path,
+        sources: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], float]:
+        if source_kind == "video":
+            probed = self._probe(str(src))
+            if not probed.get("video_present"):
+                raise PermanentFailure(NOT_A_VIDEO_MESSAGE)
+            duration_value = probed.get("duration")
+            if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
+                raise PermanentFailure(TOO_LONG_MESSAGE)
+            return probed, float(duration_value)
+        if source_kind == "audio":
+            probed = self._probe(str(src))
+            if not probed.get("audio_present"):
+                raise PermanentFailure(NOT_AN_AUDIO_MESSAGE)
+            duration_value = probed.get("duration")
+            if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
+                raise PermanentFailure("Audio is longer than the 30-minute limit")
+            return probed, float(duration_value)
+        if source_kind == "image":
+            if len(sources) > 10:
+                raise PermanentFailure("Image-set jobs accept at most 10 images")
+            for asset in sources:
+                image_probe = self._probe(str(asset["path"]))
+                if not image_probe.get("video_present"):
+                    raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
+                width = int(image_probe.get("width") or 0)
+                height = int(image_probe.get("height") or 0)
+                if width <= 0 or height <= 0:
+                    raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
+                if width * height > 40_000_000:
+                    raise PermanentFailure(
+                        "Image dimensions are too large — the limit is 40 megapixels"
+                    )
+            return self._probe(str(src)), 0.0
+        if source_kind == "pdf":
+            return {"width": None, "height": None, "audio_present": False}, 0.0
+        raise PermanentFailure("Unsupported source media")
+
+    def _extract_image_frames(
+        self, sources: list[dict[str, Any]], workdir: Path
+    ) -> list[dict[str, Any]]:
+        frames: list[dict[str, Any]] = []
+        for index, asset in enumerate(sources):
+            frame = self._timed(
+                lambda asset=asset, index=index: self._extract_image(
+                    str(asset["path"]),
+                    str(workdir / "frames" / f"image_{index + 1:03d}.jpg"),
+                )
+            )
+            frames.append(
+                {
+                    **frame,
+                    "sourceKind": "image",
+                    "sourceIndex": index,
+                    "sourceName": asset.get("filename") or f"Image {index + 1}",
+                    "frameId": f"image-{index + 1:02d}",
+                    "artifactTimestamp": float(index + 1),
+                }
+            )
+        return frames
+
+    def _extract_pdf_frames(self, src: Path, workdir: Path) -> list[dict[str, Any]]:
+        pages = self._timed(lambda: self._extract_pdf(str(src), str(workdir / "pages")))
+        if not pages:
+            raise PermanentFailure(NOT_A_PDF_MESSAGE)
+        return [
+            {
+                "timestamp": 0.0,
+                "path": page["path"],
+                "sourceKind": "pdf",
+                "sourceIndex": int(page["pageNumber"]) - 1,
+                "sourceName": f"PDF page {page['pageNumber']}",
+                "frameId": f"pdf-page-{int(page['pageNumber']):02d}",
+                "embeddedText": page.get("text") or "",
+                "artifactTimestamp": float(page["pageNumber"]),
+            }
+            for page in pages
+        ]
+
+    def _extract_video_frames(
+        self,
+        src: Path,
+        primary: dict[str, Any],
+        workdir: Path,
+        duration: float,
+        detail_level: DetailLevel,
+    ) -> list[dict[str, Any]]:
+        if self._bounded_frame_extraction and duration and duration > 0:
+            frame_fps = aggregation.target_frame_fps(
+                duration, detail_level, self.settings.vision_max_frames
+            )
+            frames = self._timed(
+                lambda: extract_frames(
+                    str(src),
+                    str(workdir / "frames"),
+                    fps=frame_fps,
+                    max_frames=self.settings.vision_max_frames,
+                    ffmpeg_path=self.settings.ffmpeg_path or None,
+                )
+            )
+            # These frames were already sampled evenly by FFmpeg under
+            # the provider cap. Reapplying the old 1-fps timestamp stride
+            # would discard almost every fractional-fps sample.
+            for frame in frames:
+                frame["boundedSampling"] = True
+        else:
+            frames = self._timed(
+                lambda: self._extract_frames(str(src), str(workdir / "frames"))
+            )
+        for frame in frames:
+            frame.update(
+                {
+                    "sourceKind": "video",
+                    "sourceIndex": 0,
+                    "sourceName": primary.get("filename"),
+                    "frameId": None,
+                }
+            )
+        return frames
+
     def _extracting(
         self,
         job: dict[str, Any],
@@ -321,46 +445,7 @@ class Pipeline:
                 job_id, stage="EXTRACTING", stage_status="RUNNING", progress=0,
                 message="Probing source",
             )
-        probed: dict[str, Any] = {}
-        duration = 0.0
-        if source_kind == "video":
-            probed = self._probe(str(src))
-            if not probed.get("video_present"):
-                raise PermanentFailure(NOT_A_VIDEO_MESSAGE)
-            duration_value = probed.get("duration")
-            if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
-                raise PermanentFailure(TOO_LONG_MESSAGE)
-            duration = float(duration_value)
-        elif source_kind == "audio":
-            probed = self._probe(str(src))
-            if not probed.get("audio_present"):
-                raise PermanentFailure(NOT_AN_AUDIO_MESSAGE)
-            duration_value = probed.get("duration")
-            if duration_value is None or float(duration_value) > MAX_DURATION_SECONDS:
-                raise PermanentFailure(
-                    "Audio is longer than the 30-minute limit"
-                )
-            duration = float(duration_value)
-        elif source_kind == "image":
-            if len(sources) > 10:
-                raise PermanentFailure("Image-set jobs accept at most 10 images")
-            for asset in sources:
-                image_probe = self._probe(str(asset["path"]))
-                if not image_probe.get("video_present"):
-                    raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
-                width = int(image_probe.get("width") or 0)
-                height = int(image_probe.get("height") or 0)
-                if width <= 0 or height <= 0:
-                    raise PermanentFailure(NOT_AN_IMAGE_MESSAGE)
-                if width * height > 40_000_000:
-                    raise PermanentFailure(
-                        "Image dimensions are too large — the limit is 40 megapixels"
-                    )
-            probed = self._probe(str(src))
-        elif source_kind == "pdf":
-            probed = {"width": None, "height": None, "audio_present": False}
-        else:
-            raise PermanentFailure("Unsupported source media")
+        probed, duration = self._probe_and_validate_source(source_kind, src, sources)
 
         audio_path: Path | None = None
         if source_kind in ("video", "audio") and probed.get("audio_present"):
@@ -380,91 +465,29 @@ class Pipeline:
                 self.api.upload_artifact(job_id, kind="AUDIO", file_path=audio_path)
 
         if not resume:
+            extract_messages = {
+                "image": "Preparing image",
+                "pdf": "Rendering PDF pages",
+                "audio": "Preparing audio transcript",
+            }
             self.api.progress(
                 job_id,
                 stage="EXTRACTING",
                 stage_status="RUNNING",
                 progress=60,
-                message=(
-                    "Preparing image"
-                    if source_kind == "image"
-                    else "Rendering PDF pages"
-                    if source_kind == "pdf"
-                    else "Preparing audio transcript"
-                    if source_kind == "audio"
-                    else "Extracting frames"
-                ),
+                message=extract_messages.get(source_kind, "Extracting frames"),
             )
         if source_kind == "image":
-            frames = []
-            for index, asset in enumerate(sources):
-                frame = self._timed(
-                    lambda asset=asset, index=index: self._extract_image(
-                        str(asset["path"]),
-                        str(workdir / "frames" / f"image_{index + 1:03d}.jpg"),
-                    )
-                )
-                frames.append(
-                    {
-                        **frame,
-                        "sourceKind": "image",
-                        "sourceIndex": index,
-                        "sourceName": asset.get("filename") or f"Image {index + 1}",
-                        "frameId": f"image-{index + 1:02d}",
-                        "artifactTimestamp": float(index + 1),
-                    }
-                )
+            frames = self._extract_image_frames(sources, workdir)
         elif source_kind == "pdf":
-            pages = self._timed(lambda: self._extract_pdf(str(src), str(workdir / "pages")))
-            if not pages:
-                raise PermanentFailure(NOT_A_PDF_MESSAGE)
-            frames = [
-                {
-                    "timestamp": 0.0,
-                    "path": page["path"],
-                    "sourceKind": "pdf",
-                    "sourceIndex": int(page["pageNumber"]) - 1,
-                    "sourceName": f"PDF page {page['pageNumber']}",
-                    "frameId": f"pdf-page-{int(page['pageNumber']):02d}",
-                    "embeddedText": page.get("text") or "",
-                    "artifactTimestamp": float(page["pageNumber"]),
-                }
-                for page in pages
-            ]
+            frames = self._extract_pdf_frames(src, workdir)
         elif source_kind == "video":
-            if self._bounded_frame_extraction and duration and duration > 0:
-                frame_fps = aggregation.target_frame_fps(
-                    duration, detail_level, self.settings.vision_max_frames
-                )
-                frames = self._timed(
-                    lambda: extract_frames(
-                        str(src),
-                        str(workdir / "frames"),
-                        fps=frame_fps,
-                        max_frames=self.settings.vision_max_frames,
-                        ffmpeg_path=self.settings.ffmpeg_path or None,
-                    )
-                )
-                # These frames were already sampled evenly by FFmpeg under
-                # the provider cap. Reapplying the old 1-fps timestamp stride
-                # would discard almost every fractional-fps sample.
-                for frame in frames:
-                    frame["boundedSampling"] = True
-            else:
-                frames = self._timed(
-                    lambda: self._extract_frames(str(src), str(workdir / "frames"))
-                )
-            for frame in frames:
-                frame.update(
-                    {
-                        "sourceKind": "video",
-                        "sourceIndex": 0,
-                        "sourceName": primary.get("filename"),
-                        "frameId": None,
-                    }
-                )
+            frames = self._extract_video_frames(
+                src, primary, workdir, duration, detail_level
+            )
         else:
             frames = []
+
         if not resume:
             for frame in frames:
                 self.api.upload_artifact(

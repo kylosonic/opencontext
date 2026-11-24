@@ -258,7 +258,9 @@ caches it and runs the test on every build.
 | `docs` | Behavior contracts, ADRs, deployment, security, issue drafts |
 
 Configuration is documented in [.env.example](.env.example) and
-[docs/deployment.md](docs/deployment.md). Never commit real credentials.
+[docs/deployment.md](docs/deployment.md). Module boundaries, request flows, and
+common extension points are mapped in [docs/architecture.md](docs/architecture.md).
+Never commit real credentials.
 
 ## Contributing and security
 
