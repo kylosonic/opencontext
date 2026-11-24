@@ -4,7 +4,9 @@ import { CodeBlock } from "@/components/code-block";
 import { DocsShell } from "@/components/docs-shell";
 
 export const metadata: Metadata = {
-  title: "Quickstart - OpenContext docs",
+  title: "Quickstart — OpenContext Docs",
+  description:
+    "Use the hosted OpenContext app or run the full stack locally with Docker Compose.",
 };
 
 export default function QuickstartPage() {

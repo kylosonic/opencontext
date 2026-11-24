@@ -12,7 +12,8 @@ import { Section } from "@/components/ui/section";
 const PIPELINE_STEPS = [
   {
     label: "Media",
-    detail: "A recording, still image, ordered image set, or PDF is the input.",
+    detail:
+      "A recording, audio file, still image, ordered image set, or PDF is the input.",
   },
   {
     label: "Audio + Frames",
@@ -56,7 +57,7 @@ OCR: "Send Money" · "$45.00" · "Continue"`;
 const WHY_CARDS = [
   {
     title: "Text-only agents can't watch",
-    body: "Most local and inexpensive models only read text. Videos, UI demos, and screen recordings are invisible to them — OpenContext translates those into something they can read.",
+    body: "Most local and inexpensive models only read text. Videos, audio recordings, UI demos, and screen recordings are invisible to them — OpenContext translates those into something they can read.",
   },
   {
     title: "Every claim has a source",
@@ -73,8 +74,8 @@ const WHY_CARDS = [
 ];
 
 const HOW_IT_WORKS_STEPS = [
-  "Upload a video, image set, or PDF",
-  "Extract audio and sample representative frames",
+  "Upload a video, audio file, image set, or PDF",
+  "Prepare audio, video frames, images, or PDF pages",
   "Transcribe speech with timestamps",
   "Analyze frames with a vision model",
   "Capture visible text (OCR)",
@@ -89,7 +90,7 @@ const ROADMAP_ITEMS = [
     label: "Working now",
     tone: "success" as const,
     items: [
-      "Video, image, PDF, and image-set uploads",
+      "Video, audio, image, PDF, and image-set uploads",
       "Evidence-linked Markdown and JSON exports",
       "Local CLI, replay, briefs, and MCP agent tools",
     ],
@@ -129,9 +130,9 @@ export default function Home() {
                 Give text-only AI agents eyes and ears.
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-muted sm:text-xl">
-                OpenContext converts videos, screen recordings, and visual
-                references into structured context that text-only LLMs and
-                coding agents can understand.
+                OpenContext converts videos, audio recordings, screen
+                recordings, and visual references into structured context that
+                text-only LLMs and coding agents can understand.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <ButtonLink href="/app/new" size="lg">
@@ -214,7 +215,7 @@ export default function Home() {
           id="how-it-works"
           kicker="How it works"
           title="From recording to copy-pasteable context"
-          description="Nine deterministic stages turn media into a document a coding agent can act on. Each stage reports its own status, so a job is never a black box."
+          description="Nine structured steps turn media into a document a coding agent can act on. Each pipeline stage reports its own status, so a job is never a black box."
         >
           <div className="grid gap-10 lg:grid-cols-[1fr_auto]">
             <ol className="grid gap-3 sm:grid-cols-2">
@@ -233,7 +234,7 @@ export default function Home() {
               ))}
             </ol>
             <aside className="lg:w-72">
-              <Card raised className="border-warn-bg bg-warn-bg/40">
+              <Card className="border-warn/30 bg-warn-bg/40">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
                   <Badge tone="warning" mono>
                     Status
@@ -257,7 +258,7 @@ export default function Home() {
           description="Every analysis produces a verifiable handoff: copy or download Markdown, or export the structured evidence ledger as JSON."
         >
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="gap-2">
+            <Card>
               <h3 className="font-mono text-xs uppercase tracking-wider text-accent">
                 Copy Context
               </h3>
@@ -267,7 +268,7 @@ export default function Home() {
                 selects the text for manual copy.
               </p>
             </Card>
-            <Card className="gap-2">
+            <Card>
               <h3 className="font-mono text-xs uppercase tracking-wider text-accent">
                 Download Markdown
               </h3>
@@ -280,7 +281,7 @@ export default function Home() {
                 text.
               </p>
             </Card>
-            <Card className="gap-2">
+            <Card>
               <h3 className="font-mono text-xs uppercase tracking-wider text-accent">
                 Download JSON
               </h3>
@@ -297,8 +298,8 @@ export default function Home() {
               className="rounded-sm text-accent underline-offset-2 hover:underline"
             >
               demo
-            </Link>{" "}
-            demo, or use it with your uploaded jobs.
+            </Link>
+            , or use it with your uploaded jobs.
           </p>
         </Section>
 
@@ -407,14 +408,14 @@ export default function Home() {
           description="The web app, a queue, a Python worker, and durable storage stay independent — so heavy media processing never runs inside the web tier."
           accessory={
             <Badge tone="neutral" mono>
-              Target architecture
+              Pipeline architecture
             </Badge>
           }
         >
           <Card className="overflow-x-auto" padded>
             <ol
               className="flex min-w-max flex-wrap items-center gap-2 font-mono text-xs"
-              aria-label="Target architecture: browser to web app to queue to worker to storage and back"
+              aria-label="Pipeline architecture: browser to web app to queue to worker to storage and back"
             >
               {[
                 "Browser",
@@ -440,8 +441,9 @@ export default function Home() {
           </Card>
           <p className="mt-4 text-sm leading-relaxed text-ink-faint">
             The web app, queue, worker, and storage run in production on Vercel,
-            Neon Postgres, and S3. The worker currently drains the queue from a
-            scheduled GitHub Actions job.
+            Neon Postgres, and S3. The hosted preview currently drains the queue
+            from a scheduled GitHub Actions job, with a container image ready
+            for persistent workers.
           </p>
         </Section>
 
@@ -465,9 +467,13 @@ export default function Home() {
               from an MCP-capable coding client. Tools include local media
               analysis, repository-aware implementation briefs, and bounded
               evidence lookup.{" "}
-              <Link href="/docs/agents" className="text-accent hover:underline">
+              <Link
+                href="/docs/agents"
+                className="rounded-sm text-accent underline-offset-2 hover:underline"
+              >
                 Read the integration guide
               </Link>
+              .
             </p>
           </Card>
         </Section>

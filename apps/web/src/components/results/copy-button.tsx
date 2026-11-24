@@ -86,6 +86,7 @@ export function CopyButton({
           {/* Backdrop */}
           <button
             type="button"
+            tabIndex={-1}
             aria-label="Close dialog"
             onClick={closeFallback}
             className="absolute inset-0 cursor-default bg-black/60"

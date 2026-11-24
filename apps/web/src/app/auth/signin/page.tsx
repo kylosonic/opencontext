@@ -1,7 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth, signIn } from "@/auth";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
 import { authGithubConfigured, devAuthEnabled } from "@opencontext/config";
 import { safeCallbackUrl as parseSafeCallbackUrl } from "./callback-url";
+
+export const metadata: Metadata = {
+  title: "Sign in — OpenContext",
+  description:
+    "Sign in to upload media, manage analyses, and collaborate with your OpenContext teams.",
+};
 
 /**
  * Custom sign-in page (Auth.js v5). Offers "Sign in with GitHub" when the
@@ -21,89 +33,96 @@ export default async function SignInPage({
 
   const safeCallbackUrl = parseSafeCallbackUrl(callbackUrl);
 
-  if (session?.user) {
-    // Already signed in — send them where they were going.
-    return (
-      <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 p-6">
-        <p className="text-sm text-zinc-500">You are already signed in.</p>
-        <a
-          href={safeCallbackUrl}
-          className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white"
-        >
-          Continue
-        </a>
-      </main>
-    );
-  }
-
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 p-6">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
-        <p className="text-sm text-zinc-500">
-          {localDev
-            ? "Use the local development identity for this checkout, or sign in with GitHub when configured."
-            : "Creating and viewing jobs requires a GitHub account."}
-        </p>
-      </div>
+    <>
+      <SiteHeader />
+      <main id="main">
+        <Container className="py-16">
+          {session?.user ? (
+            <Card className="mx-auto max-w-md space-y-5 text-center">
+              <p className="text-sm text-ink-muted">You are already signed in.</p>
+              <ButtonLink href={safeCallbackUrl} className="w-full">
+                Continue
+              </ButtonLink>
+            </Card>
+          ) : (
+            <Card className="mx-auto flex max-w-md flex-col items-center gap-5">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="label-mono">Authentication</p>
+                <h1 className="text-2xl font-semibold text-ink">Sign in</h1>
+                <p className="text-sm text-ink-muted">
+                  {localDev
+                    ? "Use the local development identity for this checkout, or sign in with GitHub when configured."
+                    : "Creating and viewing jobs requires a GitHub account."}
+                </p>
+              </div>
 
-      {error ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Sign-in was canceled or did not complete — you can continue
-          browsing, or try again.
-        </p>
-      ) : null}
+              {error ? (
+                <p
+                  role="alert"
+                  className="w-full rounded-md border border-warn/30 bg-warn-bg/60 px-4 py-3 text-sm text-ink"
+                >
+                  Sign-in was canceled or did not complete — you can continue
+                  browsing, or try again.
+                </p>
+              ) : null}
 
-      {configured ? (
-        <form
-          action={async () => {
-            "use server";
-            await signIn("github", { redirectTo: safeCallbackUrl });
-          }}
-          className="w-full"
-        >
-          <button
-            type="submit"
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-zinc-900 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
-          >
-            <svg viewBox="0 0 16 16" className="h-5 w-5 fill-current" aria-hidden="true">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
-            </svg>
-            Sign in with GitHub
-          </button>
-        </form>
-      ) : (
-        !localDev ? (
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-            Sign-in is not configured on this deployment. You can continue
-            browsing the public pages and the demo.
-          </div>
-        ) : null
-      )}
+              {configured ? (
+                <form
+                  action={async () => {
+                    "use server";
+                    await signIn("github", { redirectTo: safeCallbackUrl });
+                  }}
+                  className="w-full"
+                >
+                  <Button type="submit" className="w-full" size="lg">
+                    <svg
+                      viewBox="0 0 16 16"
+                      className="size-4 fill-current"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+                    </svg>
+                    Sign in with GitHub
+                  </Button>
+                </form>
+              ) : !localDev ? (
+                <div className="w-full rounded-md border border-line bg-panel-muted px-4 py-3 text-sm text-ink-muted">
+                  Sign-in is not configured on this deployment. You can continue
+                  browsing the public pages and the demo.
+                </div>
+              ) : null}
 
-      {localDev ? (
-        <form
-          action={async () => {
-            "use server";
-            await signIn("local-dev", { redirectTo: safeCallbackUrl });
-          }}
-          className="w-full"
-        >
-          <button
-            type="submit"
-            className="w-full rounded-lg border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50"
-          >
-            Continue as local user
-          </button>
-        </form>
-      ) : null}
+              {localDev ? (
+                <form
+                  action={async () => {
+                    "use server";
+                    await signIn("local-dev", { redirectTo: safeCallbackUrl });
+                  }}
+                  className="w-full"
+                >
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="lg"
+                    className="w-full"
+                  >
+                    Continue as local user
+                  </Button>
+                </form>
+              ) : null}
 
-      <Link
-        href="/"
-        className="text-sm text-zinc-500 underline underline-offset-4 hover:text-zinc-700"
-      >
-        Back to the landing page
-      </Link>
-    </main>
+              <Link
+                href="/"
+                className="text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+              >
+                Back to the landing page
+              </Link>
+            </Card>
+          )}
+        </Container>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

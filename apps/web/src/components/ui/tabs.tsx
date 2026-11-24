@@ -76,7 +76,9 @@ export function TabList({ label, children, accessory, className }: TabListProps)
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const tabs = Array.from(
-      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="tab"]:not(:disabled)',
+      ),
     );
     const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
     if (index === -1) return;
@@ -108,18 +110,22 @@ export function TabList({ label, children, accessory, className }: TabListProps)
 
   return (
     <div
-      role="tablist"
-      aria-label={label}
-      aria-orientation="horizontal"
-      onKeyDown={handleKeyDown}
       className={cx(
-        "flex flex-wrap items-center gap-1 border-b border-line",
+        "flex items-center gap-2 border-b border-line",
         className,
       )}
-      data-active-tab={value}
     >
-      {children}
-      {accessory && <div className="ml-auto pb-2 pr-1">{accessory}</div>}
+      <div
+        role="tablist"
+        aria-label={label}
+        aria-orientation="horizontal"
+        onKeyDown={handleKeyDown}
+        className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        data-active-tab={value}
+      >
+        {children}
+      </div>
+      {accessory && <div className="ml-auto shrink-0 pb-2 pr-1">{accessory}</div>}
     </div>
   );
 }
@@ -127,9 +133,10 @@ export function TabList({ label, children, accessory, className }: TabListProps)
 export interface TabProps {
   id: string;
   children: ReactNode;
+  disabled?: boolean;
 }
 
-export function Tab({ id, children }: TabProps) {
+export function Tab({ id, children, disabled = false }: TabProps) {
   const { value, setValue, baseId } = useTabsContext();
   const active = value === id;
   return (
@@ -139,15 +146,19 @@ export function Tab({ id, children }: TabProps) {
       id={`${baseId}-tab-${id}`}
       aria-selected={active}
       aria-controls={`${baseId}-panel-${id}`}
-      tabIndex={active ? 0 : -1}
+      disabled={disabled}
+      tabIndex={active && !disabled ? 0 : -1}
       data-tab-id={id}
-      onClick={() => setValue(id)}
+      onClick={() => {
+        if (!disabled) setValue(id);
+      }}
       className={cx(
-        "-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+        "shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         active
           ? "border-accent text-ink"
           : "border-transparent text-ink-muted hover:text-ink hover:border-line-strong",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
       )}
     >
       {children}
@@ -171,7 +182,7 @@ export function TabPanel({ id, children, className }: TabPanelProps) {
       hidden={value !== id}
       tabIndex={0}
       className={cx(
-        "pt-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        "pt-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
         className,
       )}
     >

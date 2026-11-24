@@ -3,7 +3,9 @@ import { DocsShell } from "@/components/docs-shell";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Status & limits - OpenContext docs",
+  title: "Status & limits — OpenContext Docs",
+  description:
+    "Available capabilities, deployment verification notes, measured benchmarks, and preview boundaries for OpenContext.",
 };
 
 export default function StatusPage() {
@@ -97,8 +99,8 @@ export default function StatusPage() {
             </li>
             <li>
               Public sharing and URL ingestion are read-only/import workflows,
-              not collaboration on a live media stream. URL servers must expose
-              `Content-Length`, and serverless duration limits bound very large
+              not collaboration on a live media stream. URL servers must expose{" "}
+              <code>Content-Length</code>, and serverless duration limits bound very large
               imports. Usage accounting does not activate payment processing or
               collect money until billing-provider, price, tax, and customer
               mapping choices are configured.

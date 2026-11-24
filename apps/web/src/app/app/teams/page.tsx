@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { WorkspaceManager } from "@/components/app/workspace-manager";
@@ -38,9 +39,27 @@ export default async function TeamsPage() {
                   public. Each uploaded team job records its destination.
                 </p>
               </div>
-              <ButtonLink href="/app/jobs" variant="ghost" size="sm">All jobs</ButtonLink>
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink href="/app/jobs" variant="ghost" size="sm">
+                  Your jobs
+                </ButtonLink>
+                <ButtonLink href="/app/new" size="sm">
+                  New analysis
+                </ButtonLink>
+              </div>
             </div>
             <WorkspaceManager initial={workspaces} />
+            <div className="mt-10 flex items-center justify-between border-t border-line pt-4">
+              <p className="text-xs text-ink-faint">
+                Completed jobs are kept for 14 days; unfinished jobs for 7.
+              </p>
+              <Link
+                href="/auth/signout"
+                className="text-xs text-ink-faint underline-offset-2 hover:text-ink hover:underline"
+              >
+                Sign out
+              </Link>
+            </div>
           </div>
         </Container>
       </main>

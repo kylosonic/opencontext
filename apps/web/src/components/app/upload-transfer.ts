@@ -23,7 +23,7 @@ export const DETAIL_LEVELS: DetailLevelOption[] = [
     id: "LOW",
     name: "Low",
     description:
-      "Core visual summary and major changes only - the smallest output.",
+      "Core visual summary and major changes only — the smallest output.",
   },
   {
     id: "MEDIUM",
@@ -59,10 +59,10 @@ export async function uploadError(
     };
     return new UploadRequestError(
       body.error?.code ?? "INTERNAL",
-      body.error?.message ?? "Upload failed - please try again.",
+      body.error?.message ?? "Upload failed — please try again.",
     );
   } catch {
-    return new UploadRequestError("INTERNAL", "Upload failed - please try again.");
+    return new UploadRequestError("INTERNAL", "Upload failed — please try again.");
   }
 }
 

@@ -4,7 +4,9 @@ import { CodeBlock } from "@/components/code-block";
 import { DocsShell } from "@/components/docs-shell";
 
 export const metadata: Metadata = {
-  title: "Jobs API - OpenContext docs",
+  title: "Jobs API — OpenContext Docs",
+  description:
+    "Authenticated REST and SSE endpoints for uploads, URL imports, jobs, evidence review, team workspaces, public share links, and exports.",
 };
 
 const ENDPOINTS = [
@@ -28,8 +30,18 @@ const ENDPOINTS = [
     "/api/uploads/batch/complete",
     "Commit 2-10 uploaded images as one ordered image-set job.",
   ],
-  ["GET", "/api/jobs", "List the current owner's jobs, newest first."],
+  [
+    "POST",
+    "/api/imports/url",
+    "Validate and enqueue a job from a public HTTP(S) media URL.",
+  ],
+  ["GET", "/api/jobs", "List accessible personal or team jobs, newest first."],
   ["GET", "/api/jobs/[id]", "Read a job's current state and stage progress."],
+  [
+    "GET",
+    "/api/jobs/[id]/events",
+    "Stream live job status and progress updates over SSE.",
+  ],
   [
     "POST",
     "/api/jobs/[id]/retry",
@@ -38,27 +50,42 @@ const ENDPOINTS = [
   [
     "DELETE",
     "/api/jobs/[id]",
-    "Delete an owner's job. Returns 204 on success.",
+    "Delete a job owned or administered by the current user. Returns 204 on success.",
   ],
   [
     "GET",
     "/api/jobs/[id]/export?format=markdown",
-    "Download the owner's Markdown result.",
+    "Download the Markdown result for an accessible job.",
   ],
   [
     "GET",
     "/api/jobs/[id]/export?format=json",
-    "Download the owner's structured result.",
+    "Download the structured JSON result for an accessible job.",
   ],
   [
     "GET",
     "/api/jobs/[id]/source?asset=0",
-    "Load an owner-authenticated image or PDF preview.",
+    "Load an owner- or team-authenticated image, PDF page, or audio preview.",
   ],
   [
     "PATCH",
     "/api/jobs/[id]/evidence/[evidenceId]",
     "Confirm or flag an evidence claim and save review notes.",
+  ],
+  [
+    "GET / POST / DELETE",
+    "/api/jobs/[id]/share",
+    "Inspect, create, rotate, or revoke an expiring read-only public share link.",
+  ],
+  [
+    "GET / POST",
+    "/api/workspaces",
+    "List team workspaces or create a new team workspace.",
+  ],
+  [
+    "GET / POST",
+    "/api/workspaces/[id]/members",
+    "List team members or add an existing OpenContext user as ADMIN or MEMBER (owners and admins only).",
   ],
   [
     "POST",
@@ -72,7 +99,7 @@ export default function JobsApiPage() {
     <DocsShell
       kicker="API reference"
       title="Jobs API"
-      description="Owner-authenticated endpoints for the upload-to-context workflow, plus the fixed worker heartbeat interface."
+      description="Authenticated endpoints for uploads, URL imports, live job tracking, review, team workspaces, and sharing, plus the worker heartbeat interface."
     >
       <div className="space-y-10 text-sm leading-relaxed text-ink-muted">
         <section aria-labelledby="contract-title">
@@ -81,7 +108,8 @@ export default function JobsApiPage() {
           </h2>
           <p className="mt-3">
             Create an upload intent, send the file to the returned upload URL,
-            complete the intent, then poll the job. A worker claims queued work,
+            and complete the intent (or import a public URL), then subscribe to
+            live SSE updates or poll the job. A worker claims queued work,
             processes it, and reports stage progress. User routes use the
             signed-in browser session; only worker and operations routes use
             service bearer tokens.
@@ -132,8 +160,8 @@ export default function JobsApiPage() {
             Read a job
           </h2>
           <p className="mt-3">
-            Call these endpoints from a signed-in browser session. Include
-            cookies with requests specified in a code example.
+            Call these endpoints from a signed-in browser session and include
+            cookies with each request as shown below.
           </p>
           <div className="mt-4">
             <CodeBlock
@@ -151,12 +179,13 @@ export default function JobsApiPage() {
           </div>
           <p className="mt-4">
             <code>JobDetail</code> also includes <code>errorStage</code>,{" "}
-            <code>failureKind</code>, <code>retryAllowed</code>, source
-            metadata, and <code>retentionNote</code>. Poll active jobs every
-            three seconds and stop when
-            <code>status</code> is <code>COMPLETED</code>, <code>PARTIAL</code>,
-            or <code>FAILED</code>. The list endpoint returns the smaller{" "}
-            <code>JobSummary</code> shape.
+            <code>failureKind</code>, <code>retryAllowed</code>,{" "}
+            <code>canManage</code>, source metadata, and{" "}
+            <code>retentionNote</code>. Subscribe to{" "}
+            <code>GET /api/jobs/[id]/events</code> (or poll every three seconds)
+            and stop when <code>status</code> is <code>COMPLETED</code>,{" "}
+            <code>PARTIAL</code>, or <code>FAILED</code>. The list endpoint
+            returns the smaller <code>JobSummary</code> shape.
           </p>
         </section>
 
@@ -298,11 +327,13 @@ const { markdown, json } = await updated.json();`}
             <code>UNREVIEWED</code> with no note or correction.
           </p>
           <p className="mt-4">
-            Image and PDF previews are available from{" "}
+            Image, PDF, and audio previews are available from{" "}
             <code>GET /api/jobs/[id]/source</code>. Use the zero-based{" "}
-            <code>asset</code> query parameter to select an image in a set.
-            Video playback uses a direct source URL instead of this preview
-            route.
+            <code>asset</code> query parameter to select an image in a set or a
+            PDF page. Authenticated video playback uses a direct source URL
+            instead of this preview route, while public share snapshots serve
+            read-only source media through{" "}
+            <code>GET /share/[token]/source</code>.
           </p>
         </section>
 

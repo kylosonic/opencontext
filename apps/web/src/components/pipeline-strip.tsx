@@ -36,14 +36,14 @@ export function PipelineStrip({
               <span className="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border border-line-strong bg-panel font-mono text-xs text-ink-muted">
                 {index + 1}
               </span>
-              <span
-                aria-hidden="true"
-                className="hidden grow items-center md:flex"
-              >
-                <span className="pipeline-flow h-px w-full bg-line-strong">
-                  <span className="sr-only">→</span>
+              {index < steps.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className="hidden grow items-center md:flex"
+                >
+                  <span className="pipeline-flow h-px w-full bg-line-strong" />
                 </span>
-              </span>
+              )}
             </div>
             <div className="pb-6 md:pb-0">
               <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink">

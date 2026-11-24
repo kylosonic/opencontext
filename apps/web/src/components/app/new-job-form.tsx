@@ -115,7 +115,8 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
       setPhase("idle");
       setError({
         code: "CLIENT_VALIDATION",
-        message: "Multiple-file jobs accept images only. Upload a video or PDF by itself.",
+        message:
+          "Multiple-file jobs accept images only. Upload a video, audio file, or PDF by itself.",
       });
       if (inputRef.current) inputRef.current.value = "";
       return;
@@ -268,7 +269,7 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
   const pickedKind = selectionValid && fileChecks[0].ok ? fileChecks[0].kind : null;
 
   return (
-    <div className="space-y-6" aria-live="polite">
+    <div className="space-y-6">
       {/* Limits statement (upload.md B2: shown before upload). */}
       <p className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
         <span className="label-mono">Accepted formats</span>
@@ -285,10 +286,10 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
           audio ≤ {MAX_AUDIO_SIZE_LABEL}
         </span>
         <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
-          PDF ≤ {MAX_PDF_SIZE_LABEL}
+          PDF ≤ {MAX_PDF_SIZE_LABEL} (30 pages)
         </span>
         <span className="rounded-md border border-line bg-panel-muted px-2 py-1 font-mono">
-          video ≤ {MAX_DURATION_LABEL}
+          video/audio ≤ {MAX_DURATION_LABEL}
         </span>
       </p>
 
@@ -310,7 +311,13 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
         role="button"
         tabIndex={uploading ? -1 : 0}
         aria-disabled={uploading}
-        aria-label={file ? `Selected ${files.length} file(s). Choose different files.` : "Choose a video, audio, image, or PDF file"}
+        aria-label={
+          file
+            ? files.length === 1
+              ? `Selected ${file.name}. Choose a different file.`
+              : `Selected ${files.length} images. Choose different files.`
+            : "Choose a video, audio, image, or PDF file"
+        }
         onClick={() => {
           if (!uploading) inputRef.current?.click();
         }}
@@ -366,6 +373,9 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
                     </span>
                   ))}
                 </span>
+                <span className="text-xs text-ink-faint">
+                  Choose different images or drop new ones here
+                </span>
               </>
             )}
           </div>
@@ -384,7 +394,7 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
       </div>
 
       {busyNotice && (
-        <p role="status" className="text-sm text-ink-muted">
+        <p role="status" aria-live="polite" className="text-sm text-ink-muted">
           {busyNotice}
         </p>
       )}
@@ -396,7 +406,7 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
         >
           <p className="font-medium">{error.message}</p>
           <p className="mt-1 text-xs opacity-80">
-            No job was created - you can try again.
+            No job was created — you can try again.
           </p>
         </div>
       )}
@@ -404,9 +414,10 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
       {phase === "created" && createdId && (
         <div
           role="status"
+          aria-live="polite"
           className="rounded-lg border border-ok-bg bg-ok-bg/60 px-4 py-3 text-sm text-ok"
         >
-          <p className="font-medium">Job created - opening its page…</p>
+          <p className="font-medium">Job created — opening its page…</p>
         </div>
       )}
 
@@ -419,9 +430,9 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
                 value={workspaceId}
                 onChange={(event) => setWorkspaceId(event.target.value)}
                 disabled={uploading}
-                className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+                className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink focus:border-accent"
               >
-                <option value="">Personal workspace</option>
+                <option value="">Personal (only you)</option>
                 {workspaces.map((workspace) => (
                   <option key={workspace.id} value={workspace.id}>
                     {workspace.name} · {workspace.role.toLowerCase()}
@@ -444,7 +455,7 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
                 <label
                   key={level.id}
                   className={cx(
-                    "block cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-(--focus) focus-within:outline-none",
+                    "block cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-focus",
                     detailLevel === level.id
                       ? "border-accent bg-accent/5"
                       : "border-line bg-panel hover:bg-panel-muted",
@@ -492,19 +503,19 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
                       : pickedKind === "pdf"
                         ? "Analyze PDF"
                         : pickedKind === "audio"
-                          ? "Transcribe audio"
+                          ? "Analyze audio"
                     : "Analyze video"}
             </Button>
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               onClick={resetForm}
               disabled={uploading}
             >
               {files.length > 1 ? "Remove files" : "Remove file"}
             </Button>
             {phase === "error" && (
-              <Button variant="secondary" size="sm" onClick={() => void startUpload(true)}>
+              <Button variant="secondary" size="md" onClick={() => void startUpload(true)}>
                 Try upload again
               </Button>
             )}
@@ -513,7 +524,7 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
       )}
 
       {uploading && (
-        <Card>
+        <Card aria-busy="true">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-ink-muted">
               <span className="font-medium">
@@ -536,9 +547,9 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
                 style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
               />
             </div>
-            <p className="text-xs leading-relaxed text-ink-faint">
-              {progress === 100
-                ? "Received - creating your job…"
+            <p role="status" className="text-xs leading-relaxed text-ink-faint">
+              {phase === "finalizing"
+                ? "Received — creating your job…"
                 : "Uploading to OpenContext. Large files can take a while; keep this tab open."}
             </p>
             {transferring && (

@@ -4,7 +4,9 @@ import { DocsShell } from "@/components/docs-shell";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Security & retention - OpenContext docs",
+  title: "Security & retention — OpenContext Docs",
+  description:
+    "How GitHub authentication, team role access, public share tokens, media verification, and automatic data retention work.",
 };
 
 export default function SecurityPage() {
@@ -26,7 +28,12 @@ export default function SecurityPage() {
           </h2>
           <p className="mt-3">
             The hosted app signs in with GitHub. User job routes use the
-            signed-in session and return only resources owned by that user.
+            signed-in session and return resources owned by the current user or
+            accessible through their team workspace memberships (Owners, Admins,
+            and Members — owners and admins can add members and manage any team
+            job, while members can view team jobs and manage jobs they created).
+            Explicit expiring public share links grant read-only snapshot access
+            without sign-in until revoked.
           </p>
         </section>
 
@@ -42,7 +49,8 @@ export default function SecurityPage() {
             file signature before queueing it.
           </p>
           <p className="mt-3">
-            Image and PDF preview requests are owner-authenticated. The worker
+            Media preview requests are authenticated for the job owner or team
+            members (or authorized via an active public share token). The worker
             downloads the source to process it and uses configured model
             providers for transcription, vision, OCR, or optional text
             refinement. The provider path and its credentials are deployment
@@ -74,7 +82,7 @@ export default function SecurityPage() {
               [
                 "Manual deletion",
                 "Immediate",
-                "After owner confirmation, the job disappears from the list and its URL no longer exposes it.",
+                "After owner or team-admin confirmation, the job disappears from listings and its URL no longer exposes it.",
               ],
             ].map(([item, period, detail]) => (
               <div
@@ -124,7 +132,9 @@ export default function SecurityPage() {
               penetration test or sustained high-traffic security evidence.
             </li>
             <li>
-              Public result sharing and team access controls are not available.
+              Public share links grant read-only snapshot access to anyone with
+              the token URL until the link expires or is revoked by an owner or
+              team admin.
             </li>
           </ul>
           <p className="mt-4">

@@ -17,8 +17,8 @@ export function SiteFooter() {
               <Wordmark />
             </Link>
             <p className="text-sm leading-relaxed text-ink-muted">
-              Turn videos and screen recordings into structured context for
-              text-only AI agents.
+              Turn videos, audio recordings, images, and PDFs into structured
+              context for text-only AI agents.
             </p>
           </div>
           <nav

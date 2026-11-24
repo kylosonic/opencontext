@@ -6,6 +6,8 @@ export interface ContextPanelProps {
   markdown: string;
   demo?: boolean;
   evidence?: EvidenceRecord[];
+  sourceKind?: "video" | "image" | "pdf" | "audio";
+  allowDownloads?: boolean;
   onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
 }
 
@@ -15,6 +17,7 @@ const CONTEXT_REFERENCE =
 function renderEvidenceMarkers(
   markdown: string,
   evidenceById: Map<number, EvidenceRecord>,
+  sourceNoun: string,
   onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void,
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -42,14 +45,14 @@ function renderEvidenceMarkers(
         <button
           key={`evidence-${key++}`}
           type="button"
-          title={`Jump to ${timestamp} in the source video (${certainty.toLowerCase()})`}
+          title={`Jump to ${timestamp} in the source ${sourceNoun} (${certainty.toLowerCase()})`}
           aria-label={`Jump to evidence ${id} at ${timestamp}, ${certainty.toLowerCase()}`}
           onClick={() =>
             assetIndex === undefined
               ? onSeek(minutes * 60 + seconds)
               : onSeek(minutes * 60 + seconds, assetIndex)
           }
-          className="mx-1 inline-flex rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 align-baseline font-sans text-[0.7rem] text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mx-1 inline-flex rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 align-baseline font-sans text-[0.7rem] text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           {id} · {timestamp} · {certainty}
         </button>,
@@ -60,10 +63,10 @@ function renderEvidenceMarkers(
         <button
           key={`range-${key++}`}
           type="button"
-          title={`Jump to ${rangeStart}–${rangeEnd} in the source video`}
+          title={`Jump to ${rangeStart}–${rangeEnd} in the source ${sourceNoun}`}
           aria-label={`Seek to source range ${rangeStart} through ${rangeEnd}`}
           onClick={() => onSeek(minutes * 60 + seconds)}
-          className="rounded bg-accent/10 px-1 font-mono text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="rounded bg-accent/10 px-1 font-mono text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           [{rangeStart}{rangeSeparator}{rangeEnd}]
         </button>,
@@ -85,6 +88,8 @@ export function ContextPanel({
   markdown,
   demo = false,
   evidence = [],
+  sourceKind,
+  allowDownloads = true,
   onSeek,
 }: ContextPanelProps) {
   if (!markdown) {
@@ -96,6 +101,14 @@ export function ContextPanel({
     );
   }
 
+  const sourceNoun =
+    sourceKind === "image"
+      ? "image"
+      : sourceKind === "pdf"
+        ? "PDF"
+        : sourceKind === "audio"
+          ? "audio"
+          : "video";
   const evidenceById = new Map(evidence.map((item) => [item.id, item]));
 
   return (
@@ -103,16 +116,27 @@ export function ContextPanel({
       <p className="text-sm leading-relaxed text-ink-muted">
         The complete document below is what{" "}
         <span className="font-medium text-ink">Copy Context</span> places on
-        your clipboard and what{" "}
-        <span className="font-medium text-ink">Download Markdown</span> saves.
-        {onSeek && " Citations and timeline ranges select their source time; live jobs seek the video when playback is available."}
-        {demo && " The header carries the Demo Analysis marker, as will every export from this demo."}
+        your clipboard
+        {allowDownloads ? (
+          <>
+            {" "}
+            and what{" "}
+            <span className="font-medium text-ink">Download Markdown</span> saves
+          </>
+        ) : null}
+        .
+        {onSeek &&
+          (sourceKind === "image" || sourceKind === "pdf"
+            ? " Citations and timeline ranges select their source view."
+            : ` Citations and timeline ranges select their source time; live jobs seek the ${sourceNoun} when playback is available.`)}
+        {demo &&
+          " The header carries the Demo Analysis marker, as will every export from this demo."}
       </p>
       <pre
         aria-label="Developer context document (Markdown)"
         className="max-h-[70vh] overflow-auto rounded-lg border border-line bg-code-bg p-4 font-mono text-[0.8rem] leading-relaxed text-ink whitespace-pre-wrap break-words"
       >
-        {renderEvidenceMarkers(markdown, evidenceById, onSeek)}
+        {renderEvidenceMarkers(markdown, evidenceById, sourceNoun, onSeek)}
       </pre>
     </div>
   );

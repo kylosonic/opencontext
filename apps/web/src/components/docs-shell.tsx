@@ -54,7 +54,7 @@ export function DocsShell({
             >
               {children}
             </div>
-            <DocsPager />
+            <DocsPager wide={kicker === "API reference"} />
           </div>
         </div>
       </main>
@@ -74,6 +74,7 @@ const PAGE_ORDER = [
     title: "Results & evidence",
   },
   { href: "/docs/api", label: "Jobs API", title: "Jobs API" },
+  { href: "/docs/api-errors", label: "Error catalog", title: "Error catalog" },
   { href: "/docs/packages", label: "CLI & packages", title: "CLI & packages" },
   {
     href: "/docs/agents",
@@ -91,10 +92,9 @@ const PAGE_ORDER = [
     label: "Security & retention",
     title: "Security & retention",
   },
-  { href: "/docs/api-errors", label: "Error catalog", title: "Error catalog" },
 ] as const;
 
-function DocsPager() {
+function DocsPager({ wide = false }: { wide?: boolean }) {
   const pathname = usePathname();
   const index = PAGE_ORDER.findIndex((page) => page.href === pathname);
   const previous = index > 0 ? PAGE_ORDER[index - 1] : undefined;
@@ -106,7 +106,10 @@ function DocsPager() {
   return (
     <nav
       aria-label="Documentation pages"
-      className="mt-14 border-t border-line pt-6"
+      className={cx(
+        "mt-14 border-t border-line pt-6",
+        wide ? "max-w-full" : "max-w-3xl",
+      )}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         {previous ? (

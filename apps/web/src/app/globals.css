@@ -12,7 +12,7 @@
   --canvas: #fafafa;
   --panel: #ffffff;
   --panel-muted: #f4f4f5;
-  --panel-raised: #ffffff;
+  --panel-raised: #f8f8fa;
   --line: #e4e4e7;
   --line-strong: #d4d4d8;
   --ink: #18181b;
@@ -44,7 +44,7 @@
     --line-strong: #3f3f46;
     --ink: #f4f4f5;
     --ink-muted: #a1a1aa;
-    --ink-faint: #71717a;
+    --ink-faint: #94949e;
 
     --accent: #7c95ff;
     --accent-hover: #96a9ff;
@@ -83,6 +83,7 @@
   --color-warn-bg: var(--warn-bg);
   --color-err: var(--err);
   --color-err-bg: var(--err-bg);
+  --color-focus: var(--focus);
   --color-code-bg: var(--code-bg);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system,
@@ -156,7 +157,7 @@
     animation: stage-pulse 1.6s ease-in-out infinite;
   }
 
-  /* Downward flow hint on the pipeline connector */
+  /* Subtle flow hint on the horizontal pipeline connector */
   .pipeline-flow {
     animation: pipeline-flow 2.4s ease-in-out infinite;
   }
@@ -175,10 +176,12 @@
 @keyframes pipeline-flow {
   0%,
   100% {
-    transform: translateY(0);
+    opacity: 0.55;
+    transform: translateX(0);
   }
   50% {
-    transform: translateY(4px);
+    opacity: 1;
+    transform: translateX(3px);
   }
 }
 

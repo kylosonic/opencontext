@@ -3,7 +3,7 @@ import { ERROR_CATALOG, ERROR_CODES } from "@kylosonic/opencontext-schemas";
 import { DocsShell } from "@/components/docs-shell";
 
 export const metadata: Metadata = {
-  title: "API errors - OpenContext docs",
+  title: "Error catalog — OpenContext Docs",
   description: "Public error codes, HTTP statuses, and meanings for the OpenContext API.",
 };
 

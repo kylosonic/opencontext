@@ -37,19 +37,19 @@ export function Section({
       {...rest}
     >
       <Container>
-        <header className="max-w-3xl">
-          {kicker && <p className="label-mono mb-3">{kicker}</p>}
+        <header>
+          {kicker && <p className="label-mono mb-3 max-w-3xl">{kicker}</p>}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <h2
               id={id ? `${id}-title` : undefined}
-              className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+              className="max-w-3xl text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
             >
               {title}
             </h2>
             {accessory}
           </div>
           {description && (
-            <p className="mt-3 text-base leading-relaxed text-ink-muted">
+            <p className="mt-3 max-w-3xl text-base leading-relaxed text-ink-muted">
               {description}
             </p>
           )}

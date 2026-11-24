@@ -5,7 +5,9 @@ import { DocsShell } from "@/components/docs-shell";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Worker deployment - OpenContext docs",
+  title: "Worker deployment — OpenContext Docs",
+  description:
+    "Deploy and configure the Python worker container, lease renewal, graceful shutdown, runtime bounds, and provider environment.",
 };
 
 export default function WorkersPage() {
@@ -96,6 +98,7 @@ HF_HOME=/models`}
                 {[
                   ["Video duration", "30 minutes"],
                   ["Video", "500 MB"],
+                  ["Audio", "100 MB, 30 minutes"],
                   ["PDF", "50 MB, 30 pages"],
                   ["Image", "25 MB per image"],
                   ["Image-set job", "10 images"],

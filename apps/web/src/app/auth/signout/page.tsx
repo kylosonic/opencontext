@@ -1,5 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { signOut } from "@/auth";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
+
+export const metadata: Metadata = {
+  title: "Sign out — OpenContext",
+  description: "Clear your current OpenContext browser session.",
+};
 
 /**
  * Sign-out page (identity.md B6): clears the session and returns to the
@@ -7,32 +18,39 @@ import { signOut } from "@/auth";
  */
 export default function SignOutPage() {
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 p-6">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900">Sign out</h1>
-        <p className="text-sm text-zinc-500">
-          Your session will be cleared. No job data is lost.
-        </p>
-      </div>
-      <form
-        action={async () => {
-          "use server";
-          await signOut({ redirectTo: "/" });
-        }}
-      >
-        <button
-          type="submit"
-          className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
-        >
-          Sign out
-        </button>
-      </form>
-      <Link
-        href="/"
-        className="text-sm text-zinc-500 underline underline-offset-4 hover:text-zinc-700"
-      >
-        Cancel — back to the landing page
-      </Link>
-    </main>
+    <>
+      <SiteHeader />
+      <main id="main">
+        <Container className="py-16">
+          <Card className="mx-auto flex max-w-md flex-col items-center gap-5 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <p className="label-mono">Session</p>
+              <h1 className="text-2xl font-semibold text-ink">Sign out</h1>
+              <p className="text-sm text-ink-muted">
+                Your session will be cleared. No job data is lost.
+              </p>
+            </div>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/" });
+              }}
+              className="w-full"
+            >
+              <Button type="submit" size="lg" className="w-full">
+                Sign out
+              </Button>
+            </form>
+            <Link
+              href="/"
+              className="text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+            >
+              Cancel — back to the landing page
+            </Link>
+          </Card>
+        </Container>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

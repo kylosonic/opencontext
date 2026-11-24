@@ -98,11 +98,14 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
+  const bodyId = `${titleId}-body`;
+
   return (
     <div
       role="alertdialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={bodyId}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
       <button
@@ -122,7 +125,9 @@ export function ConfirmDialog({
           <p className="mt-2 text-sm font-medium text-ink">
             <span className="break-words">{title}</span>
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-ink-muted">{body}</p>
+          <p id={bodyId} className="mt-2 text-sm leading-relaxed text-ink-muted">
+            {body}
+          </p>
           {error && (
             <p role="alert" className="mt-3 text-sm text-err">
               {error}
@@ -138,14 +143,15 @@ export function ConfirmDialog({
             >
               Cancel
             </Button>
-            <button
-              type="button"
+            <Button
+              variant="danger"
+              size="sm"
               disabled={busy}
+              aria-busy={busy}
               onClick={onConfirm}
-              className="inline-flex h-8 select-none items-center justify-center gap-1.5 rounded-md bg-(--err) px-3 text-sm font-medium text-(--canvas) transition-colors duration-150 hover:opacity-90 active:translate-y-px disabled:pointer-events-none disabled:opacity-50"
             >
-              {confirmLabel}
-            </button>
+              {busy ? "Deleting…" : confirmLabel}
+            </Button>
           </div>
         </Card>
       </div>

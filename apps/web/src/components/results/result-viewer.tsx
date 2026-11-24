@@ -31,18 +31,30 @@ export function ResultViewer({
   active = false,
   demo = false,
   readOnly = false,
+  reviewReadOnly = false,
   onSeek,
   sourceSlot,
   selectedTimestamp = null,
 }: ResultViewerProps) {
   // results.md B1: Agent Context is the default-selected tab.
   const [tab, setTab] = useState("context");
-  const [currentResult, setCurrentResult] = useState(result);
-  const evidence = evidenceRecordsFromJson(currentResult.json);
+  const [savedOverride, setSavedOverride] = useState<{
+    jobId: string;
+    markdown: string;
+    json: unknown;
+  } | null>(null);
+  const activeOverride =
+    savedOverride && savedOverride.jobId === job.id ? savedOverride : null;
+  const effectiveMarkdown = activeOverride
+    ? activeOverride.markdown
+    : result.markdown;
+  const effectiveJson = activeOverride ? activeOverride.json : result.json;
+  const evidence = evidenceRecordsFromJson(effectiveJson);
 
   const visualFailed =
-    job.status === "FAILED" ||
-    (job.status === "PARTIAL" && result.observations.length === 0);
+    job.sourceKind !== "audio" &&
+    (job.status === "FAILED" ||
+      (job.status === "PARTIAL" && result.observations.length === 0));
 
   const seekToSource = (timestampSec: number, sourceAssetIndex?: number) => {
     onSeek?.(timestampSec, sourceAssetIndex);
@@ -75,12 +87,12 @@ export function ResultViewer({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="label-mono mr-1">Agent Context</span>
-        <CopyButton value={currentResult.markdown} />
+        <CopyButton value={effectiveMarkdown} />
         {!readOnly && (
           <DownloadButtons
             jobId={job.id}
-            markdown={currentResult.markdown}
-            json={currentResult.json}
+            markdown={effectiveMarkdown}
+            json={effectiveJson}
           />
         )}
         {demo && (
@@ -92,23 +104,13 @@ export function ResultViewer({
 
       <Card padded={false}>
         <Tabs value={tab} onValueChange={setTab}>
-          <TabList
-            label="Result sections"
-            className="px-5 pt-3"
-            accessory={
-              demo ? (
-                <Badge tone="accent" mono>
-                  Demo Analysis
-                </Badge>
-              ) : undefined
-            }
-          >
+          <TabList label="Result sections" className="px-5 pt-3">
             <Tab id="transcript">Transcript</Tab>
             <Tab id="visual">Visual Analysis</Tab>
             <Tab id="timeline">Timeline</Tab>
             <Tab id="ocr">OCR</Tab>
             <Tab id="context">Agent Context</Tab>
-            {!readOnly && <Tab id="evidence">Evidence review</Tab>}
+            {!readOnly && <Tab id="evidence">Evidence Review</Tab>}
           </TabList>
 
           <div className="px-5 pb-5">
@@ -117,6 +119,8 @@ export function ResultViewer({
                 segments={result.transcript}
                 audioPresent={job.audioPresent}
                 sourceKind={job.sourceKind}
+                active={active}
+                onSeek={onSeek ? seekToSource : undefined}
               />
             </TabPanel>
             <TabPanel id="visual">
@@ -124,12 +128,15 @@ export function ResultViewer({
                 observations={result.observations}
                 active={active}
                 failed={visualFailed}
+                sourceKind={job.sourceKind}
               />
             </TabPanel>
             <TabPanel id="timeline">
               <TimelinePanel
                 entries={result.timeline}
                 onSeek={onSeek ? seekToSource : undefined}
+                active={active}
+                sourceKind={job.sourceKind}
               />
             </TabPanel>
             <TabPanel id="ocr">
@@ -137,9 +144,11 @@ export function ResultViewer({
             </TabPanel>
             <TabPanel id="context">
               <ContextPanel
-                markdown={currentResult.markdown}
+                markdown={effectiveMarkdown}
                 demo={demo}
                 evidence={evidence}
+                sourceKind={job.sourceKind}
+                allowDownloads={!readOnly}
                 onSeek={onSeek ? seekToSource : undefined}
               />
             </TabPanel>
@@ -149,13 +158,15 @@ export function ResultViewer({
                   jobId={job.id}
                   evidence={evidence}
                   demo={demo}
+                  readOnly={reviewReadOnly}
+                  sourceKind={job.sourceKind}
                   onSeek={onSeek ? seekToSource : undefined}
                   onSaved={(updated) =>
-                    setCurrentResult((current) => ({
-                      ...current,
+                    setSavedOverride({
+                      jobId: job.id,
                       markdown: updated.markdown,
                       json: updated.json,
-                    }))
+                    })
                   }
                 />
               </TabPanel>

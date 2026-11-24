@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,8 @@ interface WorkspaceOption {
 
 export function UrlImportForm({ workspaces }: { workspaces: WorkspaceOption[] }) {
   const router = useRouter();
+  const urlId = useId();
+  const errorId = useId();
   const [url, setUrl] = useState("");
   const [detailLevel, setDetailLevel] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [workspaceId, setWorkspaceId] = useState("");
@@ -49,7 +51,11 @@ export function UrlImportForm({ workspaces }: { workspaces: WorkspaceOption[] })
 
   return (
     <Card>
-      <form onSubmit={(event) => void submit(event)} className="space-y-4">
+      <form
+        onSubmit={(event) => void submit(event)}
+        aria-busy={busy}
+        className="space-y-4"
+      >
         <div>
           <h2 className="text-base font-semibold text-ink">Import from a public URL</h2>
           <p className="mt-1 text-xs leading-relaxed text-ink-muted">
@@ -58,18 +64,23 @@ export function UrlImportForm({ workspaces }: { workspaces: WorkspaceOption[] })
             provider must allow a server-side download.
           </p>
         </div>
-        <input
-          type="url"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          placeholder="https://example.com/recording.mp4"
-          aria-label="Public media URL"
-          className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink"
-          disabled={busy}
-        />
+        <label htmlFor={urlId} className="block">
+          <span className="label-mono mb-1.5 block">Public media URL</span>
+          <input
+            id={urlId}
+            type="url"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            placeholder="https://example.com/recording.mp4"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+            className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink"
+            disabled={busy}
+          />
+        </label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label>
-            <span className="label-mono mb-1 block">Detail level</span>
+            <span className="label-mono mb-1.5 block">Context detail level</span>
             <select
               value={detailLevel}
               onChange={(event) => setDetailLevel(event.target.value as typeof detailLevel)}
@@ -83,24 +94,28 @@ export function UrlImportForm({ workspaces }: { workspaces: WorkspaceOption[] })
           </label>
           {workspaces.length > 0 && (
             <label>
-              <span className="label-mono mb-1 block">Destination</span>
+              <span className="label-mono mb-1.5 block">Destination</span>
               <select
                 value={workspaceId}
                 onChange={(event) => setWorkspaceId(event.target.value)}
                 disabled={busy}
                 className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink"
               >
-                <option value="">Personal workspace</option>
+                <option value="">Personal (only you)</option>
                 {workspaces.map((workspace) => (
                   <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
+                    {workspace.name} · {workspace.role.toLowerCase()}
                   </option>
                 ))}
               </select>
             </label>
           )}
         </div>
-        {error && <p role="alert" className="text-sm text-err">{error}</p>}
+        {error && (
+          <p id={errorId} role="alert" className="text-sm text-err">
+            {error}
+          </p>
+        )}
         <Button type="submit" disabled={busy || !url.trim()}>
           {busy ? "Downloading and validating…" : "Import and analyze"}
         </Button>

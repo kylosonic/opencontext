@@ -65,7 +65,9 @@ export function VideoArea({
             : "Source video"
       }
       className={cx(
-        "bg-grid relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-line bg-code-bg",
+        sourceKind === "audio"
+          ? "bg-grid relative flex min-h-48 items-center justify-center overflow-hidden rounded-lg border border-line bg-code-bg py-10"
+          : "bg-grid relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-line bg-code-bg",
         className,
       )}
     >
@@ -75,7 +77,13 @@ export function VideoArea({
             ? "Source image"
             : sourceKind === "pdf"
               ? "Source PDF"
-              : "Sample video preview"}
+              : sourceKind === "audio"
+                ? demo
+                  ? "Sample audio preview"
+                  : "Source audio"
+                : demo
+                  ? "Sample video preview"
+                  : "Source video"}
         </span>
         <p className="text-sm font-medium text-ink">
           {sourceName ??

@@ -18,7 +18,7 @@ export function formatRange(start: number, end: number): string {
 export function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("en-US", {
+  return `${date.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -26,7 +26,7 @@ export function formatDate(iso: string): string {
     minute: "2-digit",
     timeZone: "UTC",
     hour12: false,
-  });
+  })} UTC`;
 }
 
 /** Percentage label from a 0–1 confidence. `0.94` → "94%". */

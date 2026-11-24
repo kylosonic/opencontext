@@ -5,7 +5,9 @@ import { DocsShell } from "@/components/docs-shell";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Results & evidence - OpenContext docs",
+  title: "Results & evidence — OpenContext Docs",
+  description:
+    "Inspect source media, verify evidence claims and certainty labels, save reviews, and export Markdown or JSON.",
 };
 
 const TABS = [
@@ -24,8 +26,8 @@ const TABS = [
   ["Timeline", "A chronological sequence of observations across the source."],
   ["OCR", "Visible or embedded text extracted from the source."],
   [
-    "Evidence review",
-    "Owner annotations attached to individual evidence claims.",
+    "Evidence Review",
+    "Owner and team-admin annotations attached to individual evidence claims.",
   ],
 ] as const;
 
@@ -37,7 +39,7 @@ export default function ResultsPage() {
       description="OpenContext produces a readable handoff with a traceable ledger behind every claim."
       accessory={
         <Badge tone="success" mono>
-          Evidence review verified
+          Evidence Review verified
         </Badge>
       }
     >
@@ -48,8 +50,9 @@ export default function ResultsPage() {
           </h2>
           <p className="mt-3">
             A completed job opens on Agent Context. Other views make the result
-            inspectable from different angles, and selecting a transcript or
-            timeline entry moves an available video source to its timestamp.
+            inspectable from different angles, and selecting a transcript,
+            evidence, or timeline entry seeks an available video or audio player
+            to its timestamp, or switches to the matching image or PDF page.
           </p>
           <div className="mt-4 divide-y divide-line border-y border-line">
             {TABS.map(([tab, detail]) => (
@@ -63,9 +66,10 @@ export default function ResultsPage() {
             ))}
           </div>
           <p className="mt-4">
-            For an image set, the source viewer switches between ordered images.
-            A PDF job shows its pages in the embedded source preview. An
-            unavailable source does not remove completed results or exports.
+            For an image set or PDF, the source viewer switches between ordered
+            images or pages. Audio-only jobs populate Transcript, Timeline, and
+            Agent Context, and explain why Visual Analysis and OCR do not apply.
+            An unavailable source does not remove completed results or exports.
           </p>
         </section>
 
@@ -127,7 +131,11 @@ export default function ResultsPage() {
             Review a claim
           </h2>
           <ol className="mt-4 list-decimal space-y-3 pl-5">
-            <li>Open Evidence review on an owner-accessible result.</li>
+            <li>
+              Open Evidence Review on a job you own or administer in a team
+              (other team members have view-only access to jobs they did not
+              create).
+            </li>
             <li>
               Confirm a claim, or flag it and optionally add a note or a
               suggested correction.

@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "OpenContext — Give text-only AI agents eyes and ears",
   description:
-    "OpenContext converts videos, screen recordings, and visual references into structured context that text-only LLMs and coding agents can understand.",
+    "OpenContext converts videos, audio recordings, images, and PDFs into structured context that text-only LLMs and coding agents can understand.",
   icons: {
     icon: FAVICON_DATA_URI,
   },

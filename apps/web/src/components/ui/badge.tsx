@@ -32,8 +32,10 @@ export function Badge({
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5",
-        "text-xs font-medium leading-5",
-        mono && "font-mono uppercase tracking-wide text-[0.68rem]",
+        "font-medium leading-5",
+        mono
+          ? "font-mono text-[0.68rem] uppercase tracking-wide"
+          : "text-xs",
         TONES[tone],
         className,
       )}

@@ -14,6 +14,8 @@ export interface EvidenceReviewPanelProps {
   jobId: string;
   evidence: EvidenceRecord[];
   demo?: boolean;
+  readOnly?: boolean;
+  sourceKind?: "video" | "image" | "pdf" | "audio";
   onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   onSaved: (result: { markdown: string; json: unknown }) => void;
 }
@@ -23,11 +25,14 @@ export function EvidenceReviewPanel({
   jobId,
   evidence,
   demo = false,
+  readOnly = false,
+  sourceKind,
   onSeek,
   onSaved,
 }: EvidenceReviewPanelProps) {
   const [filter, setFilter] = useState<ReviewFilter>("NEEDS_REVIEW");
   const [visibleLimit, setVisibleLimit] = useState(40);
+  const effectiveReadOnly = demo || readOnly;
 
   if (evidence.length === 0) {
     return (
@@ -52,17 +57,22 @@ export function EvidenceReviewPanel({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink">Evidence review</h2>
+        <h2 className="text-sm font-semibold text-ink">Evidence Review</h2>
         <p className="mt-1 text-sm leading-relaxed text-ink-muted">
           Check extracted claims against the source. Reviews and suggested
           corrections are saved alongside the original claim and included in
           Markdown and JSON exports.
         </p>
-        {demo && (
+        {demo ? (
           <p className="mt-2 text-xs text-ink-faint">
             Demo evidence is read-only. Review an uploaded job to save annotations.
           </p>
-        )}
+        ) : effectiveReadOnly ? (
+          <p className="mt-2 text-xs text-ink-faint">
+            View-only team access. The job owner and team owners or admins can
+            save or clear review annotations.
+          </p>
+        ) : null}
       </div>
 
       <div
@@ -72,6 +82,7 @@ export function EvidenceReviewPanel({
       >
         <Button
           size="sm"
+          aria-pressed={filter === "NEEDS_REVIEW"}
           variant={filter === "NEEDS_REVIEW" ? "secondary" : "ghost"}
           onClick={() => {
             setFilter("NEEDS_REVIEW");
@@ -82,6 +93,7 @@ export function EvidenceReviewPanel({
         </Button>
         <Button
           size="sm"
+          aria-pressed={filter === "FLAGGED"}
           variant={filter === "FLAGGED" ? "secondary" : "ghost"}
           onClick={() => {
             setFilter("FLAGGED");
@@ -92,6 +104,7 @@ export function EvidenceReviewPanel({
         </Button>
         <Button
           size="sm"
+          aria-pressed={filter === "ALL"}
           variant={filter === "ALL" ? "secondary" : "ghost"}
           onClick={() => {
             setFilter("ALL");
@@ -106,16 +119,14 @@ export function EvidenceReviewPanel({
       </div>
 
       {visible.length === 0 ? (
-        <div className="rounded-lg border border-line bg-panel-muted/50 px-4 py-6 text-center">
-          <p className="text-sm font-medium text-ink">
-            {filter === "NEEDS_REVIEW"
+        <EmptyState
+          title={
+            filter === "NEEDS_REVIEW"
               ? "All evidence claims have been reviewed."
-              : "No flagged claims."}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            You can still view every claim using the All filter.
-          </p>
-        </div>
+              : "No flagged claims."
+          }
+          body="You can still view every claim using the All filter."
+        />
       ) : (
         <div className="space-y-3">
           {visible.map((item) => (
@@ -123,7 +134,8 @@ export function EvidenceReviewPanel({
               key={item.id}
               jobId={jobId}
               evidence={item}
-              demo={demo}
+              readOnly={effectiveReadOnly}
+              sourceKind={sourceKind}
               onSeek={onSeek}
               onSaved={onSaved}
             />
@@ -147,13 +159,15 @@ export function EvidenceReviewPanel({
 function EvidenceReviewItem({
   jobId,
   evidence,
-  demo,
+  readOnly,
+  sourceKind,
   onSeek,
   onSaved,
 }: {
   jobId: string;
   evidence: EvidenceRecord;
-  demo: boolean;
+  readOnly: boolean;
+  sourceKind?: "video" | "image" | "pdf" | "audio";
   onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   onSaved: (result: { markdown: string; json: unknown }) => void;
 }) {
@@ -227,6 +241,15 @@ function EvidenceReviewItem({
         >
           {evidence.certainty}
         </Badge>
+        {evidence.source.assetIndex !== undefined && (
+          <Badge mono>
+            {sourceKind === "pdf"
+              ? `Page ${evidence.source.assetIndex + 1}`
+              : sourceKind === "image"
+                ? `Image ${evidence.source.assetIndex + 1}`
+                : `Asset ${evidence.source.assetIndex + 1}`}
+          </Badge>
+        )}
         {status && (
           <Badge tone={status === "CONFIRMED" ? "success" : "danger"}>
             {status === "CONFIRMED" ? "Human confirmed" : "Flagged"}
@@ -235,7 +258,7 @@ function EvidenceReviewItem({
         {onSeek ? (
           <button
             type="button"
-            className="ml-auto rounded-sm font-mono text-xs text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="ml-auto rounded-sm font-mono text-xs text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             onClick={() =>
               evidence.source.assetIndex === undefined
                 ? onSeek(evidence.timestampSec)
@@ -262,31 +285,31 @@ function EvidenceReviewItem({
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            disabled={demo || busy}
+            disabled={readOnly || busy}
             maxLength={1000}
             rows={2}
             placeholder="What did you observe at this point?"
-            className="w-full resize-y rounded-md border border-line bg-panel px-3 py-2 text-sm font-normal text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            className="w-full resize-y rounded-md border border-line bg-panel px-3 py-2 text-sm font-normal text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50"
           />
         </label>
         <label className="grid gap-1.5 text-xs font-medium text-ink-muted">
           Suggested correction (saved when flagged)
-          <span className="font-normal text-ink-faint">
-            Add a correction, then use Flag claim to preserve it with the review.
-          </span>
           <textarea
             value={correctedText}
             onChange={(event) => setCorrectedText(event.target.value)}
-            disabled={demo || busy}
+            disabled={readOnly || busy}
             maxLength={5000}
             rows={2}
             placeholder="Leave blank if the original claim is accurate"
-            className="w-full resize-y rounded-md border border-line bg-panel px-3 py-2 text-sm font-normal text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            className="w-full resize-y rounded-md border border-line bg-panel px-3 py-2 text-sm font-normal text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50"
           />
+          <span className="font-normal text-ink-faint">
+            Add a correction, then use Flag claim to preserve it with the review.
+          </span>
         </label>
       </div>
 
-      {!demo && (
+      {!readOnly && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
             size="sm"

@@ -49,9 +49,14 @@ export default async function NewAnalysisPage() {
                   any text-only agent.
                 </p>
               </div>
-              <ButtonLink href="/app/jobs" variant="ghost" size="sm">
-                All jobs
-              </ButtonLink>
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink href="/app/jobs" variant="ghost" size="sm">
+                  Your jobs
+                </ButtonLink>
+                <ButtonLink href="/app/teams" variant="ghost" size="sm">
+                  Teams
+                </ButtonLink>
+              </div>
             </div>
 
             <NewJobForm workspaces={workspaces} />
@@ -73,7 +78,7 @@ export default async function NewAnalysisPage() {
 
             <div className="mt-10 flex items-center justify-between border-t border-line pt-4">
               <p className="text-xs text-ink-faint">
-                Unfinished jobs are kept for 7 days; completed results for 14.
+                Completed jobs are kept for 14 days; unfinished jobs for 7.
               </p>
               <Link
                 href="/auth/signout"

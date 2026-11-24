@@ -68,7 +68,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
           message:
             error instanceof ApiError
               ? error.message
-              : "Could not load your jobs - check your connection.",
+              : "Could not load your jobs — check your connection.",
         });
       }
     }
@@ -126,7 +126,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
       setDeleting(null);
     } catch (error) {
       setDeleteError(
-        error instanceof ApiError ? error.message : "Could not delete the job - try again.",
+        error instanceof ApiError ? error.message : "Could not delete the job — try again.",
       );
     } finally {
       setDeleteBusy(false);
@@ -155,7 +155,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
 
   if (fatal?.kind === "load-error") {
     return (
-      <Card className="max-w-lg">
+      <Card role="alert" className="max-w-lg">
         <h2 className="text-base font-semibold text-err">
           Could not load your jobs
         </h2>
@@ -179,12 +179,15 @@ export function JobsList({ initialJobs }: JobsListProps) {
       <div className="rounded-lg border border-dashed border-line bg-panel px-6 py-14 text-center">
         <h2 className="text-base font-semibold text-ink">No jobs yet</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-muted">
-          Upload a video or screen recording and OpenContext will turn it
-          into structured developer context for text-only AI agents.
+          Upload a video, audio file, image set, PDF, or public URL and
+          OpenContext will turn it into structured developer context for
+          text-only AI agents.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
-          <ButtonLink href="/app/new">Analyze your first video</ButtonLink>
-          <ButtonLink href="/demo" variant="ghost" size="sm">
+          <ButtonLink href="/app/new" size="md">
+            Start your first analysis
+          </ButtonLink>
+          <ButtonLink href="/demo" variant="ghost" size="md">
             See the demo instead
           </ButtonLink>
         </div>
@@ -201,7 +204,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
         >
           <span
             aria-hidden="true"
-            className="size-1.5 rounded-full bg-(--warn) stage-running"
+            className="size-1.5 rounded-full bg-warn stage-running"
           />
           Reconnecting…
         </p>
@@ -225,7 +228,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
         <p>
           {hasActive
             ? "Updating automatically while jobs are processing…"
-            : "All jobs are finished - updates paused."}
+            : "All jobs are finished — updates paused."}
         </p>
         <Button
           variant="ghost"
@@ -265,6 +268,7 @@ function JobCard({
   const active = isActiveStatus(job.status);
   const failed = job.status === "FAILED";
   const partial = job.status === "PARTIAL";
+  const canManage = job.canManage !== false;
   const stageLabel = active
     ? job.currentStage
       ? stageDisplayName(job.currentStage)
@@ -301,15 +305,16 @@ function JobCard({
             )}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDelete}
-          className="text-err hover:text-err"
-          aria-label={`Delete job ${job.displayName}`}
-        >
-          Delete
-        </Button>
+        {canManage && (
+          <Button
+            variant="danger-ghost"
+            size="sm"
+            onClick={onDelete}
+            aria-label={`Delete job ${job.displayName}`}
+          >
+            Delete
+          </Button>
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-3">
@@ -322,7 +327,7 @@ function JobCard({
             aria-label={`${job.displayName} progress`}
             className={cx(
               "h-full rounded-full transition-[width] duration-300",
-              failed ? "bg-(--err)" : partial ? "bg-(--warn)" : "bg-accent",
+              failed ? "bg-err" : partial ? "bg-warn" : "bg-accent",
             )}
             style={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
           />

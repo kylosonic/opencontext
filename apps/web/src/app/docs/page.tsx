@@ -6,7 +6,7 @@ import { CodeBlock } from "@/components/code-block";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Documentation - OpenContext",
+  title: "Documentation — OpenContext Docs",
   description:
     "Install, call, and operate OpenContext for evidence-linked media context.",
 };
@@ -49,7 +49,7 @@ export default function DocsPage() {
     <DocsShell
       kicker="Documentation"
       title="How OpenContext works"
-      description="Turn videos, image sets, and PDFs into timestamped, evidence-linked context that a text-only model can read."
+      description="Turn videos, audio recordings, still images, image sets, and PDFs into timestamped, evidence-linked context that a text-only model can read."
       accessory={
         <Badge tone="success" mono>
           v0.1.1
@@ -155,9 +155,10 @@ export default function DocsPage() {
           </h2>
           <div className="mt-3 space-y-2 border-l-2 border-line-strong pl-4">
             <p>
-              Videos are limited to 500 MB and 30 minutes. Images are limited to
-              25 MB each, PDFs to 50 MB and 30 pages, and image-set jobs to 10
-              images.
+              Videos are limited to 500 MB and 30 minutes, and audio recordings
+              to 100 MB and 30 minutes. Images are limited to 25 MB and 40
+              megapixels each, PDFs to 50 MB and 30 pages, and image-set jobs to
+              10 images.
             </p>
             <p>
               Completed job data is retained for 14 days; unfinished jobs for 7

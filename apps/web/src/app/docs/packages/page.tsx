@@ -3,7 +3,9 @@ import { CodeBlock } from "@/components/code-block";
 import { DocsShell } from "@/components/docs-shell";
 
 export const metadata: Metadata = {
-  title: "CLI & packages - OpenContext docs",
+  title: "CLI & packages — OpenContext Docs",
+  description:
+    "Analyze media locally with the Python opencontext-video package or install shared TypeScript schemas from npm.",
 };
 
 export default function PackagesPage() {
@@ -42,7 +44,10 @@ export default function PackagesPage() {
           <h2 id="analyze-title" className="text-xl font-semibold text-ink">
             Analyze media
           </h2>
-          <p className="mt-3">Videos, still images, and PDFs use the same local command and output contract.</p>
+          <p className="mt-3">
+            Videos, audio files, still images, and PDFs use the same local
+            command and output contract.
+          </p>
           <div className="mt-4 space-y-3">
             <CodeBlock
               wrap

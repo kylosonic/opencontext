@@ -21,6 +21,7 @@ export const JobSummarySchema = z.object({
   progress: z.number().int().min(0).max(100),
   currentStage: StageNameSchema.nullable(),
   error: z.string().nullable(),
+  canManage: z.boolean().optional(),
   createdAt: z.string(),
   completedAt: z.string().nullable(),
   expiresAt: z.string(),
@@ -45,6 +46,7 @@ export const JobDetailSchema = z.object({
   failureKind: FailureKindSchema,
   retryCount: z.number().int().nonnegative(),
   retryAllowed: z.boolean(),
+  canManage: z.boolean().optional(),
   stageStates: StageStatesSchema,
   source: z
     .object({

@@ -3,7 +3,9 @@ import { CodeBlock } from "@/components/code-block";
 import { DocsShell } from "@/components/docs-shell";
 
 export const metadata: Metadata = {
-  title: "Agent integration - OpenContext docs",
+  title: "Agent integration — OpenContext Docs",
+  description:
+    "Connect coding agents to local media analysis and evidence-linked implementation briefs via the opencontext-mcp stdio server.",
 };
 
 export default function AgentsPage() {

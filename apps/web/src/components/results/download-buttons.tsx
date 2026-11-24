@@ -42,7 +42,11 @@ export function DownloadButtons({
 }: DownloadButtonsProps) {
   const id = safeJobId(jobId);
   return (
-    <div className={className}>
+    <div
+      className={["flex flex-wrap items-center gap-2", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <Button
         variant="secondary"
         disabled={markdown.length === 0}
@@ -53,7 +57,8 @@ export function DownloadButtons({
         Download Markdown
       </Button>
       <Button
-        variant="ghost"
+        variant="secondary"
+        disabled={json === null || json === undefined}
         onClick={() =>
           downloadFile(
             `opencontext-${id}.json`,

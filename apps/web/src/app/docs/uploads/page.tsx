@@ -4,7 +4,9 @@ import { DocsShell } from "@/components/docs-shell";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Uploading media - OpenContext docs",
+  title: "Uploading media — OpenContext Docs",
+  description:
+    "Supported video, audio, image, image-set, and PDF formats, validation rules, URL imports, and detail levels.",
 };
 
 const INPUTS = [
@@ -28,7 +30,7 @@ export default function UploadsPage() {
     <DocsShell
       kicker="Get started"
       title="Uploading media"
-      description="Choose video, audio, an ordered image set, or a PDF. Files are checked before transfer and again before the job is queued."
+      description="Choose video, audio, a still image, an ordered image set, or a PDF. Files are checked before transfer and again before the job is queued."
       accessory={
         <Badge tone="success" mono>
           Upload flows verified
@@ -124,16 +126,20 @@ export default function UploadsPage() {
             </li>
           </ol>
           <p className="mt-4">
-            A failed or cancelled upload does not create a job. A video that is
-            not decodable, or is longer than 30 minutes, is rejected when
-            extraction begins and cannot be retried without uploading a
-            corrected file.
+            A failed or cancelled upload does not create a job. A video or audio
+            file that is not decodable, or is longer than 30 minutes, is
+            rejected when extraction begins and cannot be retried without
+            uploading a corrected file.
           </p>
           <p className="mt-3">
             You can also paste a public HTTP(S) media URL. OpenContext rejects
             local/private network addresses, credentials, custom ports, and
-            responses without a usable Content-Length, then applies the same
-            byte and stored-content checks as a browser upload.
+            responses without a usable <code>Content-Length</code>, then applies
+            the same byte and stored-content checks as a browser upload.
+          </p>
+          <p className="mt-3">
+            Uploads and URL imports can be scoped to your Personal view or any
+            Team workspace you belong to.
           </p>
         </section>
 

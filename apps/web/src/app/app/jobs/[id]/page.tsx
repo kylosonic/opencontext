@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { JobDetailClient } from "@/components/app/job-detail";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
@@ -101,6 +103,7 @@ export default async function JobPage({
         resultView={resultView}
         sourceUrl={sourceUrl}
         sourceUnavailableNote={sourceUnavailableNote}
+        canManage={result.canManage}
       />
     </JobPageShell>
   );
@@ -115,7 +118,7 @@ async function AccessDenied() {
           You do not have access to this job
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-          Job links are private to the account that created them. If you
+          Job links are private to the account or team that owns them. If you
           expected access, sign in with that account and try again.
         </p>
         <div className="mt-4 flex gap-2">
@@ -133,20 +136,24 @@ async function AccessDenied() {
 
 function JobPageShell({ children }: { children: ReactNode }) {
   return (
-    <main id="main">
-      <Container className="pb-16 pt-8">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-6">
-            <Link
-              href="/app/jobs"
-              className="text-sm text-ink-muted transition-colors hover:text-ink"
-            >
-              ← All jobs
-            </Link>
+    <>
+      <SiteHeader />
+      <main id="main">
+        <Container className="pb-16 pt-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-6">
+              <Link
+                href="/app/jobs"
+                className="text-sm text-ink-muted transition-colors hover:text-ink"
+              >
+                ← Your jobs
+              </Link>
+            </div>
+            {children}
           </div>
-          {children}
-        </div>
-      </Container>
-    </main>
+        </Container>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

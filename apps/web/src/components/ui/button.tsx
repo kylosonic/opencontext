@@ -1,7 +1,13 @@
 import type { ComponentProps } from "react";
+import Link from "next/link";
 import { cx } from "./cx";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "danger"
+  | "danger-ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -10,6 +16,10 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary:
     "bg-panel text-ink border border-line hover:bg-panel-muted",
   ghost: "text-ink-muted hover:text-ink hover:bg-panel-muted border border-transparent",
+  danger:
+    "bg-err text-canvas hover:opacity-90 border border-transparent",
+  "danger-ghost":
+    "text-err hover:bg-err-bg border border-transparent",
 };
 
 const SIZES: Record<ButtonSize, string> = {
@@ -28,6 +38,7 @@ export function buttonClasses(
     "inline-flex items-center justify-center rounded-md font-medium",
     "transition-colors duration-150 select-none whitespace-nowrap",
     "disabled:opacity-50 disabled:pointer-events-none",
+    "aria-disabled:opacity-50 aria-disabled:pointer-events-none",
     "active:translate-y-px",
     VARIANTS[variant],
     SIZES[size],
@@ -61,7 +72,7 @@ export interface ButtonLinkProps extends ComponentProps<"a"> {
   size?: ButtonSize;
 }
 
-/** Anchor styled as a button. External URLs (http/https) open in a new tab. */
+/** Anchor styled as a button. Internal app routes use Next.js `<Link>`. */
 export function ButtonLink({
   variant = "primary",
   size = "md",
@@ -71,6 +82,19 @@ export function ButtonLink({
   ...rest
 }: ButtonLinkProps) {
   const external = typeof href === "string" && /^https?:\/\//.test(href);
+  const internalRoute =
+    typeof href === "string" && href.startsWith("/") && !href.startsWith("//");
+  if (internalRoute) {
+    return (
+      <Link
+        href={href}
+        className={buttonClasses(variant, size, className)}
+        {...rest}
+      >
+        {children}
+      </Link>
+    );
+  }
   return (
     <a
       href={href}

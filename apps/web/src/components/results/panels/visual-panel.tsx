@@ -16,6 +16,7 @@ export interface VisualPanelProps {
   active?: boolean;
   /** Job failed → specific failure message (results.md B4). */
   failed?: boolean;
+  sourceKind?: "video" | "image" | "pdf" | "audio";
 }
 
 /** Visual Analysis tab: certainty-tagged observation cards. */
@@ -23,8 +24,17 @@ export function VisualPanel({
   observations,
   active = false,
   failed = false,
+  sourceKind,
 }: VisualPanelProps) {
   if (observations.length === 0) {
+    if (sourceKind === "audio") {
+      return (
+        <EmptyState
+          title="Visual analysis does not apply to an audio-only source"
+          body="OpenContext transcribes speech and builds a timeline for audio files without visual frames."
+        />
+      );
+    }
     if (active) {
       return (
         <EmptyState
@@ -129,21 +139,25 @@ export function VisualPanel({
               )}
 
               {observation.designObservations &&
-                Object.keys(observation.designObservations).length > 0 && (
-                  <dl className="grid gap-x-6 gap-y-1.5 border-t border-line pt-3 sm:grid-cols-2">
-                    {(
-                      Object.entries(observation.designObservations) as [
-                        string,
-                        string,
-                      ][]
-                    ).map(([key, value]) => (
-                      <div key={key} className="flex items-baseline gap-2">
-                        <dt className="label-mono shrink-0">{key}</dt>
-                        <dd className="text-sm text-ink-muted">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
+                (() => {
+                  const entries = (
+                    Object.entries(observation.designObservations) as [
+                      string,
+                      string | undefined,
+                    ][]
+                  ).filter((entry): entry is [string, string] => Boolean(entry[1]));
+                  if (entries.length === 0) return null;
+                  return (
+                    <dl className="grid gap-x-6 gap-y-1.5 border-t border-line pt-3 sm:grid-cols-2">
+                      {entries.map(([key, value]) => (
+                        <div key={key} className="flex items-baseline gap-2">
+                          <dt className="label-mono shrink-0">{key}</dt>
+                          <dd className="text-sm text-ink-muted">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  );
+                })()}
 
               {observation.importantChanges &&
                 observation.importantChanges.length > 0 && (

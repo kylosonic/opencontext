@@ -6,15 +6,33 @@ export interface TimelinePanelProps {
   entries: TimelineEntryView[];
   /** Present → entries become seek buttons (results.md B2). */
   onSeek?: (timestampSec: number) => void;
+  /** True while the job is still running. */
+  active?: boolean;
+  sourceKind?: "video" | "image" | "pdf" | "audio";
 }
 
 /** Timeline tab: timestamped entries; clicking seeks the player. */
-export function TimelinePanel({ entries, onSeek }: TimelinePanelProps) {
+export function TimelinePanel({
+  entries,
+  onSeek,
+  active = false,
+  sourceKind,
+}: TimelinePanelProps) {
   if (entries.length === 0) {
     return (
       <EmptyState
-        title="No timeline entries yet"
-        body="The timeline is assembled once extraction, transcription, and analysis have completed."
+        title={active ? "No timeline entries yet" : "No timeline entries were recorded"}
+        body={
+          active
+            ? "The timeline is assembled once extraction, transcription, and analysis have completed."
+            : sourceKind === "image"
+              ? "Visual analysis completed without separate timeline segments for this image."
+              : sourceKind === "pdf"
+                ? "Document analysis completed without separate timeline segments for this PDF."
+                : sourceKind === "audio"
+                  ? "Audio analysis completed without separate timeline segments."
+                  : "Analysis completed without separate timeline segments."
+        }
       />
     );
   }
@@ -41,7 +59,7 @@ export function TimelinePanel({ entries, onSeek }: TimelinePanelProps) {
         );
 
         const sharedClass =
-          "block w-full rounded-lg border border-line bg-panel p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+          "block w-full rounded-lg border border-line bg-panel p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
         return (
           <li key={index}>

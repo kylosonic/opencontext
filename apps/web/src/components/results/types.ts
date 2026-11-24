@@ -143,10 +143,12 @@ export interface ResultViewerProps {
   elapsedSec?: number;
   /** True while the job is actively processing (drives "Analyzing…" states). */
   active?: boolean;
-  /** Persistent "Demo Analysis" badges (job header + tab strip). */
+  /** Persistent "Demo Analysis" badge on the job header. */
   demo?: boolean;
   /** Public share mode: omit owner-only downloads and review controls. */
   readOnly?: boolean;
+  /** Allow viewing results while disabling evidence review mutations (e.g. team viewer). */
+  reviewReadOnly?: boolean;
   /** Timeline and evidence reference click → seek to a source timestamp. */
   onSeek?: (timestampSec: number, sourceAssetIndex?: number) => void;
   /** A real `<video>` or `<img>` element. Omitted → placeholder panel. */

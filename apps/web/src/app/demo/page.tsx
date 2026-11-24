@@ -144,7 +144,15 @@ export default function DemoPage() {
             </p>
           </header>
 
-          <div aria-live="polite">
+          <p className="sr-only" aria-live="polite">
+            {phase === "running"
+              ? `Running demo analysis: ${Math.round(progress)} percent complete.`
+              : phase === "done"
+                ? "Demo analysis complete. Results are ready."
+                : "The demo could not load."}
+          </p>
+
+          <div>
             {phase === "running" && (
               <Card className="max-w-xl">
                 <StageChecklist
@@ -182,7 +190,7 @@ export default function DemoPage() {
             )}
 
             {phase === "error" && (
-              <Card className="max-w-xl">
+              <Card role="alert" className="max-w-xl">
                 <h2 className="text-base font-semibold text-err">
                   The demo could not load
                 </h2>

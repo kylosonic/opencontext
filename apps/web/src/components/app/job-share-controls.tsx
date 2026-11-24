@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CopyButton } from "@/components/results/copy-button";
+import { formatDate } from "@/components/results/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -8,7 +10,7 @@ interface ManageCardProps {
   jobId: string;
   shareable: boolean;
   onDelete: () => void;
-  error: string | null;
+  error?: string | null;
 }
 
 /** Job management panel hosting delete and optional public-share controls. */
@@ -16,13 +18,13 @@ export function ManageCard({
   jobId,
   shareable,
   onDelete,
-  error,
+  error = null,
 }: ManageCardProps) {
   return (
     <Card>
       <h2 className="text-sm font-semibold text-ink">Manage job</h2>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={onDelete}>
+        <Button variant="danger-ghost" size="sm" onClick={onDelete}>
           Delete job
         </Button>
         {error && (
@@ -37,6 +39,7 @@ export function ManageCard({
 }
 
 function ShareControls({ jobId }: { jobId: string }) {
+  const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
@@ -57,9 +60,13 @@ function ShareControls({ jobId }: { jobId: string }) {
         if (cancelled) return;
         setActive(Boolean(status.active));
         setExpiresAt(status.expiresAt ?? null);
+        setError(null);
       })
       .catch(() => {
         if (!cancelled) setError("Could not load the public-link status.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -85,8 +92,20 @@ function ShareControls({ jobId }: { jobId: string }) {
       setPublicUrl(absolute);
       setActive(true);
       setExpiresAt(payload.expiresAt ?? null);
-      await navigator.clipboard?.writeText(absolute).catch(() => undefined);
-      setMessage("Read-only link created and copied.");
+      let copied = false;
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(absolute);
+          copied = true;
+        } catch {
+          copied = false;
+        }
+      }
+      setMessage(
+        copied
+          ? "Read-only link created and copied."
+          : "Read-only link created — copy it below.",
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not create the link.");
     } finally {
@@ -116,7 +135,7 @@ function ShareControls({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div className="mt-5 border-t border-line pt-4">
+    <div className="mt-5 border-t border-line pt-4" aria-busy={loading || busy}>
       <h3 className="text-sm font-semibold text-ink">Public share</h3>
       <p className="mt-1 text-xs leading-relaxed text-ink-muted">
         Anyone with the link can view the results and source media in read-only
@@ -124,27 +143,47 @@ function ShareControls({ jobId }: { jobId: string }) {
         30 days.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={() => void createLink()} disabled={busy}>
-          {busy ? "Working…" : active ? "Rotate share link" : "Create share link"}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void createLink()}
+          disabled={loading || busy}
+        >
+          {loading
+            ? "Checking link…"
+            : busy
+              ? "Working…"
+              : active
+                ? "Rotate share link"
+                : "Create share link"}
         </Button>
         {active && (
-          <Button variant="ghost" size="sm" onClick={() => void revokeLink()} disabled={busy}>
+          <Button
+            variant="danger-ghost"
+            size="sm"
+            onClick={() => void revokeLink()}
+            disabled={loading || busy}
+          >
             Stop sharing
           </Button>
         )}
-        {publicUrl && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void navigator.clipboard?.writeText(publicUrl)}
-          >
-            Copy link
-          </Button>
-        )}
       </div>
+      {publicUrl && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            readOnly
+            value={publicUrl}
+            aria-label="Public share link"
+            onFocus={(event) => event.currentTarget.select()}
+            className="min-w-56 flex-1 rounded-md border border-line bg-panel-muted px-3 py-1.5 font-mono text-xs text-ink"
+          />
+          <CopyButton value={publicUrl} label="Copy link" />
+        </div>
+      )}
       {active && expiresAt && (
         <p className="mt-2 text-xs text-ink-faint">
-          Active until {new Date(expiresAt).toLocaleString()}.
+          Active until {formatDate(expiresAt)}.
         </p>
       )}
       {message && <p role="status" className="mt-2 text-xs text-ok">{message}</p>}

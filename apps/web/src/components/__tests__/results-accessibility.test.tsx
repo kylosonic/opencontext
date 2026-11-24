@@ -112,4 +112,76 @@ describe("results viewer accessibility", () => {
     render(<VideoArea sourceName="recording.mp4" />);
     expect(screen.getByRole("region", { name: "Source video" })).toBeTruthy();
   });
+
+  it("keeps TabList accessory outside role=tablist", () => {
+    render(
+      <Tabs value="transcript" onValueChange={vi.fn()}>
+        <TabList label="Result sections" accessory={<span>Extra</span>}>
+          <Tab id="transcript">Transcript</Tab>
+        </TabList>
+        <TabPanel id="transcript">Transcript content</TabPanel>
+      </Tabs>,
+    );
+    const tablist = screen.getByRole("tablist", { name: "Result sections" });
+    expect(tablist.contains(screen.getByText("Extra"))).toBe(false);
+  });
+
+  it("exposes filter aria-pressed state and read-only team restrictions", async () => {
+    const user = userEvent.setup();
+    render(
+      <EvidenceReviewPanel
+        jobId="job-2"
+        readOnly
+        onSaved={vi.fn()}
+        evidence={[
+          {
+            id: 9,
+            kind: "VISUAL",
+            timestampSec: 10,
+            certainty: "OBSERVED",
+            text: "Save button is visible.",
+            source: { collection: "visual", index: 0 },
+            review: {
+              status: "CONFIRMED",
+              note: "Verified manually.",
+              reviewedAt: "2026-11-08T00:00:00.000Z",
+            },
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "View-only team access. The job owner and team owners or admins can save or clear review annotations.",
+      ),
+    ).toBeTruthy();
+
+    const needsReviewBtn = screen.getByRole("button", {
+      name: "Needs review (0)",
+    });
+    const allBtn = screen.getByRole("button", { name: "All (1)" });
+    expect(needsReviewBtn.getAttribute("aria-pressed")).toBe("true");
+    expect(allBtn.getAttribute("aria-pressed")).toBe("false");
+
+    await user.click(allBtn);
+    expect(allBtn.getAttribute("aria-pressed")).toBe("true");
+    expect(needsReviewBtn.getAttribute("aria-pressed")).toBe("false");
+
+    const noteInput = screen.getByLabelText(
+      "Reviewer note",
+    ) as HTMLTextAreaElement;
+    const correctionInput = screen.getByLabelText(
+      /Suggested correction/i,
+    ) as HTMLTextAreaElement;
+    expect(noteInput.disabled).toBe(true);
+    expect(correctionInput.disabled).toBe(true);
+    expect(
+      screen.queryByRole("button", { name: "Confirm claim" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Flag claim" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Clear review" }),
+    ).toBeNull();
+  });
 });

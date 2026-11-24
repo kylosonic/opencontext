@@ -4,7 +4,9 @@ import { DocsShell } from "@/components/docs-shell";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Job lifecycle - OpenContext docs",
+  title: "Job lifecycle — OpenContext Docs",
+  description:
+    "How OpenContext tracks processing stages, live progress updates, retries, retention windows, and deletion.",
 };
 
 const STAGES = [
@@ -41,8 +43,9 @@ export default function JobsPage() {
           </h2>
           <p className="mt-3">
             A job begins as <code>QUEUED</code>. While it is active, the page
-            checks for updates every three seconds and shows the current stage
-            and overall progress. Polling stops at <code>COMPLETED</code>,{" "}
+            subscribes to live status events (with automatic polling fallback
+            every three seconds) and shows the current stage and overall
+            progress. Updates stop at <code>COMPLETED</code>,{" "}
             <code>PARTIAL</code>, or <code>FAILED</code>.
           </p>
           <ol className="mt-4 divide-y divide-line border-y border-line">
@@ -105,7 +108,7 @@ export default function JobsPage() {
           <p className="mt-3">
             Transient provider or network problems are retried automatically a
             limited number of times. If a stage still fails, a{" "}
-            <code>PARTIAL</code> job, or a <code>FAILED</code>
+            <code>PARTIAL</code> job, or a <code>FAILED</code>{" "}
             job caused by a transient problem, can be retried manually.
           </p>
           <p className="mt-3">
@@ -126,7 +129,7 @@ export default function JobsPage() {
             are removed automatically.
           </p>
           <p className="mt-3">
-            The owner can choose{" "}
+            The owner (or a team owner or admin) can choose{" "}
             <strong className="text-ink">Delete job</strong> and confirm to
             remove it earlier. The confirmation names the job and states that
             deletion cannot be undone. The job disappears from the job list and

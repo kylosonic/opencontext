@@ -21,6 +21,7 @@ const NAV_GROUPS = [
     label: "Build with OpenContext",
     links: [
       { href: "/docs/api", label: "Jobs API" },
+      { href: "/docs/api-errors", label: "Error catalog" },
       { href: "/docs/packages", label: "CLI & packages" },
       { href: "/docs/agents", label: "Agent integration" },
     ],
@@ -31,7 +32,6 @@ const NAV_GROUPS = [
       { href: "/docs/workers", label: "Worker deployment" },
       { href: "/docs/status", label: "Status & limits" },
       { href: "/docs/security", label: "Security & retention" },
-      { href: "/docs/api-errors", label: "Error catalog" },
     ],
   },
 ] as const;
@@ -103,6 +103,13 @@ export function DocsSidebar() {
         {open && (
           <div id="docs-mobile-nav" className="px-4 pb-5">
             <NavLinks onNavigate={() => setOpen(false)} />
+            <Link
+              href="/demo"
+              onClick={() => setOpen(false)}
+              className="mt-6 block rounded-md border border-line px-3 py-2 text-sm text-ink-muted hover:bg-panel-muted hover:text-ink"
+            >
+              Try the interactive demo
+            </Link>
           </div>
         )}
       </div>

@@ -42,11 +42,12 @@ export default async function JobsPage() {
                   Your jobs
                 </h1>
                 <p className="mt-3 max-w-xl text-base leading-relaxed text-ink-muted">
-                  Every analysis starts as one uploaded video or image and ends as a
-                  structured developer context document.
+                  Every analysis starts from an uploaded video, audio file,
+                  image set, PDF, or remote URL and ends as a structured
+                  developer context document.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <ButtonLink href="/app/teams" variant="ghost" size="sm">Teams</ButtonLink>
                 <ButtonLink href="/app/new" size="sm">New analysis</ButtonLink>
               </div>
@@ -56,7 +57,7 @@ export default async function JobsPage() {
 
             <div className="mt-10 flex items-center justify-between border-t border-line pt-4">
               <p className="text-xs text-ink-faint">
-                Completed jobs are kept for 14 days; unfinished ones for 7.
+                Completed jobs are kept for 14 days; unfinished jobs for 7.
               </p>
               <Link
                 href="/auth/signout"

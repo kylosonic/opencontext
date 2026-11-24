@@ -10,7 +10,11 @@ import {
 import { computeExpiresAt, retentionNoteFor } from "./retention";
 
 /** Job → full API payload (GET /api/jobs/[id], worker claim payloads). */
-export function jobToDetail(job: Job, sourceMedia: Media[] = []): JobDetail {
+export function jobToDetail(
+  job: Job,
+  sourceMedia: Media[] = [],
+  canManage?: boolean,
+): JobDetail {
   const stageStates = (job.stageStates as StageState[]) ?? [];
   const sourceExt = job.sourceExt ?? "";
   const retryAllowed =
@@ -27,6 +31,7 @@ export function jobToDetail(job: Job, sourceMedia: Media[] = []): JobDetail {
     failureKind: job.failureKind,
     retryCount: job.retryCount,
     retryAllowed,
+    ...(canManage !== undefined ? { canManage } : {}),
     stageStates,
     source: job.sourceKey
       ? {
@@ -75,7 +80,7 @@ export function jobToDetail(job: Job, sourceMedia: Media[] = []): JobDetail {
 }
 
 /** Job → list card payload (GET /api/jobs, jobs.md B8). */
-export function jobToSummary(job: Job): JobSummary {
+export function jobToSummary(job: Job, canManage?: boolean): JobSummary {
   const currentStage = (STAGE_NAMES as readonly string[]).includes(job.status)
     ? (job.status as JobSummary["currentStage"])
     : null;
@@ -87,6 +92,7 @@ export function jobToSummary(job: Job): JobSummary {
     progress: job.progress,
     currentStage,
     error: job.error,
+    ...(canManage !== undefined ? { canManage } : {}),
     createdAt: job.createdAt.toISOString(),
     completedAt: job.completedAt ? job.completedAt.toISOString() : null,
     expiresAt: computeExpiresAt(job.completedAt, job.createdAt).toISOString(),

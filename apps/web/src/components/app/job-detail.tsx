@@ -65,6 +65,8 @@ export interface JobDetailClientProps {
   sourceUrl: string | null;
   /** Honest note when the source media cannot be streamed back. */
   sourceUnavailableNote?: string | null;
+  /** Whether the caller can delete, retry, share, and review this job. */
+  canManage?: boolean;
 }
 
 export function JobDetailClient({
@@ -72,12 +74,14 @@ export function JobDetailClient({
   resultView: initialResultView,
   sourceUrl,
   sourceUnavailableNote = null,
+  canManage,
 }: JobDetailClientProps) {
   const router = useRouter();
   const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement | null>(null);
   // Constant per mount: the parent remounts this island (via `key`) when
   // a refreshed terminal payload with results arrives.
   const resultView = initialResultView;
+  const userCanManage = canManage ?? initialDetail.canManage ?? true;
   const {
     job,
     setJob,
@@ -163,7 +167,7 @@ export function JobDetailClient({
       setActionError(
         error instanceof ApiError
           ? error.message
-          : "Could not retry the job - check your connection and try again.",
+          : "Could not retry the job — check your connection and try again.",
       );
     } finally {
       setRetrying(false);
@@ -182,7 +186,7 @@ export function JobDetailClient({
       setDeleteError(
         error instanceof ApiError
           ? error.message
-          : "Could not delete the job - try again.",
+          : "Could not delete the job — try again.",
       );
     } finally {
       setDeleteBusy(false);
@@ -192,7 +196,7 @@ export function JobDetailClient({
   const failedStage = job.errorStage ? stageDisplayName(job.errorStage) : null;
 
   const sourceBrokenNote = sourceBroken
-    ? "The source media could not be displayed - the file may use an unsupported codec, or the preview link is no longer valid. Results and exports are unaffected."
+    ? "The source media could not be displayed — the file may use an unsupported codec, or the preview link is no longer valid. Results and exports are unaffected."
     : null;
   const unavailableNote = sourceBrokenNote ?? sourceUnavailableNote ?? null;
   const sourceSlot =
@@ -239,7 +243,8 @@ export function JobDetailClient({
         />
       )
     ) : unavailableNote ? (
-      <VideoUnavailable
+      <SourceUnavailable
+        sourceKind={sourceKind}
         note={unavailableNote}
         selectedTimestamp={selectedTimestamp}
       />
@@ -252,7 +257,7 @@ export function JobDetailClient({
         <p role="status" className="flex items-center gap-2 text-sm text-ink-muted">
           <span
             aria-hidden="true"
-            className="size-1.5 rounded-full bg-(--warn) stage-running"
+            className="size-1.5 rounded-full bg-warn stage-running"
           />
           Reconnecting…
         </p>
@@ -268,7 +273,7 @@ export function JobDetailClient({
               elapsedSec={elapsedNow}
             />
             <p className="mt-4 text-xs leading-relaxed text-ink-faint">
-              Larger files can take a while - this page updates automatically
+              Larger files can take a while — this page updates automatically
               while your job is processing.
             </p>
           </Card>
@@ -277,12 +282,13 @@ export function JobDetailClient({
               {sourceSlot}
             </div>
           )}
-          <ManageCard
-            jobId={job.id}
-            shareable={false}
-            onDelete={() => setConfirmDeleteOpen(true)}
-            error={actionError}
-          />
+          {userCanManage && (
+            <ManageCard
+              jobId={job.id}
+              shareable={false}
+              onDelete={() => setConfirmDeleteOpen(true)}
+            />
+          )}
         </>
       )}
 
@@ -297,7 +303,7 @@ export function JobDetailClient({
               <div className="h-24 w-full animate-pulse rounded bg-panel-muted" />
             </div>
             <p className="mt-4 text-xs leading-relaxed text-ink-faint">
-              Your job reached a finished state - pulling together the
+              Your job reached a finished state — pulling together the
               results.
             </p>
             <Button
@@ -324,7 +330,7 @@ export function JobDetailClient({
             >
               <p className="text-sm font-semibold text-ink">
                 {completedCount} of {job.stageStates?.length ?? 0} stages
-                completed - {failedStage ?? "a stage"} failed
+                completed — {failedStage ?? "a stage"} failed
               </p>
               {job.error && (
                 <p className="mt-1 text-sm leading-relaxed text-ink-muted">
@@ -333,34 +339,30 @@ export function JobDetailClient({
               )}
               <p className="mt-1 text-xs leading-relaxed text-ink-faint">
                 {job.retryAllowed
-                  ? "The content that completed stays viewable below. Retrying re-runs only the failed stages."
+                  ? userCanManage
+                    ? "The content that completed stays viewable below. Retrying re-runs only the failed stages."
+                    : "The content that completed stays viewable below. A team owner or admin can retry the failed stages."
                   : "The content that completed stays viewable below. Retrying cannot help with a permanent failure."}
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                {job.retryAllowed && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void handleRetry()}
-                    disabled={retrying}
-                  >
-                    {retrying ? "Retrying…" : "Retry failed stages"}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDeleteOpen(true)}
-                  className="text-err hover:text-err"
-                >
-                  Delete job
-                </Button>
-                {actionError && (
-                  <p role="alert" className="text-sm text-err">
-                    {actionError}
-                  </p>
-                )}
-              </div>
+              {userCanManage && (job.retryAllowed || actionError) && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {job.retryAllowed && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void handleRetry()}
+                      disabled={retrying}
+                    >
+                      {retrying ? "Retrying…" : "Retry failed stages"}
+                    </Button>
+                  )}
+                  {actionError && (
+                    <p role="alert" className="text-sm text-err">
+                      {actionError}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -370,16 +372,18 @@ export function JobDetailClient({
             stages={checklist}
             progress={job.progress}
             elapsedSec={elapsedNow}
+            reviewReadOnly={!userCanManage}
             onSeek={seekTo}
             selectedTimestamp={selectedTimestamp}
             sourceSlot={sourceSlot}
           />
-          <ManageCard
-            jobId={job.id}
-            shareable
-            onDelete={() => setConfirmDeleteOpen(true)}
-            error={actionError}
-          />
+          {userCanManage && (
+            <ManageCard
+              jobId={job.id}
+              shareable
+              onDelete={() => setConfirmDeleteOpen(true)}
+            />
+          )}
         </>
       )}
 
@@ -410,40 +414,44 @@ export function JobDetailClient({
             </p>
             {job.retryAllowed ? (
               <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                The failure looks temporary - retrying the failed stages may
+                The failure looks temporary — retrying the failed stages may
                 succeed.
               </p>
             ) : (
               <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                Retrying cannot help here - the problem is with the file
-                itself. Delete this job and start a new analysis.
+                Retrying cannot help here — the problem is with the file
+                itself.{" "}
+                {userCanManage
+                  ? "Delete this job and start a new analysis."
+                  : "Contact a team owner or admin to delete this job."}
               </p>
             )}
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              {job.retryAllowed && (
+            {userCanManage && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {job.retryAllowed && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleRetry()}
+                    disabled={retrying}
+                  >
+                    {retrying ? "Retrying…" : "Retry failed stages"}
+                  </Button>
+                )}
                 <Button
-                  variant="secondary"
+                  variant="danger-ghost"
                   size="sm"
-                  onClick={() => void handleRetry()}
-                  disabled={retrying}
+                  onClick={() => setConfirmDeleteOpen(true)}
                 >
-                  {retrying ? "Retrying…" : "Retry failed stages"}
+                  Delete job
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDeleteOpen(true)}
-                className="text-err hover:text-err"
-              >
-                Delete job
-              </Button>
-              {actionError && (
-                <p role="alert" className="text-sm text-err">
-                  {actionError}
-                </p>
-              )}
-            </div>
+                {actionError && (
+                  <p role="alert" className="text-sm text-err">
+                    {actionError}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -488,25 +496,42 @@ export function JobDetailClient({
   );
 }
 
-function VideoUnavailable({
+function SourceUnavailable({
+  sourceKind,
   note,
   selectedTimestamp,
 }: {
+  sourceKind: "video" | "image" | "pdf" | "audio";
   note: string;
   selectedTimestamp: number | null;
 }) {
+  const heading =
+    sourceKind === "audio"
+      ? "Audio playback unavailable"
+      : sourceKind === "image"
+        ? "Image preview unavailable"
+        : sourceKind === "pdf"
+          ? "PDF preview unavailable"
+          : "Video playback unavailable";
   return (
-    <div className="bg-grid flex aspect-video items-center justify-center overflow-hidden bg-code-bg">
+    <div
+      className={
+        sourceKind === "audio"
+          ? "bg-grid flex items-center justify-center overflow-hidden bg-code-bg py-10"
+          : "bg-grid flex aspect-video items-center justify-center overflow-hidden bg-code-bg"
+      }
+    >
       <div className="mx-4 max-w-md text-center">
-        <span className="label-mono">Video playback unavailable</span>
+        <span className="label-mono">{heading}</span>
         <p className="mt-2 text-sm leading-relaxed text-ink-muted">
           {note}
         </p>
-        {selectedTimestamp !== null && (
-          <p className="mt-2 font-mono text-xs text-accent">
-            Selected source moment: {formatClock(selectedTimestamp)}
-          </p>
-        )}
+        {selectedTimestamp !== null &&
+          (sourceKind === "video" || sourceKind === "audio") && (
+            <p className="mt-2 font-mono text-xs text-accent">
+              Selected source moment: {formatClock(selectedTimestamp)}
+            </p>
+          )}
       </div>
     </div>
   );

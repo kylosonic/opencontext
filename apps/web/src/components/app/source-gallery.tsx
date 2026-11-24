@@ -37,16 +37,34 @@ export function SourceGallery({
 
   if (sourceKind === "pdf") {
     return (
-      <iframe
-        key={selectedIndex}
-        // PDF jobs have one SOURCE object. Citations carry a one-based page
-        // index through selectedIndex, which is mapped to the browser's
-        // standard fragment instead of requesting a nonexistent asset.
-        src={`${sourceUrl}?asset=0#page=${selectedIndex + 1}`}
-        title={`Source PDF: ${displayName}`}
-        referrerPolicy="no-referrer"
-        className="h-[70vh] w-full bg-white"
-      />
+      <div className="space-y-3 p-3">
+        <iframe
+          key={selectedIndex}
+          // PDF jobs have one SOURCE object. Citations carry a one-based page
+          // index through selectedIndex, which is mapped to the browser's
+          // standard fragment instead of requesting a nonexistent asset.
+          src={`${sourceUrl}?asset=0#page=${selectedIndex + 1}`}
+          title={`Source PDF: ${displayName}`}
+          referrerPolicy="no-referrer"
+          className="h-[70vh] w-full rounded bg-panel"
+        />
+        {assetCount > 1 && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="PDF pages">
+            {Array.from({ length: assetCount }, (_, index) => (
+              <Button
+                key={index}
+                type="button"
+                size="sm"
+                aria-pressed={selectedIndex === index}
+                variant={selectedIndex === index ? "primary" : "secondary"}
+                onClick={() => selectAsset(index)}
+              >
+                Page {index + 1}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -70,6 +88,7 @@ export function SourceGallery({
               key={index}
               type="button"
               size="sm"
+              aria-pressed={selectedIndex === index}
               variant={selectedIndex === index ? "primary" : "secondary"}
               onClick={() => selectAsset(index)}
             >
