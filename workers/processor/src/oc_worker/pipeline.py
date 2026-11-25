@@ -395,6 +395,14 @@ class Pipeline:
             frame_fps = aggregation.target_frame_fps(
                 duration, detail_level, self.settings.vision_max_frames
             )
+            sampling_kwargs = (
+                {
+                    "sampling_mode": "hybrid",
+                    "scene_threshold": self.settings.scene_change_threshold,
+                }
+                if self.settings.frame_sampling_mode == "hybrid"
+                else {}
+            )
             frames = self._timed(
                 lambda: extract_frames(
                     str(src),
@@ -402,6 +410,7 @@ class Pipeline:
                     fps=frame_fps,
                     max_frames=self.settings.vision_max_frames,
                     ffmpeg_path=self.settings.ffmpeg_path or None,
+                    **sampling_kwargs,
                 )
             )
             # These frames were already sampled evenly by FFmpeg under

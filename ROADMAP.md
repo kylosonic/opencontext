@@ -18,9 +18,10 @@ This roadmap lists work that is not complete. It is not a release promise.
 - Commission an independent penetration test using the checked-in scope and
   retest checklist.
 - Decide the billing provider, currency, tax, refund, and customer mapping;
-  activate the existing idempotent usage ledger for actual metered billing.
-- Add email invitations, workspace roles beyond owner/admin/member, and optional
-  org-level SSO.
+  activate metered invoice collection on top of the existing usage ledger and
+  `/app/usage` dashboard.
+- Add custom workspace roles beyond `OWNER`/`ADMIN`/`MEMBER`/`VIEWER` and
+  optional org-level SSO / SCIM provisioning.
 
 ## Later
 

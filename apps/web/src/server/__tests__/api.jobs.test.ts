@@ -77,7 +77,7 @@ beforeEach(async () => {
 describe("401 — anonymous callers", () => {
   it("GET /api/jobs → 401 UNAUTHORIZED envelope", async () => {
     asAnonymous();
-    const response = await apiJobsGet();
+    const response = await apiJobsGet(new Request("http://test.local/api/jobs"));
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({
       error: { code: "UNAUTHORIZED", message: "Sign in required" },
@@ -709,7 +709,7 @@ describe("direct upload + list", () => {
     await makeJob(other.id, { displayName: "theirs.mp4" });
 
     asUser(owner.id);
-    const response = await apiJobsGet();
+    const response = await apiJobsGet(new Request("http://test.local/api/jobs"));
     expect(response.status).toBe(200);
     const list = await response.json();
     expect(list.map((job: { displayName: string }) => job.displayName)).toEqual([

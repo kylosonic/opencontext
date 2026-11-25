@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { DetailLevel } from "@kylosonic/opencontext-schemas";
 import { CopyButton } from "@/components/results/copy-button";
 import { formatDate } from "@/components/results/format";
 import { Button } from "@/components/ui/button";
@@ -11,15 +12,65 @@ interface ManageCardProps {
   shareable: boolean;
   onDelete: () => void;
   error?: string | null;
+  displayName?: string;
+  onRename?: (nextName: string) => Promise<void>;
+  detailLevel?: DetailLevel;
+  onRerun?: (detailLevel: DetailLevel) => Promise<void>;
 }
 
-/** Job management panel hosting delete and optional public-share controls. */
+/** Job management panel hosting rename, re-run, delete, and public-share controls. */
 export function ManageCard({
   jobId,
   shareable,
   onDelete,
   error = null,
+  displayName,
+  onRename,
+  detailLevel,
+  onRerun,
 }: ManageCardProps) {
+  const [nameDraft, setNameDraft] = useState(displayName ?? "");
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [renameMessage, setRenameMessage] = useState<string | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  const [rerunLevel, setRerunLevel] = useState<DetailLevel>(detailLevel ?? "HIGH");
+  const [rerunBusy, setRerunBusy] = useState(false);
+  const [rerunError, setRerunError] = useState<string | null>(null);
+
+  async function submitRename(event: React.FormEvent) {
+    event.preventDefault();
+    if (!onRename || !nameDraft.trim() || renameBusy) return;
+    setRenameBusy(true);
+    setRenameError(null);
+    setRenameMessage(null);
+    try {
+      await onRename(nameDraft.trim());
+      setRenameMessage("Job name updated.");
+    } catch (caught) {
+      setRenameError(
+        caught instanceof Error ? caught.message : "Could not rename the job.",
+      );
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
+  async function submitRerun(event: React.FormEvent) {
+    event.preventDefault();
+    if (!onRerun || rerunBusy) return;
+    setRerunBusy(true);
+    setRerunError(null);
+    try {
+      await onRerun(rerunLevel);
+    } catch (caught) {
+      setRerunError(
+        caught instanceof Error ? caught.message : "Could not queue a re-run.",
+      );
+      setRerunBusy(false);
+    }
+  }
+
   return (
     <Card>
       <h2 className="text-sm font-semibold text-ink">Manage job</h2>
@@ -33,6 +84,94 @@ export function ManageCard({
           </p>
         )}
       </div>
+
+      {onRename && (
+        <div className="mt-5 border-t border-line pt-4">
+          <h3 className="text-sm font-semibold text-ink">Rename job</h3>
+          <form
+            onSubmit={(event) => void submitRename(event)}
+            className="mt-2 flex flex-wrap items-center gap-2"
+            aria-busy={renameBusy}
+          >
+            <input
+              type="text"
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              maxLength={200}
+              aria-label="Job display name"
+              disabled={renameBusy}
+              className="min-w-56 flex-1 rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-ink"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="secondary"
+              disabled={
+                renameBusy ||
+                !nameDraft.trim() ||
+                nameDraft.trim() === displayName
+              }
+            >
+              {renameBusy ? "Saving…" : "Save name"}
+            </Button>
+          </form>
+          {renameMessage && (
+            <p role="status" className="mt-2 text-xs text-ok">
+              {renameMessage}
+            </p>
+          )}
+          {renameError && (
+            <p role="alert" className="mt-2 text-xs text-err">
+              {renameError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {onRerun && (
+        <div className="mt-5 border-t border-line pt-4">
+          <h3 className="text-sm font-semibold text-ink">
+            Re-run at another detail level
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+            Creates a new queued job from the stored source media while keeping
+            this result intact.
+          </p>
+          <form
+            onSubmit={(event) => void submitRerun(event)}
+            className="mt-3 flex flex-wrap items-center gap-2"
+            aria-busy={rerunBusy}
+          >
+            <select
+              value={rerunLevel}
+              onChange={(event) =>
+                setRerunLevel(event.target.value as DetailLevel)
+              }
+              aria-label="Detail level for re-run"
+              disabled={rerunBusy}
+              className="rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-ink"
+            >
+              <option value="LOW">Low — quick overview</option>
+              <option value="MEDIUM">Medium — UI, OCR, interactions</option>
+              <option value="HIGH">High — granular detail</option>
+            </select>
+            <Button
+              type="submit"
+              size="sm"
+              variant="secondary"
+              disabled={rerunBusy}
+            >
+              {rerunBusy ? "Queueing…" : "Queue re-run"}
+            </Button>
+          </form>
+          {rerunError && (
+            <p role="alert" className="mt-2 text-xs text-err">
+              {rerunError}
+            </p>
+          )}
+        </div>
+      )}
+
       {shareable && <ShareControls jobId={jobId} />}
     </Card>
   );

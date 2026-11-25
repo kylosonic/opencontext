@@ -25,6 +25,8 @@ import { JobStatusBadge } from "./job-status";
 interface JobsListProps {
   /** Server-rendered first frame (listJobs, newest first). */
   initialJobs: JobSummary[];
+  /** Optional workspaces for filtering team vs personal jobs. */
+  workspaces?: { id: string; name: string }[];
 }
 
 type FatalState =
@@ -33,13 +35,15 @@ type FatalState =
 
 /**
  * The signed-in user's job list (jobs.md B8/B10).
- * Polls every 3s while any job is active and stops when all are terminal
- * (B3). Transient poll failures show a non-blocking reconnect notice and
- * never change the displayed list; a 401 swaps the board for the
- * sign-in prompt (identity.md B5).
+ * Supports search/filter controls and polls every 3s while any job is active.
  */
-export function JobsList({ initialJobs }: JobsListProps) {
+export function JobsList({ initialJobs, workspaces = [] }: JobsListProps) {
   const [jobs, setJobs] = useState<JobSummary[]>(initialJobs);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [workspaceFilter, setWorkspaceFilter] = useState("");
+  const [sourceKindFilter, setSourceKindFilter] = useState("");
+  const [filtering, setFiltering] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [fatal, setFatal] = useState<FatalState | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,32 +51,84 @@ export function JobsList({ initialJobs }: JobsListProps) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const pollEpochRef = useRef(0);
+  const filterMountedRef = useRef(false);
 
+  const hasFilters = Boolean(
+    query.trim() || statusFilter || workspaceFilter || sourceKindFilter,
+  );
   const hasActive = jobs.some((job) => isActiveStatus(job.status));
 
-  const refresh = useCallback(async (notify = false) => {
-    try {
-      const next = await fetchJobsList();
-      setJobs(next);
-      setFatal(null);
-      setReconnecting(false);
-    } catch (error) {
-      if (isSignInError(error)) {
-        setFatal({ kind: "signed-out" });
-        return;
-      }
-      setReconnecting(true);
-      if (notify) {
-        setFatal({
-          kind: "load-error",
-          message:
-            error instanceof ApiError
-              ? error.message
-              : "Could not load your jobs — check your connection.",
+  const refresh = useCallback(
+    async (notify = false) => {
+      try {
+        const next = await fetchJobsList({
+          q: query,
+          status: statusFilter,
+          workspaceId: workspaceFilter,
+          sourceKind: sourceKindFilter,
         });
+        setJobs(next);
+        setFatal(null);
+        setReconnecting(false);
+      } catch (error) {
+        if (isSignInError(error)) {
+          setFatal({ kind: "signed-out" });
+          return;
+        }
+        setReconnecting(true);
+        if (notify) {
+          setFatal({
+            kind: "load-error",
+            message:
+              error instanceof ApiError
+                ? error.message
+                : "Could not load your jobs — check your connection.",
+          });
+        }
       }
+    },
+    [query, statusFilter, workspaceFilter, sourceKindFilter],
+  );
+
+  // Refetch when user changes search or dropdown filters.
+  useEffect(() => {
+    if (!filterMountedRef.current) {
+      filterMountedRef.current = true;
+      return;
     }
-  }, []);
+    let cancelled = false;
+    const delayMs = query ? 200 : 0;
+    const timer = window.setTimeout(() => {
+      setFiltering(true);
+      void fetchJobsList({
+        q: query,
+        status: statusFilter,
+        workspaceId: workspaceFilter,
+        sourceKind: sourceKindFilter,
+      })
+        .then((next) => {
+          if (cancelled) return;
+          setJobs(next);
+          setFatal(null);
+          setReconnecting(false);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          if (isSignInError(error)) {
+            setFatal({ kind: "signed-out" });
+            return;
+          }
+          setReconnecting(true);
+        })
+        .finally(() => {
+          if (!cancelled) setFiltering(false);
+        });
+    }, delayMs);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, statusFilter, workspaceFilter, sourceKindFilter]);
 
   // Poll every 3 seconds while any job is active (jobs.md B3).
   useEffect(() => {
@@ -84,7 +140,12 @@ export function JobsList({ initialJobs }: JobsListProps) {
       inFlight = true;
       const epoch = pollEpochRef.current;
       try {
-        const next = await fetchJobsList();
+        const next = await fetchJobsList({
+          q: query,
+          status: statusFilter,
+          workspaceId: workspaceFilter,
+          sourceKind: sourceKindFilter,
+        });
         if (stopped || epoch !== pollEpochRef.current) return;
         setJobs(next);
         setReconnecting(false);
@@ -106,7 +167,14 @@ export function JobsList({ initialJobs }: JobsListProps) {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [hasActive, fatal]);
+  }, [hasActive, fatal, query, statusFilter, workspaceFilter, sourceKindFilter]);
+
+  function clearFilters() {
+    setQuery("");
+    setStatusFilter("");
+    setWorkspaceFilter("");
+    setSourceKindFilter("");
+  }
 
   function closeDelete(): void {
     if (deleteBusy) return;
@@ -174,7 +242,7 @@ export function JobsList({ initialJobs }: JobsListProps) {
     );
   }
 
-  if (jobs.length === 0) {
+  if (jobs.length === 0 && !hasFilters) {
     return (
       <div className="rounded-lg border border-dashed border-line bg-panel px-6 py-14 text-center">
         <h2 className="text-base font-semibold text-ink">No jobs yet</h2>
@@ -197,6 +265,67 @@ export function JobsList({ initialJobs }: JobsListProps) {
 
   return (
     <div className="space-y-4">
+      <div
+        role="search"
+        aria-label="Filter jobs"
+        aria-busy={filtering}
+        className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-panel p-3"
+      >
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search jobs by name…"
+          aria-label="Search jobs"
+          className="min-w-48 flex-1 rounded-md border border-line bg-canvas px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint"
+        />
+        {workspaces.length > 0 && (
+          <select
+            value={workspaceFilter}
+            onChange={(event) => setWorkspaceFilter(event.target.value)}
+            aria-label="Scope filter"
+            className="rounded-md border border-line bg-canvas px-2.5 py-1.5 text-sm text-ink"
+          >
+            <option value="">All scopes</option>
+            <option value="personal">Personal only</option>
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                Team: {workspace.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          aria-label="Status filter"
+          className="rounded-md border border-line bg-canvas px-2.5 py-1.5 text-sm text-ink"
+        >
+          <option value="">All statuses</option>
+          <option value="ACTIVE">In progress</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="PARTIAL">Partial</option>
+          <option value="FAILED">Failed</option>
+        </select>
+        <select
+          value={sourceKindFilter}
+          onChange={(event) => setSourceKindFilter(event.target.value)}
+          aria-label="Format filter"
+          className="rounded-md border border-line bg-canvas px-2.5 py-1.5 text-sm text-ink"
+        >
+          <option value="">All formats</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+          <option value="image">Image</option>
+          <option value="pdf">PDF</option>
+        </select>
+        {hasFilters && (
+          <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
+      </div>
+
       {reconnecting && hasActive && (
         <p
           role="status"
@@ -210,19 +339,37 @@ export function JobsList({ initialJobs }: JobsListProps) {
         </p>
       )}
 
-      <ul className="space-y-3" aria-label="Your jobs">
-        {jobs.map((job) => (
-          <li key={job.id}>
-            <JobCard
-              job={job}
-              onDelete={() => {
-                setDeleteError(null);
-                setDeleting(job);
-              }}
-            />
-          </li>
-        ))}
-      </ul>
+      {jobs.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-line bg-panel px-6 py-10 text-center">
+          <h2 className="text-base font-semibold text-ink">No matching jobs</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-ink-muted">
+            No jobs match the current search or filter settings.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-4"
+            onClick={clearFilters}
+          >
+            Clear filters
+          </Button>
+        </div>
+      ) : (
+        <ul className="space-y-3" aria-label="Your jobs">
+          {jobs.map((job) => (
+            <li key={job.id}>
+              <JobCard
+                job={job}
+                onDelete={() => {
+                  setDeleteError(null);
+                  setDeleting(job);
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-xs text-ink-faint">
         <p>
@@ -290,6 +437,14 @@ function JobCard({
             <Badge tone="neutral" mono>
               {job.detailLevel}
             </Badge>
+            {job.sourceKind && (
+              <Badge tone="neutral" mono>
+                {job.sourceKind.toUpperCase()}
+              </Badge>
+            )}
+            {job.workspaceName && (
+              <Badge tone="accent">{job.workspaceName}</Badge>
+            )}
             {failed && job.error ? (
               <span className="min-w-0 truncate text-xs text-err">
                 {job.error}

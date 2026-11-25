@@ -175,6 +175,19 @@ class Settings:
     vision_fallback_models: str = field(
         default_factory=lambda: _env("VISION_FALLBACK_MODELS", "") or ""
     )
+    frame_sampling_mode: str = field(
+        default_factory=lambda: (
+            "hybrid"
+            if (_env("FRAME_SAMPLING_MODE", "fixed") or "fixed").strip().lower()
+            == "hybrid"
+            else "fixed"
+        )
+    )
+    scene_change_threshold: float = field(
+        default_factory=lambda: max(
+            0.05, min(0.95, _env_float("SCENE_CHANGE_THRESHOLD", 0.25))
+        )
+    )
     ocr_provider: str = field(
         default_factory=lambda: _env("OCR_PROVIDER", "vision") or "vision"
     )

@@ -124,6 +124,16 @@ export class S3Storage implements Storage {
     );
   }
 
+  async copy(fromKey: string, toKey: string): Promise<void> {
+    await this.client.send(
+      new CopyObjectCommand({
+        Bucket: this.config.bucket,
+        CopySource: `${this.config.bucket}/${fromKey}`,
+        Key: toKey,
+      }),
+    );
+  }
+
   async presign(key: string, expiresInSec = 900): Promise<string | null> {
     return getSignedUrl(
       this.client,

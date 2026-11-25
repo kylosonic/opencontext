@@ -53,6 +53,7 @@ export default function PackagesPage() {
               wrap
               label="Video analysis"
               code={`opencontext analyze recording.mp4 \\
+  --sampling-mode hybrid --scene-threshold 0.25 \\
   --out context.md --json context.json`}
             />
             <CodeBlock
@@ -63,6 +64,7 @@ export default function PackagesPage() {
             />
           </div>
           <p className="mt-4">
+            <code>--sampling-mode hybrid</code> captures FFmpeg scene transitions alongside interval keyframes (controlled by <code>--scene-threshold</code> in 0.05–0.95).{" "}
             <code>--offline</code> exercises extraction and export with labeled fixture transcription and vision data. It does not claim model inference.
           </p>
         </section>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/auth";
-import { deleteJob, getJob } from "@/server/jobs";
+import { deleteJob, getJob, renameJob } from "@/server/jobs";
 import {
   errorResponse,
   rateLimitDeniedResponse,
@@ -11,10 +12,20 @@ import {
   consumeRateLimit,
   RATE_LIMITS,
 } from "@/server/security/rate-limit";
+import {
+  errorWithLimit,
+  jsonWithLimit,
+  parseValidatedJson,
+  requireSessionWithLimit,
+} from "@/server/session-guard";
 
 export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+const RenameJobSchema = z
+  .object({ displayName: z.string().trim().min(1).max(200) })
+  .strict();
 
 /**
  * GET /api/jobs/[id] — full job state (owner only; identity.md B4).
@@ -44,6 +55,50 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
       return errorResponse("FORBIDDEN", "You don't have access to this job");
     }
     return applyRateLimitHeaders(NextResponse.json(result.job), limit);
+  });
+}
+
+/** PATCH /api/jobs/[id] — rename a job display name (owner or team OWNER/ADMIN). */
+export async function PATCH(
+  request: Request,
+  context: RouteContext,
+): Promise<Response> {
+  return withErrorHandling(async () => {
+    const authState = await requireSessionWithLimit(
+      "job-update",
+      RATE_LIMITS.jobUpdate,
+      "Job updates",
+    );
+    if (authState.kind !== "OK") return authState.response;
+    const parsed = await parseValidatedJson(
+      request,
+      RenameJobSchema,
+      authState.limit,
+      "Job name must be 1–200 characters",
+      4_096,
+    );
+    if (!parsed.ok) return parsed.response;
+
+    const { id } = await context.params;
+    const result = await renameJob(id, authState.userId, parsed.data.displayName);
+    if (result.kind === "NOT_FOUND") {
+      return errorWithLimit("NOT_FOUND", "Job not found", authState.limit);
+    }
+    if (result.kind === "FORBIDDEN") {
+      return errorWithLimit(
+        "FORBIDDEN",
+        "You don't have permission to rename this job",
+        authState.limit,
+      );
+    }
+    if (result.kind === "INVALID") {
+      return errorWithLimit(
+        "VALIDATION_ERROR",
+        "Job name must be 1–200 characters",
+        authState.limit,
+      );
+    }
+    return jsonWithLimit(result.job, authState.limit);
   });
 }
 

@@ -156,4 +156,16 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
     const bytes = await readFile(path.join(dir, "jobs", "j6", "artifacts", "audio", "0.aac"));
     expect(new Uint8Array(bytes)).toEqual(TEST_BYTES);
   });
+
+  it("copy duplicates an object without removing the source and rejects missing source", async () => {
+    await storage.put("jobs/j7/source.mp4", testStream(), {
+      sizeBytes: TEST_BYTES.length,
+    });
+    await storage.copy("jobs/j7/source.mp4", "jobs/j8/source.mp4");
+    expect(await storage.get("jobs/j7/source.mp4")).toEqual(TEST_BYTES);
+    expect(await storage.get("jobs/j8/source.mp4")).toEqual(TEST_BYTES);
+    await expect(
+      storage.copy("jobs/missing/source.mp4", "jobs/j8/other.mp4"),
+    ).rejects.toThrow(/does not exist/);
+  });
 });

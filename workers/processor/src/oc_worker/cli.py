@@ -236,12 +236,21 @@ def analyze_file(
             frame_fps = aggregation.target_frame_fps(
                 duration, detail_level, settings.vision_max_frames
             )
+            sampling_kwargs = (
+                {
+                    "sampling_mode": "hybrid",
+                    "scene_threshold": settings.scene_change_threshold,
+                }
+                if settings.frame_sampling_mode == "hybrid"
+                else {}
+            )
             frames = extract_frames(
                 str(source),
                 workdir / "frames",
                 fps=frame_fps,
                 max_frames=settings.vision_max_frames,
                 ffmpeg_path=settings.ffmpeg_path or None,
+                **sampling_kwargs,
             )
             for frame in frames:
                 frame.update(
@@ -408,6 +417,16 @@ def _parser() -> argparse.ArgumentParser:
     analyze.add_argument("--tesseract-path")
     analyze.add_argument("--text-provider")
     analyze.add_argument("--ffmpeg-path")
+    analyze.add_argument(
+        "--sampling-mode",
+        choices=["fixed", "hybrid"],
+        help="Frame sampling mode: fixed cadence or adaptive hybrid scene selection.",
+    )
+    analyze.add_argument(
+        "--scene-threshold",
+        type=float,
+        help="Scene change threshold for hybrid sampling (0.05–0.95).",
+    )
     analyze.add_argument(
         "--offline",
         action="store_true",
@@ -602,6 +621,12 @@ def _cmd_analyze(args: argparse.Namespace, base: Settings) -> int:
         tesseract_path=args.tesseract_path or base.tesseract_path,
         text_provider=text_provider,
         ffmpeg_path=args.ffmpeg_path or base.ffmpeg_path,
+        frame_sampling_mode=args.sampling_mode or base.frame_sampling_mode,
+        scene_change_threshold=(
+            max(0.05, min(0.95, float(args.scene_threshold)))
+            if args.scene_threshold is not None
+            else base.scene_change_threshold
+        ),
     )
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     detail_level = DetailLevel(args.detail_level)

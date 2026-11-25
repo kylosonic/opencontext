@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { buildAlertWebhookRequest } from "./operations-webhook.mjs";
 
 const baseUrl = (process.env.OPENCONTEXT_BASE_URL ?? "").replace(/\/$/, "");
 const token = process.env.OPS_API_TOKEN?.trim();
 const receiverUrl = process.env.ALERT_WEBHOOK_URL?.trim();
+const webhookSecret = process.env.ALERT_WEBHOOK_SECRET?.trim();
 const githubSummary = process.env.GITHUB_STEP_SUMMARY;
 const outputDir = path.resolve(".artifacts/operations");
 
@@ -51,17 +53,22 @@ if (githubSummary) {
 }
 
 if (!body.healthy && receiverUrl) {
-  const notification = await fetch(receiverUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const webhookRequest = buildAlertWebhookRequest({
+    url: receiverUrl,
+    secret: webhookSecret,
+    payload: {
       event: "opencontext.operations",
       healthy: body.healthy,
       counts: body.counts,
       workers: body.workers,
       alerts: body.alerts,
       checkedAt: body.generatedAt,
-    }),
+    },
+  });
+  const notification = await fetch(webhookRequest.url, {
+    method: "POST",
+    headers: webhookRequest.headers,
+    body: webhookRequest.body,
     signal: AbortSignal.timeout(15_000),
   });
   if (!notification.ok) {

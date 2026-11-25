@@ -7,7 +7,7 @@ import {
 } from "@/server/jobs";
 import { storage } from "@/server/storage";
 import { sanitizeDisplayName, validateStoredMedia } from "@/server/validation/upload";
-import { canAccessWorkspace } from "@/server/workspaces";
+import { canContributeToWorkspace } from "@/server/workspaces";
 import { getUploadIntent } from "./intents";
 
 class UploadClaimConflict extends Error {}
@@ -152,7 +152,8 @@ export async function completeUpload(
   let workspaceAllowed = true;
   try {
     workspaceAllowed =
-      !intent.workspaceId || (await canAccessWorkspace(intent.workspaceId, userId));
+      !intent.workspaceId ||
+      (await canContributeToWorkspace(intent.workspaceId, userId));
   } catch (error) {
     await releaseUploadClaims([intent.id]).catch(() => undefined);
     throw error;
@@ -221,7 +222,7 @@ export async function completeUploadBatch(
   if (ordered.some((intent) => intent.expiresAt.getTime() <= now)) {
     return { kind: "EXPIRED" };
   }
-  if (workspaceId && !(await canAccessWorkspace(workspaceId, userId))) {
+  if (workspaceId && !(await canContributeToWorkspace(workspaceId, userId))) {
     return { kind: "FORBIDDEN" };
   }
   if (
@@ -289,7 +290,7 @@ export async function completeUploadBatch(
       : `${ordered.length} images — ${firstName}`;
   let workspaceAllowed = true;
   try {
-    workspaceAllowed = !workspaceId || (await canAccessWorkspace(workspaceId, userId));
+    workspaceAllowed = !workspaceId || (await canContributeToWorkspace(workspaceId, userId));
   } catch (error) {
     await releaseUploadClaims(uploadIds).catch(() => undefined);
     throw error;

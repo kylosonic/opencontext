@@ -14,7 +14,10 @@ export type GetJobResult =
 export async function getJob(jobId: string, userId: string): Promise<GetJobResult> {
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    include: { media: { where: { kind: "SOURCE" } } },
+    include: {
+      media: { where: { kind: "SOURCE" } },
+      workspace: { select: { name: true } },
+    },
   });
   if (!job) {
     return { kind: "NOT_FOUND" };
@@ -28,7 +31,7 @@ export async function getJob(jobId: string, userId: string): Promise<GetJobResul
   return {
     kind: "OK",
     canManage,
-    job: jobToDetail(job, job.media, canManage),
+    job: jobToDetail(job, job.media, canManage, job.workspace?.name ?? null),
   };
 }
 

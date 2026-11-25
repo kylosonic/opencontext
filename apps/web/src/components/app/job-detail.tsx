@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { JobDetail } from "@kylosonic/opencontext-schemas";
+import type { DetailLevel, JobDetail } from "@kylosonic/opencontext-schemas";
 import { formatClock } from "@/components/results/format";
 import { JobHeader } from "@/components/results/job-header";
 import { ResultViewer } from "@/components/results/result-viewer";
@@ -24,6 +24,8 @@ import {
 import {
   ApiError,
   deleteJobRequest,
+  patchJobRename,
+  postJobRerun,
   postJobRetry,
 } from "./api-client";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -191,6 +193,16 @@ export function JobDetailClient({
     } finally {
       setDeleteBusy(false);
     }
+  };
+
+  const handleRename = async (nextName: string) => {
+    const updated = await patchJobRename(job.id, nextName);
+    setJob(updated);
+  };
+
+  const handleRerun = async (detailLevel: DetailLevel) => {
+    const created = await postJobRerun(job.id, detailLevel);
+    router.push(`/app/jobs/${encodeURIComponent(created.id)}`);
   };
 
   const failedStage = job.errorStage ? stageDisplayName(job.errorStage) : null;
@@ -381,6 +393,10 @@ export function JobDetailClient({
             <ManageCard
               jobId={job.id}
               shareable
+              displayName={job.displayName}
+              onRename={handleRename}
+              detailLevel={job.detailLevel}
+              onRerun={handleRerun}
               onDelete={() => setConfirmDeleteOpen(true)}
             />
           )}

@@ -78,7 +78,7 @@ HF_HOME=/models`}
             A job that exceeds <code>WORKER_JOB_TIMEOUT_SECONDS</code> (900 seconds by default) is failed with a specific timeout. Set the container host&apos;s CPU and memory quotas to match the provider configuration; those quotas remain host policy.
           </p>
           <p className="mt-3">
-            An idle worker reports a separate process heartbeat. The authenticated <code>/api/ops/alerts</code> check alerts when work is waiting without a recent worker, when the oldest queue entry or a running job crosses its threshold, and when a job recently ended as failed or partial. Set <code>OPS_API_TOKEN</code> on the web app and checker; the alert receiver gets aggregate state without media, prompts, or credentials.
+            An idle worker reports a separate process heartbeat. The authenticated <code>/api/ops/alerts</code> check alerts when work is waiting without a recent worker, when the oldest queue entry or a running job crosses its threshold, and when a job recently ended as failed or partial. Set <code>OPS_API_TOKEN</code> on the web app and checker; set <code>ALERT_WEBHOOK_URL</code> and optional <code>ALERT_WEBHOOK_SECRET</code> on the checker host to send HMAC-SHA256 signed JSON webhook notifications without media, prompts, or credentials.
           </p>
         </section>
 
@@ -129,6 +129,8 @@ HF_HOME=/models`}
 TRANSCRIPTION_MODEL=base
 VISION_PROVIDER=openai_compatible
 VISION_MODEL=<vision-capable model>
+FRAME_SAMPLING_MODE=hybrid
+SCENE_CHANGE_THRESHOLD=0.25
 OCR_PROVIDER=vision
 TEXT_PROVIDER=template
 OPENAI_BASE_URL=<OpenAI-compatible base URL>

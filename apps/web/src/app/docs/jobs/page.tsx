@@ -119,6 +119,27 @@ export default function JobsPage() {
           </p>
         </section>
 
+        <section aria-labelledby="manage-title">
+          <h2 id="manage-title" className="text-xl font-semibold text-ink">
+            Rename, re-run, filter, and track usage
+          </h2>
+          <p className="mt-3">
+            Job owners and team admins can rename finished or active jobs (
+            <code>PATCH /api/jobs/[id]</code>) and queue a fresh analysis at a
+            different detail level from stored source media without re-uploading (
+            <code>POST /api/jobs/[id]/rerun</code>). You can filter{" "}
+            <Link href="/app/jobs" className="text-accent hover:underline">
+              Your jobs
+            </Link>{" "}
+            by title, scope, status, or format, and review completed counts and
+            recorded usage on{" "}
+            <Link href="/app/usage" className="text-accent hover:underline">
+              Usage
+            </Link>
+            .
+          </p>
+        </section>
+
         <section aria-labelledby="delete-title">
           <h2 id="delete-title" className="text-xl font-semibold text-ink">
             Retention and deletion

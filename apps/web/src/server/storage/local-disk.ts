@@ -175,6 +175,22 @@ export class LocalDiskStorage implements Storage {
     }
   }
 
+  async copy(fromKey: string, toKey: string): Promise<void> {
+    await this.ensureParent(toKey);
+    const from = this.resolve(fromKey);
+    const to = this.resolve(toKey);
+    await this.assertNoSymlinks(from);
+    await this.assertNoSymlinks(to);
+    try {
+      await copyFile(from, to);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new Error(`Cannot copy ${fromKey}: source object does not exist`);
+      }
+      throw error;
+    }
+  }
+
   async presign(_key: string, _expiresInSec?: number): Promise<string | null> {
     void _key;
     void _expiresInSec;

@@ -51,6 +51,9 @@ export const config = {
     "/api/jobs/:path*",
     "/api/uploads/:path*",
     "/api/workspaces/:path*",
+    "/api/invites/:path*",
     "/api/imports/:path*",
+    "/api/usage",
+    "/api/usage/:path*",
   ],
 };

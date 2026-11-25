@@ -183,6 +183,17 @@ describe("S3Storage (mocked AWS SDK)", () => {
     expect(del.Key).toBe("incoming/x");
   });
 
+  it("copy copies without deleting the source object", async () => {
+    const storage = new S3Storage(config);
+    state.sendMock.mockResolvedValue({});
+    await storage.copy("jobs/j1/source.mp4", "jobs/j2/source.mp4");
+    expect(state.sendMock).toHaveBeenCalledTimes(1);
+    const copy = lastCommand("CopyObjectCommand");
+    expect(copy.Bucket).toBe("oc-media");
+    expect(copy.CopySource).toBe("oc-media/jobs/j1/source.mp4");
+    expect(copy.Key).toBe("jobs/j2/source.mp4");
+  });
+
   it("deleteMany sends a multi-object delete with all keys", async () => {
     const storage = new S3Storage(config);
     state.sendMock.mockResolvedValue({});

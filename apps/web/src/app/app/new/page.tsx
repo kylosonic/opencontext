@@ -28,7 +28,13 @@ export default async function NewAnalysisPage() {
   if (!session?.user?.id) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent("/app/new")}`);
   }
-  const workspaces = await listWorkspaces(session.user.id);
+  const workspaces = (await listWorkspaces(session.user.id)).filter(
+    (
+      workspace,
+    ): workspace is typeof workspace & {
+      role: "OWNER" | "ADMIN" | "MEMBER";
+    } => workspace.role !== "VIEWER",
+  );
 
   return (
     <>
@@ -55,6 +61,9 @@ export default async function NewAnalysisPage() {
                 </ButtonLink>
                 <ButtonLink href="/app/teams" variant="ghost" size="sm">
                   Teams
+                </ButtonLink>
+                <ButtonLink href="/app/usage" variant="ghost" size="sm">
+                  Usage
                 </ButtonLink>
               </div>
             </div>

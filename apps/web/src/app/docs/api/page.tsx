@@ -35,8 +35,17 @@ const ENDPOINTS = [
     "/api/imports/url",
     "Validate and enqueue a job from a public HTTP(S) media URL.",
   ],
-  ["GET", "/api/jobs", "List accessible personal or team jobs, newest first."],
+  [
+    "GET",
+    "/api/jobs",
+    "List accessible personal or team jobs, newest first (filter via q, status, workspaceId, sourceKind).",
+  ],
   ["GET", "/api/jobs/[id]", "Read a job's current state and stage progress."],
+  [
+    "PATCH",
+    "/api/jobs/[id]",
+    "Rename a job's display name (owner or team OWNER/ADMIN).",
+  ],
   [
     "GET",
     "/api/jobs/[id]/events",
@@ -46,6 +55,11 @@ const ENDPOINTS = [
     "POST",
     "/api/jobs/[id]/retry",
     "Retry an incomplete or transiently failed job.",
+  ],
+  [
+    "POST",
+    "/api/jobs/[id]/rerun",
+    "Clone stored source media into a new queued job at a chosen detail level.",
   ],
   [
     "DELETE",
@@ -83,9 +97,39 @@ const ENDPOINTS = [
     "List team workspaces or create a new team workspace.",
   ],
   [
+    "PATCH / DELETE",
+    "/api/workspaces/[id]",
+    "Rename a team workspace (owners/admins) or delete it (owner only).",
+  ],
+  [
     "GET / POST",
     "/api/workspaces/[id]/members",
-    "List team members or add an existing OpenContext user as ADMIN or MEMBER (owners and admins only).",
+    "List team members or add an existing OpenContext user as ADMIN, MEMBER, or VIEWER.",
+  ],
+  [
+    "PATCH / DELETE",
+    "/api/workspaces/[id]/members/[userId]",
+    "Change a teammate's role or remove a member / leave a team.",
+  ],
+  [
+    "GET / POST",
+    "/api/workspaces/[id]/invites",
+    "List pending invitations or create an expiring single-use email invite link.",
+  ],
+  [
+    "DELETE",
+    "/api/workspaces/[id]/invites/[inviteId]",
+    "Revoke a pending team invitation.",
+  ],
+  [
+    "GET / POST",
+    "/api/invites/[token]",
+    "Inspect an invitation or accept it for the signed-in verified email.",
+  ],
+  [
+    "GET",
+    "/api/usage",
+    "Read completed analysis usage counts, duration, and recorded costs (workspaceId, days).",
   ],
   [
     "POST",

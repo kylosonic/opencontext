@@ -14,6 +14,7 @@ export function jobToDetail(
   job: Job,
   sourceMedia: Media[] = [],
   canManage?: boolean,
+  workspaceName?: string | null,
 ): JobDetail {
   const stageStates = (job.stageStates as StageState[]) ?? [];
   const sourceExt = job.sourceExt ?? "";
@@ -32,6 +33,8 @@ export function jobToDetail(
     retryCount: job.retryCount,
     retryAllowed,
     ...(canManage !== undefined ? { canManage } : {}),
+    workspaceId: job.workspaceId ?? null,
+    ...(workspaceName !== undefined ? { workspaceName } : {}),
     stageStates,
     source: job.sourceKey
       ? {
@@ -80,7 +83,11 @@ export function jobToDetail(
 }
 
 /** Job → list card payload (GET /api/jobs, jobs.md B8). */
-export function jobToSummary(job: Job, canManage?: boolean): JobSummary {
+export function jobToSummary(
+  job: Job,
+  canManage?: boolean,
+  workspaceName?: string | null,
+): JobSummary {
   const currentStage = (STAGE_NAMES as readonly string[]).includes(job.status)
     ? (job.status as JobSummary["currentStage"])
     : null;
@@ -93,6 +100,11 @@ export function jobToSummary(job: Job, canManage?: boolean): JobSummary {
     currentStage,
     error: job.error,
     ...(canManage !== undefined ? { canManage } : {}),
+    workspaceId: job.workspaceId ?? null,
+    ...(workspaceName !== undefined ? { workspaceName } : {}),
+    ...(job.sourceExt
+      ? { sourceKind: sourceKindForExtension(job.sourceExt) }
+      : {}),
     createdAt: job.createdAt.toISOString(),
     completedAt: job.completedAt ? job.completedAt.toISOString() : null,
     expiresAt: computeExpiresAt(job.completedAt, job.createdAt).toISOString(),

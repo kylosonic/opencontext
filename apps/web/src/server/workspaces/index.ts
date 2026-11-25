@@ -4,7 +4,13 @@ import { prisma } from "@/server/db/prisma";
 const WORKSPACE_NAME_MAX = 80;
 const MEMBER_IDENTIFIER_MAX = 255;
 
-export const WORKSPACE_ROLES = ["ADMIN", "MEMBER"] as const;
+export const WORKSPACE_ROLES = ["ADMIN", "MEMBER", "VIEWER"] as const;
+export const WORKSPACE_ALL_ROLES = [
+  "OWNER",
+  "ADMIN",
+  "MEMBER",
+  "VIEWER",
+] as const;
 
 export type WorkspaceSummary = {
   id: string;
@@ -13,6 +19,12 @@ export type WorkspaceSummary = {
   memberCount: number;
   jobCount: number;
 };
+
+function normalizeWorkspaceName(name: string): string | null {
+  const normalized = name.trim().replace(/\s+/g, " ");
+  if (!normalized || normalized.length > WORKSPACE_NAME_MAX) return null;
+  return normalized;
+}
 
 export async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
   const memberships = await prisma.workspaceMember.findMany({
@@ -53,9 +65,18 @@ export async function canAccessWorkspace(
   return (await workspaceRole(workspaceId, userId)) !== null;
 }
 
+/** Whether a user may upload, import, or re-run jobs inside a workspace. */
+export async function canContributeToWorkspace(
+  workspaceId: string,
+  userId: string,
+): Promise<boolean> {
+  const role = await workspaceRole(workspaceId, userId);
+  return role === "OWNER" || role === "ADMIN" || role === "MEMBER";
+}
+
 export async function createWorkspace(userId: string, name: string) {
-  const normalized = name.trim().replace(/\s+/g, " ");
-  if (!normalized || normalized.length > WORKSPACE_NAME_MAX) {
+  const normalized = normalizeWorkspaceName(name);
+  if (!normalized) {
     return { kind: "INVALID" as const };
   }
   return {
@@ -68,6 +89,57 @@ export async function createWorkspace(userId: string, name: string) {
       include: { _count: { select: { members: true, jobs: true } } },
     }),
   };
+}
+
+export type RenameWorkspaceResult =
+  | { kind: "INVALID" }
+  | { kind: "NOT_FOUND" }
+  | { kind: "FORBIDDEN" }
+  | { kind: "OK"; workspace: WorkspaceSummary };
+
+export async function renameWorkspace(
+  workspaceId: string,
+  actorId: string,
+  name: string,
+): Promise<RenameWorkspaceResult> {
+  const normalized = normalizeWorkspaceName(name);
+  if (!normalized) return { kind: "INVALID" };
+  const actorRole = await workspaceRole(workspaceId, actorId);
+  if (!actorRole) return { kind: "NOT_FOUND" };
+  if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+    return { kind: "FORBIDDEN" };
+  }
+  const updated = await prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { name: normalized },
+    include: { _count: { select: { members: true, jobs: true } } },
+  });
+  return {
+    kind: "OK",
+    workspace: {
+      id: updated.id,
+      name: updated.name,
+      role: actorRole,
+      memberCount: updated._count.members,
+      jobCount: updated._count.jobs,
+    },
+  };
+}
+
+export type DeleteWorkspaceResult =
+  | { kind: "NOT_FOUND" }
+  | { kind: "FORBIDDEN" }
+  | { kind: "OK" };
+
+export async function deleteWorkspace(
+  workspaceId: string,
+  actorId: string,
+): Promise<DeleteWorkspaceResult> {
+  const actorRole = await workspaceRole(workspaceId, actorId);
+  if (!actorRole) return { kind: "NOT_FOUND" };
+  if (actorRole !== "OWNER") return { kind: "FORBIDDEN" };
+  await prisma.workspace.delete({ where: { id: workspaceId } });
+  return { kind: "OK" };
 }
 
 export type AddMemberResult =
@@ -86,7 +158,9 @@ export async function addWorkspaceMember(
 ): Promise<AddMemberResult> {
   const actorRole = await workspaceRole(workspaceId, actorId);
   if (!actorRole) return { kind: "NOT_FOUND" as const };
-  if (actorRole === "MEMBER") return { kind: "FORBIDDEN" as const };
+  if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+    return { kind: "FORBIDDEN" as const };
+  }
   const normalized = identifier.trim();
   if (!normalized || normalized.length > MEMBER_IDENTIFIER_MAX) {
     return { kind: "USER_NOT_FOUND" };
@@ -104,6 +178,93 @@ export async function addWorkspaceMember(
     data: { workspaceId, userId: user.id, role },
   });
   return { kind: "OK", user };
+}
+
+export type UpdateMemberRoleResult =
+  | { kind: "NOT_FOUND" }
+  | { kind: "FORBIDDEN" }
+  | { kind: "LAST_OWNER" }
+  | { kind: "OK"; userId: string; role: WorkspaceRole };
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  actorId: string,
+  targetUserId: string,
+  nextRole: WorkspaceRole,
+): Promise<UpdateMemberRoleResult> {
+  const actorRole = await workspaceRole(workspaceId, actorId);
+  if (!actorRole) return { kind: "NOT_FOUND" };
+  if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+    return { kind: "FORBIDDEN" };
+  }
+  const targetRole = await workspaceRole(workspaceId, targetUserId);
+  if (!targetRole) return { kind: "NOT_FOUND" };
+  if (
+    actorRole === "ADMIN" &&
+    (targetRole === "OWNER" || targetRole === "ADMIN" || nextRole === "OWNER")
+  ) {
+    return { kind: "FORBIDDEN" };
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (targetRole === "OWNER" && nextRole !== "OWNER") {
+      const owners = await tx.workspaceMember.count({
+        where: { workspaceId, role: "OWNER" },
+      });
+      if (owners <= 1) return { kind: "LAST_OWNER" as const };
+    }
+    const updated = await tx.workspaceMember.update({
+      where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+      data: { role: nextRole },
+    });
+    return {
+      kind: "OK" as const,
+      userId: updated.userId,
+      role: updated.role,
+    };
+  });
+}
+
+export type RemoveMemberResult =
+  | { kind: "NOT_FOUND" }
+  | { kind: "FORBIDDEN" }
+  | { kind: "LAST_OWNER" }
+  | { kind: "OK" };
+
+export async function removeWorkspaceMember(
+  workspaceId: string,
+  actorId: string,
+  targetUserId: string,
+): Promise<RemoveMemberResult> {
+  const actorRole = await workspaceRole(workspaceId, actorId);
+  if (!actorRole) return { kind: "NOT_FOUND" };
+  const targetRole = await workspaceRole(workspaceId, targetUserId);
+  if (!targetRole) return { kind: "NOT_FOUND" };
+
+  if (actorId !== targetUserId) {
+    if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+      return { kind: "FORBIDDEN" };
+    }
+    if (
+      actorRole === "ADMIN" &&
+      (targetRole === "OWNER" || targetRole === "ADMIN")
+    ) {
+      return { kind: "FORBIDDEN" };
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (targetRole === "OWNER") {
+      const owners = await tx.workspaceMember.count({
+        where: { workspaceId, role: "OWNER" },
+      });
+      if (owners <= 1) return { kind: "LAST_OWNER" as const };
+    }
+    await tx.workspaceMember.delete({
+      where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+    });
+    return { kind: "OK" as const };
+  });
 }
 
 export async function listWorkspaceMembers(workspaceId: string, userId: string) {
@@ -125,3 +286,5 @@ export async function canManageJob(
   const role = await workspaceRole(job.workspaceId, userId);
   return role === "OWNER" || role === "ADMIN";
 }
+
+export * from "./invites";

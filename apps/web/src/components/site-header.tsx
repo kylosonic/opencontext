@@ -15,6 +15,7 @@ const PUBLIC_LINKS = [
 const APP_LINKS = [
   { href: "/app/jobs", label: "Jobs", matchPrefix: "/app/jobs" },
   { href: "/app/teams", label: "Teams", matchPrefix: "/app/teams" },
+  { href: "/app/usage", label: "Usage", matchPrefix: "/app/usage" },
 ];
 
 /**

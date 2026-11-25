@@ -30,8 +30,11 @@ export default function SecurityPage() {
             The hosted app signs in with GitHub. User job routes use the
             signed-in session and return resources owned by the current user or
             accessible through their team workspace memberships (Owners, Admins,
-            and Members — owners and admins can add members and manage any team
-            job, while members can view team jobs and manage jobs they created).
+            Members, and Viewers — owners and admins manage memberships and all
+            team jobs, members upload and manage their own jobs, and viewers have
+            read-only access). Email invitations store SHA-256 token hashes with a
+            configurable TTL (<code>WORKSPACE_INVITE_TTL_HOURS</code>, default 7
+            days) and accept only when the signed-in verified email matches.
             Explicit expiring public share links grant read-only snapshot access
             without sign-in until revoked.
           </p>
@@ -135,6 +138,12 @@ export default function SecurityPage() {
               Public share links grant read-only snapshot access to anyone with
               the token URL until the link expires or is revoked by an owner or
               team admin.
+            </li>
+            <li>
+              Operations alert webhooks can be authenticated using optional HMAC-SHA256
+              signatures (<code>X-OpenContext-Timestamp</code> and{" "}
+              <code>X-OpenContext-Signature</code> via{" "}
+              <code>ALERT_WEBHOOK_SECRET</code>).
             </li>
           </ul>
           <p className="mt-4">

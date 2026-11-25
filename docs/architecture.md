@@ -10,16 +10,16 @@ application, shared TypeScript packages, and Python media worker.
 | `packages/schemas` | Shared Zod schemas (`JobDetail`, `UPLOAD_LIMITS`, `ResultPayload`, stage payloads, error catalog) published as `@kylosonic/opencontext-schemas`. |
 | `packages/config` | Environment parsing, storage selection, and auth safety rules (`@opencontext/config`). |
 | `apps/web/src/lib` | Isomorphic web utilities, including canonical MIME, extension, and size-limit tables (`media-formats.ts`). |
-| `apps/web/src/app` | Next.js App Router pages and HTTP API route handlers (`api/uploads`, `api/imports`, `api/jobs`, `api/workspaces`, `api/worker`, `share/[token]`). |
-| `apps/web/src/components/app` | Interactive app shells: upload form (`new-job-form.tsx`, `upload-transfer.ts`), job detail (`job-detail.tsx`, `use-job-live-updates.ts`, `job-share-controls.tsx`), workspace switcher, URL import. |
+| `apps/web/src/app` | Next.js App Router pages and HTTP API route handlers (`api/uploads`, `api/imports`, `api/jobs`, `api/workspaces`, `api/invites`, `api/usage`, `api/worker`, `share/[token]`). |
+| `apps/web/src/components/app` | Interactive app shells: upload form (`new-job-form.tsx`, `upload-transfer.ts`), jobs list filters (`jobs-list.tsx`), job detail (`job-detail.tsx`, `use-job-live-updates.ts`, `job-share-controls.tsx`), workspace governance/invites (`workspace-manager.tsx`, `accept-invite-card.tsx`), usage dashboard (`usage-dashboard.tsx`), URL import. |
 | `apps/web/src/components/results` | Structured context viewer, timeline/transcript/OCR/evidence panels, and Markdown/JSON export downloads. |
 | `apps/web/src/server/db` | Prisma client wiring (SQLite local/dev + PostgreSQL production adapter). |
 | `apps/web/src/server/uploads` | Upload intent lifecycle (`intents.ts`) and stored-media validation/finalization (`complete.ts`). |
 | `apps/web/src/server/imports` | Public URL SSRF validation (`ssrf.ts`) and bounded HTTP download pipeline (`remote.ts`). |
-| `apps/web/src/server/jobs` | Job CRUD, serialization, retry/delete lifecycle, retention policies, public share tokens, and shared source asset streaming (`sourceStream.ts`). |
+| `apps/web/src/server/jobs` | Job CRUD, filtered listing, rename/re-run, serialization, retry/delete lifecycle, retention policies, public share tokens, and shared source asset streaming (`sourceStream.ts`). |
 | `apps/web/src/server/queue` | Database-leased job queue claim, completion, failure classification, lease renewal, and retention sweeps. |
-| `apps/web/src/server/workspaces` | Team workspaces, membership RBAC (`OWNER` / `ADMIN` / `MEMBER`), and shared job access checks. |
-| `apps/web/src/server/billing` | Usage ledger recording (`UsageRecord`) and reconciliation helpers. |
+| `apps/web/src/server/workspaces` | Team workspaces, membership RBAC (`OWNER` / `ADMIN` / `MEMBER` / `VIEWER`), governance, hashed email invitations (`invites.ts`), and shared job access checks. |
+| `apps/web/src/server/billing` | Usage ledger recording (`UsageRecord`), reconciliation helpers, and self-service usage aggregation (`usageSummaryForUser`). |
 | `apps/web/src/server/security` | Rate limiting (`rate-limit.ts`), CSRF origin guards, and request IP/header extraction. |
 | `apps/web/src/server/storage` | Pluggable local-disk and S3 object storage backends. |
 | `workers/processor/src/oc_worker` | Python worker, standalone `opencontext` CLI, MCP server, and evaluation harness. |

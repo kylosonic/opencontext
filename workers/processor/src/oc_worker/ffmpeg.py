@@ -30,6 +30,7 @@ _DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
 _RESOLUTION_RE = re.compile(r"(?<!\w)([1-9]\d{0,5})x([1-9]\d{0,5})(?!\w)")
 _MAX_SANE_DIMENSION = 100_000
 _STREAM_RE = re.compile(r"Stream #\d+:\d+")
+_SHOWINFO_PTS_RE = re.compile(r"pts_time:\s*([0-9]+(?:\.[0-9]+)?)")
 
 FFMPEG_TIMEOUT_SECONDS = 300
 MAX_MEDIA_DURATION_SECONDS = 1800
@@ -222,24 +223,36 @@ def extract_audio(
     raise TransientFailure(f"audio extraction failed: {proc.stderr.strip()[-300:]}")
 
 
-def extract_frames(
-    src: str | Path,
-    outdir: str | Path,
-    *,
-    fps: float = 1.0,
-    max_width: int = 1280,
-    max_frames: int = 1800,
-    ffmpeg_path: str | None = None,
-    max_duration_seconds: float = MAX_MEDIA_DURATION_SECONDS,
-) -> list[dict[str, Any]]:
-    """Extract JPEG frames at ``fps`` (max width ``max_width``).
+def clamp_scene_threshold(value: float) -> float:
+    return max(0.05, min(0.95, float(value)))
 
-    Returns a list of ``{timestamp, path}`` entries, timestamped by
-    frame index (timestamp = index / fps), sorted chronologically.
-    """
-    ffmpeg = _ffmpeg_path(ffmpeg_path)
-    directory = Path(outdir)
-    directory.mkdir(parents=True, exist_ok=True)
+
+def build_hybrid_filter(fps: float, max_width: int, scene_threshold: float) -> str:
+    """Build an FFmpeg select+showinfo filter capturing scene changes or fixed intervals."""
+    scale = _bounded_scale(max_width)
+    interval = round(1.0 / max(float(fps), 1e-4), 4)
+    threshold = round(clamp_scene_threshold(scene_threshold), 4)
+    return (
+        f"select='eq(n,0)+gt(scene,{threshold})+isnan(prev_selected_t)"
+        f"+gte(t-prev_selected_t,{interval})',showinfo,{scale}"
+    )
+
+
+def parse_showinfo_timestamps(stderr: str) -> list[float]:
+    """Extract ordered pts_time timestamps logged by FFmpeg's showinfo filter."""
+    return [float(match.group(1)) for match in _SHOWINFO_PTS_RE.finditer(stderr)]
+
+
+def _extract_fixed_frames(
+    src: str | Path,
+    directory: Path,
+    *,
+    fps: float,
+    max_width: int,
+    max_frames: int,
+    ffmpeg: str,
+    max_duration_seconds: float,
+) -> list[dict[str, Any]]:
     pattern = directory / "frame_%06d.jpg"
     for stale in directory.glob("frame_*.jpg"):
         stale.unlink(missing_ok=True)
@@ -269,6 +282,88 @@ def extract_frames(
     files = sorted(directory.glob("frame_*.jpg"))
     return [
         {"timestamp": round(float(index) / float(fps), 3), "path": file_path}
+        for index, file_path in enumerate(files)
+    ]
+
+
+def extract_frames(
+    src: str | Path,
+    outdir: str | Path,
+    *,
+    fps: float = 1.0,
+    max_width: int = 1280,
+    max_frames: int = 1800,
+    ffmpeg_path: str | None = None,
+    max_duration_seconds: float = MAX_MEDIA_DURATION_SECONDS,
+    sampling_mode: str = "fixed",
+    scene_threshold: float = 0.25,
+) -> list[dict[str, Any]]:
+    """Extract JPEG frames at fixed ``fps`` or adaptive ``hybrid`` scene intervals.
+
+    Returns a list of ``{timestamp, path}`` entries sorted chronologically.
+    """
+    ffmpeg = _ffmpeg_path(ffmpeg_path)
+    directory = Path(outdir)
+    directory.mkdir(parents=True, exist_ok=True)
+    if sampling_mode != "hybrid":
+        return _extract_fixed_frames(
+            src,
+            directory,
+            fps=fps,
+            max_width=max_width,
+            max_frames=max_frames,
+            ffmpeg=ffmpeg,
+            max_duration_seconds=max_duration_seconds,
+        )
+
+    pattern = directory / "frame_%06d.jpg"
+    for stale in directory.glob("frame_*.jpg"):
+        stale.unlink(missing_ok=True)
+    proc = _run(
+        [
+            ffmpeg,
+            "-y",
+            "-nostdin",
+            "-protocol_whitelist",
+            "file,pipe",
+            "-i",
+            str(src),
+            "-t",
+            f"{max_duration_seconds:g}",
+            "-vf",
+            build_hybrid_filter(fps, max_width, scene_threshold),
+            "-fps_mode",
+            "vfr",
+            "-frames:v",
+            str(max(1, max_frames)),
+            "-q:v",
+            "3",
+            str(pattern),
+        ]
+    )
+    if proc.returncode != 0:
+        raise TransientFailure(f"frame extraction failed: {proc.stderr.strip()[-300:]}")
+    files = sorted(directory.glob("frame_*.jpg"))
+    if not files:
+        return _extract_fixed_frames(
+            src,
+            directory,
+            fps=fps,
+            max_width=max_width,
+            max_frames=max_frames,
+            ffmpeg=ffmpeg,
+            max_duration_seconds=max_duration_seconds,
+        )
+    pts = parse_showinfo_timestamps(proc.stderr)
+    safe_fps = max(float(fps), 1e-4)
+    return [
+        {
+            "timestamp": round(
+                pts[index] if index < len(pts) else float(index) / safe_fps,
+                3,
+            ),
+            "path": file_path,
+        }
         for index, file_path in enumerate(files)
     ]
 

@@ -6,7 +6,7 @@ import { extensionForMime } from "@/lib/media-formats";
 import { prisma } from "@/server/db/prisma";
 import { completeUpload, createUploadIntent, getUploadIntent } from "@/server/uploads";
 import { storage } from "@/server/storage";
-import { canAccessWorkspace } from "@/server/workspaces";
+import { canContributeToWorkspace } from "@/server/workspaces";
 import { validateUpload } from "@/server/validation/upload";
 import { isPrivateIp, RemoteImportError, resolvePublicHost } from "./ssrf";
 
@@ -210,9 +210,12 @@ export type UrlImportInput = {
 export async function importRemoteUrl(input: UrlImportInput): Promise<{ jobId: string }> {
   if (
     input.workspaceId &&
-    !(await canAccessWorkspace(input.workspaceId, input.userId))
+    !(await canContributeToWorkspace(input.workspaceId, input.userId))
   ) {
-    throw new RemoteImportError("FORBIDDEN", "You don't have access to that team");
+    throw new RemoteImportError(
+      "FORBIDDEN",
+      "You don't have permission to import into that team",
+    );
   }
   const opened = await openPublicUrl(input.url);
   const { response, finalUrl } = opened;

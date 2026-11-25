@@ -49,6 +49,12 @@ export interface Storage {
   move(fromKey: string, toKey: string, options?: MoveOptions): Promise<void>;
 
   /**
+   * Copy `fromKey` to `toKey` while leaving the source object intact.
+   * Used when re-running a job with isolated source media.
+   */
+  copy(fromKey: string, toKey: string): Promise<void>;
+
+  /**
    * Produce a directly-fetchable URI for a key. S3 returns a presigned
    * URL; local disk returns null (callers use GET /api/worker/media/[key]
    * with the worker token instead).

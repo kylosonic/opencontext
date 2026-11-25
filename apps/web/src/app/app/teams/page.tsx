@@ -43,12 +43,15 @@ export default async function TeamsPage() {
                 <ButtonLink href="/app/jobs" variant="ghost" size="sm">
                   Your jobs
                 </ButtonLink>
+                <ButtonLink href="/app/usage" variant="ghost" size="sm">
+                  Usage
+                </ButtonLink>
                 <ButtonLink href="/app/new" size="sm">
                   New analysis
                 </ButtonLink>
               </div>
             </div>
-            <WorkspaceManager initial={workspaces} />
+            <WorkspaceManager initial={workspaces} currentUserId={session.user.id} />
             <div className="mt-10 flex items-center justify-between border-t border-line pt-4">
               <p className="text-xs text-ink-faint">
                 Completed jobs are kept for 14 days; unfinished jobs for 7.

@@ -68,6 +68,7 @@ enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
+  VIEWER
 }
 
 enum UsageKind {
@@ -99,6 +100,7 @@ model User {
   jobs          Job[]
   uploadIntents UploadIntent[]
   memberships   WorkspaceMember[]
+  sentInvites   WorkspaceInvite[]
   createdShares JobShare[]
   usageRecords  UsageRecord[]
 }
@@ -254,6 +256,7 @@ model Workspace {
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   members      WorkspaceMember[]
+  invites      WorkspaceInvite[]
   jobs         Job[]
   uploads      UploadIntent[]
   usageRecords UsageRecord[]
@@ -271,6 +274,25 @@ model WorkspaceMember {
 
   @@id([workspaceId, userId])
   @@index([userId])
+}
+
+model WorkspaceInvite {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  role        WorkspaceRole @default(MEMBER)
+  tokenHash   String        @unique
+  invitedById String
+  invitedBy   User          @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([workspaceId, revokedAt, acceptedAt])
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model JobShare {

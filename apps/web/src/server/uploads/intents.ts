@@ -7,7 +7,7 @@ import {
 import { prisma } from "@/server/db/prisma";
 import { storage } from "@/server/storage";
 import { sanitizeDisplayName, validateUpload } from "@/server/validation/upload";
-import { canAccessWorkspace } from "@/server/workspaces";
+import { canContributeToWorkspace } from "@/server/workspaces";
 
 export interface CreateUploadIntentInput {
   userId: string;
@@ -43,12 +43,12 @@ export async function createUploadIntent(
   }
   if (
     input.workspaceId &&
-    !(await canAccessWorkspace(input.workspaceId, input.userId))
+    !(await canContributeToWorkspace(input.workspaceId, input.userId))
   ) {
     return {
       kind: "INVALID",
       code: "FORBIDDEN",
-      message: "You don't have access to that team",
+      message: "You don't have permission to upload to that team",
     };
   }
 

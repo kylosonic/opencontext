@@ -6,8 +6,15 @@ export {
   type CreateJobSourcesInput,
 } from "./createJob";
 export { getJob, getOwnedJobRow, type GetJobResult } from "./getJob";
-export { listJobs, LIST_LIMIT } from "./listJobs";
+export {
+  listJobs,
+  LIST_LIMIT,
+  type JobStatusFilter,
+  type ListJobsFilters,
+} from "./listJobs";
 export { retryJob, type RetryResult } from "./retryJob";
+export { renameJob, normalizeJobDisplayName, type RenameJobResult } from "./updateJob";
+export { rerunJob, type RerunJobResult } from "./rerunJob";
 export { deleteJob, type DeleteJobResult } from "./deleteJob";
 export { computeProgress, initialStageStates } from "./progress";
 export { computeExpiresAt, retentionNoteFor } from "./retention";

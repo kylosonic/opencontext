@@ -22,6 +22,9 @@ export const JobSummarySchema = z.object({
   currentStage: StageNameSchema.nullable(),
   error: z.string().nullable(),
   canManage: z.boolean().optional(),
+  workspaceId: z.string().nullable().optional(),
+  workspaceName: z.string().nullable().optional(),
+  sourceKind: SourceKindSchema.optional(),
   createdAt: z.string(),
   completedAt: z.string().nullable(),
   expiresAt: z.string(),
@@ -47,6 +50,8 @@ export const JobDetailSchema = z.object({
   retryCount: z.number().int().nonnegative(),
   retryAllowed: z.boolean(),
   canManage: z.boolean().optional(),
+  workspaceId: z.string().nullable().optional(),
+  workspaceName: z.string().nullable().optional(),
   stageStates: StageStatesSchema,
   source: z
     .object({

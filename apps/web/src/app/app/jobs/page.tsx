@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { listJobs } from "@/server/jobs";
+import { listWorkspaces } from "@/server/workspaces";
 
 export const metadata: Metadata = {
   title: "Your jobs — OpenContext",
@@ -27,7 +28,10 @@ export default async function JobsPage() {
   if (!session?.user?.id) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent("/app/jobs")}`);
   }
-  const jobs = await listJobs(session.user.id);
+  const [jobs, workspaces] = await Promise.all([
+    listJobs(session.user.id),
+    listWorkspaces(session.user.id),
+  ]);
 
   return (
     <>
@@ -49,11 +53,12 @@ export default async function JobsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <ButtonLink href="/app/teams" variant="ghost" size="sm">Teams</ButtonLink>
+                <ButtonLink href="/app/usage" variant="ghost" size="sm">Usage</ButtonLink>
                 <ButtonLink href="/app/new" size="sm">New analysis</ButtonLink>
               </div>
             </div>
 
-            <JobsList initialJobs={jobs} />
+            <JobsList initialJobs={jobs} workspaces={workspaces} />
 
             <div className="mt-10 flex items-center justify-between border-t border-line pt-4">
               <p className="text-xs text-ink-faint">
