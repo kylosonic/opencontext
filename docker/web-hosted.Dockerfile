@@ -22,11 +22,10 @@ ENV DATABASE_URL=postgresql://opencontext:opencontext@db:5432/opencontext?schema
 RUN npm ci
 
 FROM dependencies AS builder
-ENV AUTH_SECRET=opencontext-build-only-auth-secret-not-for-runtime
 COPY . .
 RUN npm run prisma:generate:postgres --workspace web
 RUN node --input-type=module -e "import fs from 'node:fs'; fs.copyFileSync('apps/web/next.config.ts', 'apps/web/next.standard.config.ts'); fs.copyFileSync('apps/web/next.hosted.config.ts', 'apps/web/next.config.ts')"
-RUN npm run build --workspace web
+RUN AUTH_SECRET=opencontext-build-only-auth-secret-not-for-runtime npm run build --workspace web
 
 FROM base AS production-dependencies
 COPY package.json package-lock.json ./

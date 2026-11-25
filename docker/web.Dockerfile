@@ -18,10 +18,9 @@ RUN npm ci
 
 FROM dependencies AS builder
 ENV DATABASE_URL=postgresql://opencontext:opencontext@db:5432/opencontext?schema=public
-ENV AUTH_SECRET=opencontext-build-only-auth-secret-not-for-runtime
 COPY . .
 RUN npm run prisma:generate:postgres --workspace web
-RUN npm run build --workspace web
+RUN AUTH_SECRET=opencontext-build-only-auth-secret-not-for-runtime npm run build --workspace web
 
 FROM base AS production-dependencies
 COPY package.json package-lock.json ./
