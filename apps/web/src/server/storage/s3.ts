@@ -1,18 +1,22 @@
 import { Readable } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
   CopyObjectCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
+  UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { awsCredentialsProvider } from "@vercel/oidc-aws-credentials-provider";
 import type { S3Config } from "@opencontext/config";
-import type { MoveOptions, Storage, PutOptions } from "./types";
+import type { MoveOptions, MultipartPart, Storage, PutOptions } from "./types";
 
 /**
  * S3-compatible object storage (ADR-0004) via @aws-sdk/client-s3 — covers
@@ -130,6 +134,76 @@ export class S3Storage implements Storage {
         Bucket: this.config.bucket,
         CopySource: `${this.config.bucket}/${fromKey}`,
         Key: toKey,
+      }),
+    );
+  }
+
+  async initMultipartUpload(
+    key: string,
+    contentType: string,
+  ): Promise<{ uploadId: string }> {
+    const response = await this.client.send(
+      new CreateMultipartUploadCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        ContentType: contentType,
+      }),
+    );
+    if (!response.UploadId) {
+      throw new Error(`S3 did not return a multipart uploadId for ${key}`);
+    }
+    return { uploadId: response.UploadId };
+  }
+
+  async uploadPart(
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    body: Uint8Array,
+  ): Promise<{ etag: string }> {
+    const response = await this.client.send(
+      new UploadPartCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        UploadId: uploadId,
+        PartNumber: partNumber,
+        Body: body,
+        ContentLength: body.byteLength,
+      }),
+    );
+    if (!response.ETag) {
+      throw new Error(`S3 did not return an ETag for part ${partNumber}`);
+    }
+    return { etag: response.ETag };
+  }
+
+  async completeMultipartUpload(
+    key: string,
+    uploadId: string,
+    parts: MultipartPart[],
+  ): Promise<void> {
+    const sorted = [...parts]
+      .sort((a, b) => a.partNumber - b.partNumber)
+      .map((part) => ({
+        PartNumber: part.partNumber,
+        ETag: part.etag,
+      }));
+    await this.client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: { Parts: sorted },
+      }),
+    );
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    await this.client.send(
+      new AbortMultipartUploadCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        UploadId: uploadId,
       }),
     );
   }

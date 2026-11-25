@@ -1,5 +1,10 @@
 import type { WorkspaceRole } from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
+import {
+  hasWorkspacePermission,
+  validateWorkspaceCustomRoleId,
+  type WorkspacePermission,
+} from "./roles";
 
 const WORKSPACE_NAME_MAX = 80;
 const MEMBER_IDENTIFIER_MAX = 255;
@@ -70,8 +75,7 @@ export async function canContributeToWorkspace(
   workspaceId: string,
   userId: string,
 ): Promise<boolean> {
-  const role = await workspaceRole(workspaceId, userId);
-  return role === "OWNER" || role === "ADMIN" || role === "MEMBER";
+  return hasWorkspacePermission(workspaceId, userId, "jobs:create");
 }
 
 export async function createWorkspace(userId: string, name: string) {
@@ -145,6 +149,7 @@ export async function deleteWorkspace(
 export type AddMemberResult =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
+  | { kind: "INVALID_CUSTOM_ROLE" }
   | { kind: "USER_NOT_FOUND" }
   | { kind: "ALREADY_MEMBER" }
   | { kind: "OK"; user: { id: string; name: string | null; email: string | null } };
@@ -155,11 +160,18 @@ export async function addWorkspaceMember(
   actorId: string,
   identifier: string,
   role: (typeof WORKSPACE_ROLES)[number],
+  customRoleId?: string | null,
 ): Promise<AddMemberResult> {
   const actorRole = await workspaceRole(workspaceId, actorId);
   if (!actorRole) return { kind: "NOT_FOUND" as const };
-  if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+  if (!(await hasWorkspacePermission(workspaceId, actorId, "members:manage"))) {
     return { kind: "FORBIDDEN" as const };
+  }
+  if (
+    customRoleId &&
+    (await validateWorkspaceCustomRoleId(workspaceId, customRoleId)) === "INVALID"
+  ) {
+    return { kind: "INVALID_CUSTOM_ROLE" as const };
   }
   const normalized = identifier.trim();
   if (!normalized || normalized.length > MEMBER_IDENTIFIER_MAX) {
@@ -175,7 +187,12 @@ export async function addWorkspaceMember(
   if (await workspaceRole(workspaceId, user.id))
     return { kind: "ALREADY_MEMBER" as const };
   await prisma.workspaceMember.create({
-    data: { workspaceId, userId: user.id, role },
+    data: {
+      workspaceId,
+      userId: user.id,
+      role,
+      customRoleId: customRoleId || null,
+    },
   });
   return { kind: "OK", user };
 }
@@ -183,27 +200,35 @@ export async function addWorkspaceMember(
 export type UpdateMemberRoleResult =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
+  | { kind: "INVALID_CUSTOM_ROLE" }
   | { kind: "LAST_OWNER" }
-  | { kind: "OK"; userId: string; role: WorkspaceRole };
+  | { kind: "OK"; userId: string; role: WorkspaceRole; customRoleId: string | null };
 
 export async function updateWorkspaceMemberRole(
   workspaceId: string,
   actorId: string,
   targetUserId: string,
   nextRole: WorkspaceRole,
+  customRoleId?: string | null,
 ): Promise<UpdateMemberRoleResult> {
   const actorRole = await workspaceRole(workspaceId, actorId);
   if (!actorRole) return { kind: "NOT_FOUND" };
-  if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+  if (!(await hasWorkspacePermission(workspaceId, actorId, "members:manage"))) {
     return { kind: "FORBIDDEN" };
   }
   const targetRole = await workspaceRole(workspaceId, targetUserId);
   if (!targetRole) return { kind: "NOT_FOUND" };
   if (
-    actorRole === "ADMIN" &&
+    actorRole !== "OWNER" &&
     (targetRole === "OWNER" || targetRole === "ADMIN" || nextRole === "OWNER")
   ) {
     return { kind: "FORBIDDEN" };
+  }
+  if (
+    customRoleId &&
+    (await validateWorkspaceCustomRoleId(workspaceId, customRoleId)) === "INVALID"
+  ) {
+    return { kind: "INVALID_CUSTOM_ROLE" };
   }
 
   return prisma.$transaction(async (tx) => {
@@ -213,14 +238,24 @@ export async function updateWorkspaceMemberRole(
       });
       if (owners <= 1) return { kind: "LAST_OWNER" as const };
     }
+    const nextCustomRoleId =
+      nextRole === "OWNER"
+        ? null
+        : customRoleId === undefined
+          ? undefined
+          : customRoleId || null;
     const updated = await tx.workspaceMember.update({
       where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
-      data: { role: nextRole },
+      data: {
+        role: nextRole,
+        ...(nextCustomRoleId !== undefined ? { customRoleId: nextCustomRoleId } : {}),
+      },
     });
     return {
       kind: "OK" as const,
       userId: updated.userId,
       role: updated.role,
+      customRoleId: updated.customRoleId ?? null,
     };
   });
 }
@@ -242,11 +277,11 @@ export async function removeWorkspaceMember(
   if (!targetRole) return { kind: "NOT_FOUND" };
 
   if (actorId !== targetUserId) {
-    if (actorRole !== "OWNER" && actorRole !== "ADMIN") {
+    if (!(await hasWorkspacePermission(workspaceId, actorId, "members:manage"))) {
       return { kind: "FORBIDDEN" };
     }
     if (
-      actorRole === "ADMIN" &&
+      actorRole !== "OWNER" &&
       (targetRole === "OWNER" || targetRole === "ADMIN")
     ) {
       return { kind: "FORBIDDEN" };
@@ -268,23 +303,28 @@ export async function removeWorkspaceMember(
 }
 
 export async function listWorkspaceMembers(workspaceId: string, userId: string) {
-  if (!(await canAccessWorkspace(workspaceId, userId))) return null;
+  if (!(await workspaceRole(workspaceId, userId))) return null;
   return prisma.workspaceMember.findMany({
     where: { workspaceId },
-    include: { user: { select: { id: true, name: true, email: true, githubLogin: true } } },
+    include: {
+      user: { select: { id: true, name: true, email: true, githubLogin: true } },
+      customRole: { select: { id: true, name: true, permissions: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 }
 
-/** A job owner or a team administrator may delete/retry a team job. */
+/** A job owner or permitted workspace member may manage a job. */
 export async function canManageJob(
   job: { userId: string; workspaceId: string | null },
   userId: string,
+  permission: WorkspacePermission = "jobs:edit",
 ): Promise<boolean> {
   if (job.userId === userId) return true;
   if (!job.workspaceId) return false;
-  const role = await workspaceRole(job.workspaceId, userId);
-  return role === "OWNER" || role === "ADMIN";
+  return hasWorkspacePermission(job.workspaceId, userId, permission);
 }
 
 export * from "./invites";
+export * from "./roles";
+export * from "./scim";

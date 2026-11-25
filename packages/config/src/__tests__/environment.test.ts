@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  authGoogle,
+  authGoogleConfigured,
+  authOidc,
+  authOidcConfigured,
   authSecret,
+  configuredAuthProviders,
   deploymentEnvironment,
   devAuthEnabled,
   storageProvider,
@@ -83,5 +88,45 @@ describe("authentication safety", () => {
     vi.stubEnv("DEV_AUTH_ENABLED", "true");
 
     expect(devAuthEnabled()).toBe(false);
+  });
+
+  it("reads optional Google OAuth and generic OIDC SSO providers safely", () => {
+    expect(
+      configuredAuthProviders({
+        AUTH_GITHUB_ID: "gh-id",
+        AUTH_GITHUB_SECRET: "gh-secret",
+        AUTH_GOOGLE_ID: "google-id",
+        AUTH_GOOGLE_SECRET: "google-secret",
+        AUTH_OIDC_ID: "okta-id",
+        AUTH_OIDC_SECRET: "okta-secret",
+        AUTH_OIDC_ISSUER: "https://sso.example.com/oauth2/default/",
+        AUTH_OIDC_NAME: "Okta SSO",
+      }),
+    ).toEqual([
+      { id: "github", name: "GitHub" },
+      { id: "google", name: "Google" },
+      { id: "oidc", name: "Okta SSO" },
+    ]);
+
+    expect(
+      authGoogle({ AUTH_GOOGLE_ID: "change-me", AUTH_GOOGLE_SECRET: "secret" }),
+    ).toBeUndefined();
+    expect(
+      authGoogleConfigured({ AUTH_GOOGLE_ID: "gid", AUTH_GOOGLE_SECRET: "gsec" }),
+    ).toBe(true);
+    expect(
+      authOidc({
+        AUTH_OIDC_ID: "id",
+        AUTH_OIDC_SECRET: "sec",
+        AUTH_OIDC_ISSUER: "ftp://invalid.example.com",
+      }),
+    ).toBeUndefined();
+    expect(
+      authOidcConfigured({
+        AUTH_OIDC_ID: "id",
+        AUTH_OIDC_SECRET: "sec",
+        AUTH_OIDC_ISSUER: "https://idp.example.com/",
+      }),
+    ).toBe(true);
   });
 });

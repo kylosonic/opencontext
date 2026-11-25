@@ -138,6 +138,9 @@ export function JobDetailClient({
     job.status !== "FAILED";
   const sourceKind = job.source?.kind ?? "video";
   const sourceAssets = job.source?.assets ?? [];
+  const downloadOriginalUrl = job.source?.key
+    ? `/api/jobs/${encodeURIComponent(job.id)}/source?download=1${sourceAssets.length > 1 ? `&asset=${selectedAssetIndex}` : ""}`
+    : null;
 
   const seekTo = useCallback((timestampSec: number, sourceAssetIndex?: number) => {
     setSelectedTimestamp(timestampSec);
@@ -389,6 +392,17 @@ export function JobDetailClient({
             selectedTimestamp={selectedTimestamp}
             sourceSlot={sourceSlot}
           />
+          {downloadOriginalUrl && (
+            <div className="flex justify-end">
+              <a
+                href={downloadOriginalUrl}
+                download
+                className="inline-flex h-8 items-center rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink transition-colors hover:bg-panel-muted"
+              >
+                Download original
+              </a>
+            </div>
+          )}
           {userCanManage && (
             <ManageCard
               jobId={job.id}

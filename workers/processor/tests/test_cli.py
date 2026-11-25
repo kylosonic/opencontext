@@ -371,6 +371,7 @@ def test_doctor_json_is_ordered_and_does_not_leak_secrets(
         "vision",
         "ocr",
         "text",
+        "hardware",
     ]
     assert all(check["status"] in {"ok", "missing", "unverified"} for check in payload["checks"])
     assert "doctor-json-secret" not in output

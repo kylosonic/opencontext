@@ -11,6 +11,25 @@ export interface ResolvedSourceAsset {
   contentType: string;
 }
 
+/** Produce a safe download filename with control/path characters stripped. */
+export function sanitizeDownloadFilename(
+  displayName: string,
+  extension: string,
+): string {
+  const safeExt = extension.replace(/[^A-Za-z0-9]/g, "").toLowerCase() || "bin";
+  const cleanedStem = displayName
+    .replace(/[\u0000-\u001f\u007f-\u009f"\\/;:*?<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\.+$/, "")
+    .slice(0, 120);
+  const base = cleanedStem || "source";
+  if (base.toLowerCase().endsWith(`.${safeExt}`)) {
+    return base;
+  }
+  return `${base}.${safeExt}`;
+}
+
 /**
  * Select and validate an indexed source asset (or the single primary source)
  * for inline browser preview or public share playback.
@@ -53,6 +72,7 @@ export async function buildSourceStreamResponse(
   options: {
     includeContentLength?: boolean;
     pdfFilenameDisposition?: boolean;
+    downloadFilename?: string;
   } = {},
 ): Promise<Response | null> {
   const head = options.includeContentLength
@@ -70,14 +90,17 @@ export async function buildSourceStreamResponse(
   if (head && head.sizeBytes > 0) {
     headers["Content-Length"] = String(head.sizeBytes);
   }
-  if (options.pdfFilenameDisposition) {
+  if (options.downloadFilename) {
+    headers["Content-Disposition"] =
+      `attachment; filename="${options.downloadFilename}"`;
+  } else if (options.pdfFilenameDisposition) {
     if (isPdf) {
       headers["Content-Disposition"] = "inline; filename=source.pdf";
     }
   } else {
     headers["Content-Disposition"] = "inline";
   }
-  if (isPdf) {
+  if (isPdf && !options.downloadFilename) {
     // This overrides the app-wide CSP for the PDF document. A sandbox or
     // default-src 'none' policy blocks built-in PDF viewers (and PDF.js),
     // while frame-ancestors 'self' prevents third-party embedding.

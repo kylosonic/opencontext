@@ -41,6 +41,13 @@ from oc_worker.pipeline import (
     NOT_AN_IMAGE_MESSAGE,
     TOO_LONG_MESSAGE,
 )
+from oc_worker.plugins import (
+    apply_context_plugins,
+    apply_frame_plugins,
+    describe_plugins,
+    load_plugins,
+    parse_plugin_specs,
+)
 from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
 from oc_worker.providers.http_status import provider_session
 from oc_worker.replay import replay_context
@@ -266,6 +273,20 @@ def analyze_file(
         else:
             frames = []
         selected_frames = aggregation.limit_frames(frames, settings.vision_max_frames)
+        active_plugins = load_plugins(
+            parse_plugin_specs(settings.plugins),
+            include_entry_points=settings.load_entrypoint_plugins,
+        )
+        if active_plugins:
+            selected_frames = apply_frame_plugins(
+                active_plugins,
+                selected_frames,
+                {
+                    "sourceKind": source_kind,
+                    "durationSec": float(duration),
+                    "sourceName": source.name,
+                },
+            )
         observations = []
         ocr = []
         for frame in selected_frames:
@@ -366,7 +387,11 @@ def analyze_file(
                 for index, frame in enumerate(frames)
             ],
             text_provider=text,
+            compression_mode=settings.context_compression_mode,
+            max_context_tokens=settings.context_max_tokens,
         )
+        if active_plugins:
+            payload, markdown = apply_context_plugins(active_plugins, payload, markdown)
         return markdown, payload
 
 
@@ -426,6 +451,28 @@ def _parser() -> argparse.ArgumentParser:
         "--scene-threshold",
         type=float,
         help="Scene change threshold for hybrid sampling (0.05–0.95).",
+    )
+    analyze.add_argument(
+        "--compress",
+        choices=["none", "compact", "aggressive"],
+        help="Context compression mode (dedup/merge redundant frames and segments).",
+    )
+    analyze.add_argument(
+        "--max-context-tokens",
+        type=int,
+        help="Optional estimated token budget ceiling for compressed context.",
+    )
+    analyze.add_argument(
+        "--plugin",
+        action="append",
+        dest="plugins",
+        default=[],
+        help="Worker plugin spec (`module.path:attribute`), repeatable.",
+    )
+    analyze.add_argument(
+        "--device",
+        choices=["auto", "cpu", "cuda"],
+        help="Compute accelerator preference for local speech transcription.",
     )
     analyze.add_argument(
         "--offline",
@@ -495,6 +542,25 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="json_output",
         help="Emit one machine-readable JSON readiness document.",
+    )
+    plugins_cmd = commands.add_parser(
+        "plugins",
+        help="Inspect registered OpenContext worker plugins",
+    )
+    plugins_sub = plugins_cmd.add_subparsers(dest="plugins_action", required=True)
+    plugins_list = plugins_sub.add_parser("list", help="List loaded worker plugins")
+    plugins_list.add_argument(
+        "--plugin",
+        action="append",
+        dest="plugins",
+        default=[],
+        help="Additional plugin spec (`module.path:attribute`) to inspect.",
+    )
+    plugins_list.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Emit plugin inventory as JSON.",
     )
     return parser
 
@@ -609,6 +675,7 @@ def _cmd_analyze(args: argparse.Namespace, base: Settings) -> int:
     text_provider = (
         "template" if args.offline else args.text_provider or base.text_provider
     )
+    merged_plugins = parse_plugin_specs([base.plugins, *list(args.plugins or [])])
     settings = replace(
         base,
         demo_vision=False if args.offline else base.demo_vision,
@@ -627,6 +694,14 @@ def _cmd_analyze(args: argparse.Namespace, base: Settings) -> int:
             if args.scene_threshold is not None
             else base.scene_change_threshold
         ),
+        context_compression_mode=args.compress or base.context_compression_mode,
+        context_max_tokens=(
+            max(0, min(500_000, int(args.max_context_tokens)))
+            if args.max_context_tokens is not None
+            else base.context_max_tokens
+        ),
+        plugins=",".join(merged_plugins),
+        worker_device=args.device or base.worker_device,
     )
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     detail_level = DetailLevel(args.detail_level)
@@ -728,6 +803,25 @@ def main(argv: list[str] | None = None) -> int:
             check_network=args.check_network,
             json_output=args.json_output,
         )
+    if args.command == "plugins" and args.plugins_action == "list":
+        specs = parse_plugin_specs([base.plugins, *list(args.plugins or [])])
+        try:
+            loaded = load_plugins(
+                specs, include_entry_points=base.load_entrypoint_plugins
+            )
+        except (ImportError, ValueError, RuntimeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        items = describe_plugins(loaded)
+        if args.json_output:
+            print(json.dumps({"plugins": items}, sort_keys=True))
+        elif not items:
+            print("No worker plugins loaded.")
+        else:
+            for item in items:
+                hooks = ", ".join(item["hooks"]) or "none"
+                print(f"{item['name']} ({hooks})")
+        return 0
     if args.command == "analyze":
         return _cmd_analyze(args, base)
     return 2

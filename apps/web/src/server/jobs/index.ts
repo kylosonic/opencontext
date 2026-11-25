@@ -22,6 +22,7 @@ export { jobToDetail, jobToSummary } from "./serialize";
 export {
   buildSourceStreamResponse,
   resolveSourceAsset,
+  sanitizeDownloadFilename,
   type ResolvedSourceAsset,
 } from "./sourceStream";
 export {

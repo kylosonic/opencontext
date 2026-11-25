@@ -21,6 +21,7 @@ const CreateInviteSchema = z
   .object({
     email: z.string().trim().min(3).max(255),
     role: z.enum(INVITABLE_WORKSPACE_ROLES).default("MEMBER"),
+    customRoleId: z.string().trim().min(1).max(128).nullable().optional(),
   })
   .strict();
 
@@ -79,6 +80,7 @@ export async function POST(
       authState.userId,
       parsed.data.email,
       parsed.data.role,
+      parsed.data.customRoleId ?? null,
     );
     if (result.kind === "NOT_FOUND") {
       return errorWithLimit("NOT_FOUND", "Team not found", authState.limit);
@@ -87,6 +89,13 @@ export async function POST(
       return errorWithLimit(
         "FORBIDDEN",
         "Only team owners and admins can create invitations",
+        authState.limit,
+      );
+    }
+    if (result.kind === "INVALID_CUSTOM_ROLE") {
+      return errorWithLimit(
+        "VALIDATION_ERROR",
+        "Selected custom role does not exist in this team",
         authState.limit,
       );
     }

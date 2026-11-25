@@ -17,7 +17,7 @@ export type DeleteJobResult =
 export async function deleteJob(jobId: string, userId: string): Promise<DeleteJobResult> {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) return { kind: "NOT_FOUND" };
-  if (!(await canManageJob(job, userId))) return { kind: "FORBIDDEN" };
+  if (!(await canManageJob(job, userId, "jobs:delete"))) return { kind: "FORBIDDEN" };
 
   const deletion = await prisma.$transaction(async (tx) => {
     const revoked = await tx.job.updateMany({

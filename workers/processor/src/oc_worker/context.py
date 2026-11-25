@@ -45,6 +45,12 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from oc_worker.compression import (
+    apply_context_compression,
+    compress_observations,
+    compress_segments,
+    normalize_compression_mode,
+)
 from oc_worker.context_markdown import (
     format_timestamp as format_timestamp,  # noqa: F401 - re-exported for callers/tests
 )
@@ -378,12 +384,21 @@ def build_context(
     source_assets: list[dict[str, Any]] | None = None,
     text_provider: TextProvider | None = None,
     session_id: str | None = None,
+    compression_mode: str = "none",
+    max_context_tokens: int = 0,
 ) -> tuple[str, dict[str, Any]]:
     """Build the developer context; returns (markdown, json payload)."""
     level = DetailLevel(detail_level)
+    resolved_compression = normalize_compression_mode(compression_mode)
     # A speech model can run past the media end; keep evidence timestamps
     # inside the recording for both the CLI and worker callers.
     segments = clamp_segments_to_duration(segments, duration_sec)
+    original_segments = len(segments)
+    original_observations = len(observations)
+    if resolved_compression != "none":
+        segments = compress_segments(segments, mode=resolved_compression)
+        observations = compress_observations(observations, mode=resolved_compression)
+
     generated_at = datetime.now(UTC).isoformat(timespec="seconds")
     payload = _build_json_payload(
         source_name=source_name,
@@ -398,6 +413,14 @@ def build_context(
         source_kind=source_kind,
         source_assets=source_assets,
     )
+    if resolved_compression != "none" or max_context_tokens > 0:
+        apply_context_compression(
+            payload,
+            mode=resolved_compression,
+            max_tokens=max_context_tokens,
+            original_segments=original_segments,
+            original_observations=original_observations,
+        )
     markdown = template_markdown(payload)
     if text_provider is not None:
         try:

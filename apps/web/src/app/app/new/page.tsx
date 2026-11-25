@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { listWorkspaces } from "@/server/workspaces";
+import { hasWorkspacePermission, listWorkspaces } from "@/server/workspaces";
 
 export const metadata: Metadata = {
   title: "New analysis — OpenContext",
@@ -28,13 +28,22 @@ export default async function NewAnalysisPage() {
   if (!session?.user?.id) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent("/app/new")}`);
   }
-  const workspaces = (await listWorkspaces(session.user.id)).filter(
-    (
-      workspace,
-    ): workspace is typeof workspace & {
-      role: "OWNER" | "ADMIN" | "MEMBER";
-    } => workspace.role !== "VIEWER",
+  const allWorkspaces = await listWorkspaces(session.user.id);
+  const canCreateFlags = await Promise.all(
+    allWorkspaces.map((workspace) =>
+      hasWorkspacePermission(workspace.id, session.user.id, "jobs:create"),
+    ),
   );
+  const workspaces = allWorkspaces
+    .filter((_, index) => canCreateFlags[index])
+    .map((workspace) => ({
+      id: workspace.id,
+      name: workspace.name,
+      role: (workspace.role === "VIEWER" ? "MEMBER" : workspace.role) as
+        | "OWNER"
+        | "ADMIN"
+        | "MEMBER",
+    }));
 
   return (
     <>

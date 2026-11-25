@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from oc_worker.config import Settings
 from oc_worker.errors import ProviderConfigurationError
+from oc_worker.hardware import resolve_whisper_device
 from oc_worker.providers.ocr.base import OcrProvider
 from oc_worker.providers.ocr.fixture import FixtureOcrProvider
 from oc_worker.providers.ocr.tesseract import TesseractOcrProvider
@@ -39,7 +40,14 @@ def build_transcription(settings: Settings) -> TranscriptionProvider | None:
             FasterWhisperTranscriptionProvider,
         )
 
-        return FasterWhisperTranscriptionProvider(settings.transcription_model)
+        device, compute_type = resolve_whisper_device(
+            settings.worker_device, settings.whisper_compute_type
+        )
+        return FasterWhisperTranscriptionProvider(
+            settings.transcription_model,
+            device=device,
+            compute_type=compute_type,
+        )
     if provider == "openai_compatible":
         if not settings.openai_api_key:
             raise ProviderConfigurationError(

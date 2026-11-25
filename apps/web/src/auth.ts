@@ -18,22 +18,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [...authConfig.providers, ...devAuthProviders()],
   events: {
     async signIn({ user, account, profile }) {
-      if (account?.provider !== "github") {
+      if (account?.provider === "github") {
+        const githubLogin =
+          (profile as { login?: string } | undefined)?.login ?? user.name ?? null;
+        const avatarUrl = user.image ?? null;
+        await prisma.user
+          .update({
+            where: { id: user.id as string },
+            data: {
+              githubId: account.providerAccountId,
+              githubLogin,
+              avatarUrl,
+            },
+          })
+          .catch(() => undefined); // never break sign-in over a sync failure
         return;
       }
-      const githubLogin =
-        (profile as { login?: string } | undefined)?.login ?? user.name ?? null;
-      const avatarUrl = user.image ?? null;
-      await prisma.user
-        .update({
-          where: { id: user.id as string },
-          data: {
-            githubId: account.providerAccountId,
-            githubLogin,
-            avatarUrl,
-          },
-        })
-        .catch(() => undefined); // never break sign-in over a sync failure
+      if ((account?.provider === "google" || account?.provider === "oidc") && user.image) {
+        await prisma.user
+          .update({
+            where: { id: user.id as string },
+            data: { avatarUrl: user.image },
+          })
+          .catch(() => undefined);
+      }
     },
   },
 });

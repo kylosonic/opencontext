@@ -1,4 +1,6 @@
 import {
+  authGoogleConfigured,
+  authOidcConfigured,
   databaseConnectionKind,
   isConfiguredValue,
   isStrongSecret,
@@ -54,10 +56,13 @@ export function evaluateReadiness(
   const authSecret =
     present(env, "AUTH_SECRET") && isStrongSecret(env.AUTH_SECRET, strict ? 32 : 1);
   const github = present(env, "AUTH_GITHUB_ID") && present(env, "AUTH_GITHUB_SECRET");
+  const google = authGoogleConfigured(env);
+  const oidc = authOidcConfigured(env);
   const devAuthRequested = env.DEV_AUTH_ENABLED?.trim().toLowerCase() === "true";
   const devAuth = !strict && devAuthRequested;
   const devAuthMisconfigured = strict && devAuthRequested;
-  const authOk = authSecret && !devAuthMisconfigured && (github || devAuth);
+  const authOk =
+    authSecret && !devAuthMisconfigured && (github || google || oidc || devAuth);
 
   const provider = storageProviderKind(env);
   const storageOk = strict
@@ -86,8 +91,8 @@ export function evaluateReadiness(
         ? "DEV_AUTH_ENABLED must be disabled outside development"
         : !authSecret
           ? "AUTH_SECRET is missing, too short, or still a placeholder"
-        : !github && !devAuth
-          ? "GitHub OAuth credentials are not configured"
+        : !github && !google && !oidc && !devAuth
+          ? "Configure GitHub, Google, or OIDC SSO credentials"
           : "Session authentication configured",
     },
     {

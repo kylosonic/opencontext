@@ -223,6 +223,11 @@ export async function cancelUpload(
     return { kind: "IN_PROGRESS" };
   }
 
+  if (intent.multipartUploadId) {
+    await storage
+      .abortMultipartUpload(intent.tempKey, intent.multipartUploadId)
+      .catch(() => undefined);
+  }
   await storage.deleteMany([intent.tempKey]);
   await prisma.uploadIntent.deleteMany({ where: { id: intent.id } });
   return { kind: "OK" };

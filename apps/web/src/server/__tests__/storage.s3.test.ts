@@ -41,6 +41,10 @@ vi.mock("@aws-sdk/client-s3", () => {
     DeleteObjectCommand: make("DeleteObjectCommand"),
     DeleteObjectsCommand: make("DeleteObjectsCommand"),
     HeadObjectCommand: make("HeadObjectCommand"),
+    CreateMultipartUploadCommand: make("CreateMultipartUploadCommand"),
+    UploadPartCommand: make("UploadPartCommand"),
+    CompleteMultipartUploadCommand: make("CompleteMultipartUploadCommand"),
+    AbortMultipartUploadCommand: make("AbortMultipartUploadCommand"),
   };
 });
 
@@ -220,5 +224,54 @@ describe("S3Storage (mocked AWS SDK)", () => {
 
     state.sendMock.mockRejectedValueOnce({ name: "NoSuchKey" });
     expect(await storage.stream("missing")).toBeNull();
+  });
+
+  it("routes multipart init, uploadPart, complete, and abort to AWS SDK commands", async () => {
+    const storage = new S3Storage(config);
+    state.sendMock
+      .mockResolvedValueOnce({ UploadId: "mp-1" })
+      .mockResolvedValueOnce({ ETag: '"etag-1"' })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({});
+
+    const init = await storage.initMultipartUpload("incoming/big.mp4", "video/mp4");
+    expect(init.uploadId).toBe("mp-1");
+    expect(lastCommand("CreateMultipartUploadCommand")).toMatchObject({
+      Bucket: "oc-media",
+      Key: "incoming/big.mp4",
+      ContentType: "video/mp4",
+    });
+
+    const part = await storage.uploadPart(
+      "incoming/big.mp4",
+      "mp-1",
+      1,
+      new Uint8Array([1, 2, 3]),
+    );
+    expect(part.etag).toBe('"etag-1"');
+    expect(lastCommand("UploadPartCommand")).toMatchObject({
+      Bucket: "oc-media",
+      Key: "incoming/big.mp4",
+      UploadId: "mp-1",
+      PartNumber: 1,
+      ContentLength: 3,
+    });
+
+    await storage.completeMultipartUpload("incoming/big.mp4", "mp-1", [
+      { partNumber: 1, etag: '"etag-1"' },
+    ]);
+    expect(lastCommand("CompleteMultipartUploadCommand")).toMatchObject({
+      Bucket: "oc-media",
+      Key: "incoming/big.mp4",
+      UploadId: "mp-1",
+      MultipartUpload: { Parts: [{ PartNumber: 1, ETag: '"etag-1"' }] },
+    });
+
+    await storage.abortMultipartUpload("incoming/big.mp4", "mp-1");
+    expect(lastCommand("AbortMultipartUploadCommand")).toMatchObject({
+      Bucket: "oc-media",
+      Key: "incoming/big.mp4",
+      UploadId: "mp-1",
+    });
   });
 });

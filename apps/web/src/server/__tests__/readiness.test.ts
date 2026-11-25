@@ -145,6 +145,33 @@ describe("production readiness", () => {
     expect(report.ready).toBe(true);
   });
 
+  it("accepts Google OAuth or generic OIDC SSO without GitHub in production", () => {
+    const base = productionEnv() as Record<string, string | undefined>;
+    delete base.AUTH_GITHUB_ID;
+    delete base.AUTH_GITHUB_SECRET;
+
+    const googleReport = evaluateReadiness(
+      {
+        ...base,
+        AUTH_GOOGLE_ID: "google-client-id",
+        AUTH_GOOGLE_SECRET: "google-client-secret",
+      },
+      "production",
+    );
+    expect(googleReport.ready).toBe(true);
+
+    const oidcReport = evaluateReadiness(
+      {
+        ...base,
+        AUTH_OIDC_ID: "okta-client",
+        AUTH_OIDC_SECRET: "okta-secret",
+        AUTH_OIDC_ISSUER: "https://sso.example.com",
+      },
+      "production",
+    );
+    expect(oidcReport.ready).toBe(true);
+  });
+
   it("rejects unsupported database and storage values in development", () => {
     const report = evaluateReadiness(
       {

@@ -101,6 +101,7 @@ model User {
   uploadIntents UploadIntent[]
   memberships   WorkspaceMember[]
   sentInvites   WorkspaceInvite[]
+  scimTokens    WorkspaceScimToken[]
   createdShares JobShare[]
   usageRecords  UsageRecord[]
 }
@@ -239,11 +240,15 @@ model UploadIntent {
   sizeBytes   Int
   mime        String
   detailLevel DetailLevel @default(MEDIUM)
-  expiresAt   DateTime
+  expiresAt         DateTime
   // Set atomically by the completion route so concurrent completions cannot
   // create duplicate jobs from the same uploaded object.
-  claimedAt   DateTime?
-  createdAt   DateTime    @default(now())
+  claimedAt         DateTime?
+  multipartUploadId String?
+  chunkSizeBytes    Int?
+  totalParts        Int?
+  uploadedPartsJson String?
+  createdAt         DateTime    @default(now())
 
   @@index([userId, expiresAt])
   @@index([workspaceId, expiresAt])
@@ -251,12 +256,14 @@ model UploadIntent {
 }
 
 model Workspace {
-  id           String            @id @default(cuid())
+  id           String                @id @default(cuid())
   name         String
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
   members      WorkspaceMember[]
+  customRoles  WorkspaceCustomRole[]
   invites      WorkspaceInvite[]
+  scimTokens   WorkspaceScimToken[]
   jobs         Job[]
   uploads      UploadIntent[]
   usageRecords UsageRecord[]
@@ -264,35 +271,73 @@ model Workspace {
   @@index([createdAt])
 }
 
-model WorkspaceMember {
+model WorkspaceCustomRole {
+  id          String            @id @default(cuid())
   workspaceId String
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        WorkspaceRole @default(MEMBER)
-  createdAt   DateTime      @default(now())
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  permissions Json
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     WorkspaceMember[]
+  invites     WorkspaceInvite[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model WorkspaceMember {
+  workspaceId  String
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         WorkspaceRole        @default(MEMBER)
+  customRoleId String?
+  customRole   WorkspaceCustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  createdAt    DateTime             @default(now())
 
   @@id([workspaceId, userId])
   @@index([userId])
+  @@index([customRoleId])
 }
 
 model WorkspaceInvite {
-  id          String        @id @default(cuid())
-  workspaceId String
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  email       String
-  role        WorkspaceRole @default(MEMBER)
-  tokenHash   String        @unique
-  invitedById String
-  invitedBy   User          @relation(fields: [invitedById], references: [id], onDelete: Cascade)
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  revokedAt   DateTime?
-  createdAt   DateTime      @default(now())
+  id           String               @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email        String
+  role         WorkspaceRole        @default(MEMBER)
+  customRoleId String?
+  customRole   WorkspaceCustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  tokenHash    String               @unique
+  invitedById  String
+  invitedBy    User                 @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime             @default(now())
 
   @@index([workspaceId, revokedAt, acceptedAt])
   @@index([email])
   @@index([expiresAt])
+  @@index([customRoleId])
+}
+
+model WorkspaceScimToken {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  prefix      String
+  tokenHash   String    @unique
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, revokedAt])
 }
 
 model JobShare {

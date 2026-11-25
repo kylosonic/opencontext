@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/server/db/prisma";
+import { hasWorkspacePermission, validateWorkspaceCustomRoleId } from "./roles";
 
 const INVITE_EMAIL_MAX = 255;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,6 +40,8 @@ export interface WorkspaceInviteView {
   id: string;
   email: string;
   role: InvitableWorkspaceRole;
+  customRoleId: string | null;
+  customRoleName: string | null;
   expiresAt: string;
   createdAt: string;
 }
@@ -47,23 +50,31 @@ export type CreateInviteResult =
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
   | { kind: "INVALID_EMAIL" }
+  | { kind: "INVALID_CUSTOM_ROLE" }
   | { kind: "ALREADY_MEMBER" }
   | { kind: "OK"; invite: WorkspaceInviteView; token: string; url: string };
 
-/** Create an expiring single-use email invitation for a workspace (OWNER/ADMIN). */
+/** Create an expiring single-use email invitation for a workspace (members:invite). */
 export async function createWorkspaceInvite(
   workspaceId: string,
   actorId: string,
   rawEmail: string,
   role: InvitableWorkspaceRole,
+  customRoleId?: string | null,
 ): Promise<CreateInviteResult> {
   const actor = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: actorId } },
     select: { role: true },
   });
   if (!actor) return { kind: "NOT_FOUND" };
-  if (actor.role !== "OWNER" && actor.role !== "ADMIN") {
+  if (!(await hasWorkspacePermission(workspaceId, actorId, "members:invite"))) {
     return { kind: "FORBIDDEN" };
+  }
+  if (
+    customRoleId &&
+    (await validateWorkspaceCustomRoleId(workspaceId, customRoleId)) === "INVALID"
+  ) {
+    return { kind: "INVALID_CUSTOM_ROLE" };
   }
 
   const email = normalizeInviteEmail(rawEmail);
@@ -90,10 +101,12 @@ export async function createWorkspaceInvite(
         workspaceId,
         email,
         role,
+        customRoleId: customRoleId || null,
         tokenHash,
         invitedById: actorId,
         expiresAt,
       },
+      include: { customRole: { select: { id: true, name: true } } },
     });
   });
 
@@ -103,6 +116,8 @@ export async function createWorkspaceInvite(
       id: created.id,
       email: created.email,
       role: created.role as InvitableWorkspaceRole,
+      customRoleId: created.customRoleId ?? null,
+      customRoleName: created.customRole?.name ?? null,
       expiresAt: created.expiresAt.toISOString(),
       createdAt: created.createdAt.toISOString(),
     },
@@ -116,7 +131,7 @@ export type ListInvitesResult =
   | { kind: "FORBIDDEN" }
   | { kind: "OK"; invites: WorkspaceInviteView[] };
 
-/** List active pending invitations for a workspace (OWNER/ADMIN only). */
+/** List active pending invitations for a workspace (members:invite). */
 export async function listWorkspaceInvites(
   workspaceId: string,
   actorId: string,
@@ -126,7 +141,7 @@ export async function listWorkspaceInvites(
     select: { role: true },
   });
   if (!actor) return { kind: "NOT_FOUND" };
-  if (actor.role !== "OWNER" && actor.role !== "ADMIN") {
+  if (!(await hasWorkspacePermission(workspaceId, actorId, "members:invite"))) {
     return { kind: "FORBIDDEN" };
   }
   const now = new Date();
@@ -137,6 +152,7 @@ export async function listWorkspaceInvites(
       revokedAt: null,
       expiresAt: { gt: now },
     },
+    include: { customRole: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   });
   return {
@@ -145,6 +161,8 @@ export async function listWorkspaceInvites(
       id: row.id,
       email: row.email,
       role: row.role as InvitableWorkspaceRole,
+      customRoleId: row.customRoleId ?? null,
+      customRoleName: row.customRole?.name ?? null,
       expiresAt: row.expiresAt.toISOString(),
       createdAt: row.createdAt.toISOString(),
     })),
@@ -166,7 +184,7 @@ export async function revokeWorkspaceInvite(
     select: { role: true },
   });
   if (!actor) return { kind: "NOT_FOUND" };
-  if (actor.role !== "OWNER" && actor.role !== "ADMIN") {
+  if (!(await hasWorkspacePermission(workspaceId, actorId, "members:invite"))) {
     return { kind: "FORBIDDEN" };
   }
   const invite = await prisma.workspaceInvite.findFirst({
@@ -287,6 +305,7 @@ export async function acceptWorkspaceInvite(
         workspaceId: invite.workspaceId,
         userId,
         role: invite.role,
+        customRoleId: invite.customRoleId ?? null,
       },
       update: {},
     });

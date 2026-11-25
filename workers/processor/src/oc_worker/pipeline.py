@@ -27,7 +27,7 @@ import logging
 import tempfile
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
@@ -51,6 +51,12 @@ from oc_worker.models import (
     clamp_segments_to_duration,
 )
 from oc_worker.pdf import MAX_PDF_PAGES, extract_pdf_pages
+from oc_worker.plugins import (
+    apply_context_plugins,
+    apply_frame_plugins,
+    load_plugins,
+    parse_plugin_specs,
+)
 from oc_worker.providers import build_ocr, build_text, build_transcription, build_vision
 from oc_worker.providers.http_status import provider_session
 from oc_worker.providers.ocr.base import OcrProvider
@@ -103,9 +109,18 @@ class Pipeline:
         extract_image_fn: ExtractImageFn | None = None,
         extract_pdf_fn: ExtractPdfFn | None = None,
         job_timeout_seconds: float | None = None,
+        plugins: Sequence[Any] | None = None,
     ) -> None:
         self.api = api
         self.settings = settings
+        self.plugins: list[Any] = (
+            list(plugins)
+            if plugins is not None
+            else load_plugins(
+                parse_plugin_specs(settings.plugins),
+                include_entry_points=settings.load_entrypoint_plugins,
+            )
+        )
         self.transcription_provider = (
             transcription_provider
             if transcription_provider is not None
@@ -496,6 +511,17 @@ class Pipeline:
             )
         else:
             frames = []
+
+        if self.plugins:
+            frames = apply_frame_plugins(
+                self.plugins,
+                frames,
+                {
+                    "jobId": job_id,
+                    "sourceKind": source_kind,
+                    "durationSec": duration,
+                },
+            )
 
         if not resume:
             for frame in frames:
@@ -918,8 +944,12 @@ class Pipeline:
                 source_assets=probe_data.get("sourceAssets") or [],
                 text_provider=self.text_provider,
                 session_id=f"opencontext-{job_id}",
+                compression_mode=self.settings.context_compression_mode,
+                max_context_tokens=self.settings.context_max_tokens,
             )
         )
+        if self.plugins:
+            payload, markdown = apply_context_plugins(self.plugins, payload, markdown)
         self.api.stage_result(
             job_id,
             stage="GENERATING_CONTEXT",

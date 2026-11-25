@@ -23,6 +23,11 @@ export interface MoveOptions {
   etag?: string;
 }
 
+export interface MultipartPart {
+  partNumber: number;
+  etag: string;
+}
+
 export interface Storage {
   readonly provider: StorageProviderKind;
 
@@ -53,6 +58,27 @@ export interface Storage {
    * Used when re-running a job with isolated source media.
    */
   copy(fromKey: string, toKey: string): Promise<void>;
+
+  /** Initialize a resumable multipart upload for `key` and return a server uploadId. */
+  initMultipartUpload(key: string, contentType: string): Promise<{ uploadId: string }>;
+
+  /** Upload a single numbered part (`1..N`) for an active multipart upload. */
+  uploadPart(
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    body: Uint8Array,
+  ): Promise<{ etag: string }>;
+
+  /** Finalize an active multipart upload by assembling ordered parts into `key`. */
+  completeMultipartUpload(
+    key: string,
+    uploadId: string,
+    parts: MultipartPart[],
+  ): Promise<void>;
+
+  /** Abort an active multipart upload and discard any staged parts. */
+  abortMultipartUpload(key: string, uploadId: string): Promise<void>;
 
   /**
    * Produce a directly-fetchable URI for a key. S3 returns a presigned

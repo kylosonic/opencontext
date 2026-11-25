@@ -1,16 +1,54 @@
 import type { NextAuthConfig } from "next-auth";
 import GitHub from "next-auth/providers/github";
-import { authGithub, authSecret } from "@opencontext/config";
+import Google from "next-auth/providers/google";
+import {
+  authGithub,
+  authGoogle,
+  authOidc,
+  authSecret,
+} from "@opencontext/config";
 
 /**
  * Edge-safe Auth.js configuration (no Prisma imports) — shared by the
  * full `src/auth.ts` (adapter included) and `src/proxy.ts`
- * (session decode only). GitHub sign-in is offered only when
- * AUTH_GITHUB_ID/AUTH_GITHUB_SECRET are both present; otherwise the
- * providers array is empty and the app boots with the honest
- * "Sign-in is not configured" notice (identity.md failure outcomes).
+ * (session decode only). Interactive OAuth/OIDC providers are registered
+ * dynamically from environment variables; when none are set, the sign-in
+ * page renders an honest notice instead of broken buttons.
  */
-const github = authGithub();
+function buildProviders(): NextAuthConfig["providers"] {
+  const providers: NextAuthConfig["providers"] = [];
+  const github = authGithub();
+  if (github) {
+    providers.push(
+      GitHub({
+        clientId: github.clientId,
+        clientSecret: github.clientSecret,
+      }),
+    );
+  }
+  const google = authGoogle();
+  if (google) {
+    providers.push(
+      Google({
+        clientId: google.clientId,
+        clientSecret: google.clientSecret,
+      }),
+    );
+  }
+  const oidc = authOidc();
+  if (oidc) {
+    providers.push({
+      id: "oidc",
+      name: oidc.name,
+      type: "oidc",
+      issuer: oidc.issuer,
+      clientId: oidc.clientId,
+      clientSecret: oidc.clientSecret,
+      checks: ["pkce", "state"],
+    });
+  }
+  return providers;
+}
 
 export function resolveAuthTrustHost(
   env: Record<string, string | undefined>,
@@ -33,14 +71,7 @@ export const authConfig = {
     signIn: "/auth/signin",
     signOut: "/auth/signout",
   },
-  providers: github
-    ? [
-        GitHub({
-          clientId: github.clientId,
-          clientSecret: github.clientSecret,
-        }),
-      ]
-    : [],
+  providers: buildProviders(),
   callbacks: {
     jwt({ token, user }) {
       if (user) {

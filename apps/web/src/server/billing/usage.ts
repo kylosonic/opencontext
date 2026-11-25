@@ -1,7 +1,7 @@
 import type { Job, Prisma } from "@prisma/client";
 import { sourceKindForExtension } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
-import { canAccessWorkspace } from "@/server/workspaces";
+import { hasWorkspacePermission } from "@/server/workspaces";
 
 function nonNegativeInt(name: string, fallback: number): number {
   const parsed = Number.parseInt(process.env[name] ?? String(fallback), 10);
@@ -151,7 +151,10 @@ export async function usageSummaryForUser(
   const sinceDate = new Date(Date.now() - days * 86_400_000);
   const workspaceId = options.workspaceId?.trim() || undefined;
 
-  if (workspaceId && !(await canAccessWorkspace(workspaceId, userId))) {
+  if (
+    workspaceId &&
+    !(await hasWorkspacePermission(workspaceId, userId, "usage:view"))
+  ) {
     return null;
   }
 

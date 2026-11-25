@@ -44,6 +44,18 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = _env(name)
+    if raw is None:
+        return default
+    lowered = raw.strip().lower()
+    if lowered in ("1", "true", "yes", "on"):
+        return True
+    if lowered in ("0", "false", "no", "off"):
+        return False
+    return default
+
+
 def _repository_env_file() -> Path | None:
     """Find the checkout's root `.env` without trusting the working directory."""
     module = Path(__file__).resolve()
@@ -212,6 +224,33 @@ class Settings:
     text_provider: str = field(default_factory=lambda: _env("TEXT_PROVIDER") or "")
     text_model: str = field(
         default_factory=lambda: _env("TEXT_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
+    )
+    context_compression_mode: str = field(
+        default_factory=lambda: (
+            (_env("CONTEXT_COMPRESSION_MODE", "none") or "none").strip().lower()
+            if (_env("CONTEXT_COMPRESSION_MODE", "none") or "none").strip().lower()
+            in ("none", "compact", "aggressive")
+            else "none"
+        )
+    )
+    context_max_tokens: int = field(
+        default_factory=lambda: max(
+            0, min(500_000, _env_int("CONTEXT_MAX_TOKENS", 0))
+        )
+    )
+    plugins: str = field(default_factory=lambda: _env("OPENCONTEXT_PLUGINS", "") or "")
+    load_entrypoint_plugins: bool = field(
+        default_factory=lambda: _env_bool("OPENCONTEXT_LOAD_ENTRYPOINT_PLUGINS", True)
+    )
+    worker_device: str = field(
+        default_factory=lambda: (_env("WORKER_DEVICE", "auto") or "auto")
+        .strip()
+        .lower()
+    )
+    whisper_compute_type: str = field(
+        default_factory=lambda: (_env("WHISPER_COMPUTE_TYPE", "auto") or "auto")
+        .strip()
+        .lower()
     )
     ffmpeg_path: str = field(default_factory=resolve_ffmpeg_path)
     ffprobe_path: str = field(default_factory=lambda: _env("FFPROBE_PATH") or "")

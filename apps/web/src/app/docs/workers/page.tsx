@@ -127,10 +127,14 @@ HF_HOME=/models`}
               label="Local transcription and provider"
               code={`TRANSCRIPTION_PROVIDER=faster_whisper
 TRANSCRIPTION_MODEL=base
+WORKER_DEVICE=auto
+WHISPER_COMPUTE_TYPE=auto
 VISION_PROVIDER=openai_compatible
 VISION_MODEL=<vision-capable model>
 FRAME_SAMPLING_MODE=hybrid
 SCENE_CHANGE_THRESHOLD=0.25
+CONTEXT_COMPRESSION_MODE=none
+CONTEXT_MAX_TOKENS=0
 OCR_PROVIDER=vision
 TEXT_PROVIDER=template
 OPENAI_BASE_URL=<OpenAI-compatible base URL>
@@ -138,6 +142,7 @@ OPENAI_API_KEY=<provider key>`}
             />
           </div>
           <p className="mt-4">
+            For NVIDIA CUDA hosts, build <code>docker/worker.gpu.Dockerfile</code> and run with <code>--gpus all</code> (<code>WORKER_DEVICE=cuda</code>, <code>WHISPER_COMPUTE_TYPE=float16</code>). Enable <code>CONTEXT_COMPRESSION_MODE=compact</code> (or <code>aggressive</code>) and optional <code>OPENCONTEXT_PLUGINS=module:Plugin</code> to reduce token budgets or customize extracted frames and output.{" "}
             The worker supports Faster Whisper, OpenAI-compatible audio, and Ollama providers. Provider credentials stay on the worker host. See the{" "}
             <Link href="/docs/status" className="text-accent hover:underline">
               deployment status

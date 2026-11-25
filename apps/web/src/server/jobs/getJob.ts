@@ -1,6 +1,10 @@
 import { prisma } from "@/server/db/prisma";
 import { jobToDetail } from "./serialize";
-import { canAccessWorkspace, canManageJob } from "@/server/workspaces";
+import {
+  canAccessWorkspace,
+  canManageJob,
+  type WorkspacePermission,
+} from "@/server/workspaces";
 
 /**
  * Fetch one job by id. Throws typed results for the route layer to map:
@@ -35,10 +39,11 @@ export async function getJob(jobId: string, userId: string): Promise<GetJobResul
   };
 }
 
-/** Load the raw job row for owner-scoped mutations (retry/delete). */
+/** Load the raw job row for owner/workspace-scoped mutations (retry/delete/share). */
 export async function getOwnedJobRow(
   jobId: string,
   userId: string,
+  permission: WorkspacePermission = "jobs:edit",
 ): Promise<
   | { kind: "NOT_FOUND" }
   | { kind: "FORBIDDEN" }
@@ -49,7 +54,7 @@ export async function getOwnedJobRow(
     return { kind: "NOT_FOUND" };
   }
   if (job.userId !== userId) {
-    if (!(await canManageJob(job, userId))) {
+    if (!(await canManageJob(job, userId, permission))) {
       return { kind: "FORBIDDEN" };
     }
   }

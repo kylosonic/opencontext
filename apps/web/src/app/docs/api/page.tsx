@@ -16,6 +16,21 @@ const ENDPOINTS = [
     "Create a direct-upload intent for supported media.",
   ],
   [
+    "POST",
+    "/api/uploads/multipart",
+    "Initialize a resumable chunked/multipart upload session for large media.",
+  ],
+  [
+    "PUT",
+    "/api/uploads/[id]/chunks/[partNumber]",
+    "Upload a single numbered chunk for an active resumable multipart upload.",
+  ],
+  [
+    "GET",
+    "/api/uploads/[id]/status",
+    "Inspect uploaded chunk parts and byte progress to resume a transfer.",
+  ],
+  [
     "PUT",
     "signed object URL",
     "Upload bytes directly to configured object storage.",
@@ -78,8 +93,8 @@ const ENDPOINTS = [
   ],
   [
     "GET",
-    "/api/jobs/[id]/source?asset=0",
-    "Load an owner- or team-authenticated image, PDF page, or audio preview.",
+    "/api/jobs/[id]/source?asset=0&download=1",
+    "Stream an authenticated inline preview or download the original source file.",
   ],
   [
     "PATCH",
@@ -115,6 +130,31 @@ const ENDPOINTS = [
     "GET / POST",
     "/api/workspaces/[id]/invites",
     "List pending invitations or create an expiring single-use email invite link.",
+  ],
+  [
+    "GET / POST",
+    "/api/workspaces/[id]/roles",
+    "List or create custom workspace permission roles.",
+  ],
+  [
+    "PATCH / DELETE",
+    "/api/workspaces/[id]/roles/[roleId]",
+    "Update or delete a custom workspace role.",
+  ],
+  [
+    "GET / POST",
+    "/api/workspaces/[id]/scim-tokens",
+    "List or issue OWNER-scoped SCIM 2.0 provisioning bearer tokens.",
+  ],
+  [
+    "DELETE",
+    "/api/workspaces/[id]/scim-tokens/[tokenId]",
+    "Revoke an active SCIM 2.0 provisioning bearer token.",
+  ],
+  [
+    "GET / POST / PATCH / DELETE",
+    "/api/scim/v2/Users & /Groups",
+    "SCIM 2.0 directory sync endpoints authenticated via workspace SCIM bearer token.",
   ],
   [
     "DELETE",

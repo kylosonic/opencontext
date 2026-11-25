@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
+import {
+  WorkspaceRolesPanel,
+  type CustomRoleRow,
+} from "@/components/app/workspace-roles-panel";
+import { WorkspaceScimPanel } from "@/components/app/workspace-scim-panel";
 import { CopyButton } from "@/components/results/copy-button";
 import { formatDate } from "@/components/results/format";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +30,16 @@ interface MemberRow {
   email: string | null;
   githubLogin: string | null;
   role: WorkspaceRole;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
 }
 
 interface InviteRow {
   id: string;
   email: string;
   role: AssignableRole;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
   expiresAt: string;
   createdAt: string;
 }
@@ -50,13 +59,16 @@ export function WorkspaceManager({
   const [selected, setSelected] = useState(initial[0]?.id ?? null);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [invites, setInvites] = useState<InviteRow[]>([]);
+  const [customRoles, setCustomRoles] = useState<CustomRoleRow[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(Boolean(initial[0]?.id));
   const [name, setName] = useState("");
   const [renameValue, setRenameValue] = useState(initial[0]?.name ?? "");
   const [identifier, setIdentifier] = useState("");
   const [memberRole, setMemberRole] = useState<AssignableRole>("MEMBER");
+  const [memberCustomRoleId, setMemberCustomRoleId] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AssignableRole>("MEMBER");
+  const [inviteCustomRoleId, setInviteCustomRoleId] = useState("");
   const [latestInvite, setLatestInvite] = useState<{
     email: string;
     url: string;
@@ -113,7 +125,7 @@ export function WorkspaceManager({
         headers: { Accept: "application/json" },
       })
         .then(async (response) => {
-          if (!response.ok) return [] as InviteRow[];
+          if (!response?.ok) return [] as InviteRow[];
           return (await response.json()) as InviteRow[];
         })
         .then((rows) => {
@@ -123,6 +135,20 @@ export function WorkspaceManager({
           if (!cancelled) setInvites([]);
         });
     }
+
+    void fetch(`/api/workspaces/${encodeURIComponent(selected)}/roles`, {
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!response?.ok) return [] as CustomRoleRow[];
+        return (await response.json()) as CustomRoleRow[];
+      })
+      .then((rows) => {
+        if (!cancelled) setCustomRoles(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomRoles([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -138,6 +164,9 @@ export function WorkspaceManager({
     }
     setMembers([]);
     setInvites([]);
+    setCustomRoles([]);
+    setMemberCustomRoleId("");
+    setInviteCustomRoleId("");
     setLatestInvite(null);
     setLoadingMembers(true);
     setRenameValue(workspace.name);
@@ -272,7 +301,11 @@ export function WorkspaceManager({
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ identifier, role: memberRole }),
+          body: JSON.stringify({
+            identifier,
+            role: memberRole,
+            ...(memberCustomRoleId ? { customRoleId: memberCustomRoleId } : {}),
+          }),
         },
       );
       const payload = (await response.json().catch(() => null)) as
@@ -301,7 +334,11 @@ export function WorkspaceManager({
     }
   }
 
-  async function changeMemberRole(userId: string, nextRole: WorkspaceRole) {
+  async function changeMemberRole(
+    userId: string,
+    nextRole: WorkspaceRole,
+    nextCustomRoleId?: string | null,
+  ) {
     if (!selected || busyMemberId) return;
     setBusyMemberId(userId);
     setMemberError(null);
@@ -312,19 +349,39 @@ export function WorkspaceManager({
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ role: nextRole }),
+          body: JSON.stringify({
+            role: nextRole,
+            ...(nextCustomRoleId !== undefined ? { customRoleId: nextCustomRoleId } : {}),
+          }),
         },
       );
       const payload = (await response.json().catch(() => null)) as {
         role?: WorkspaceRole;
+        customRoleId?: string | null;
         error?: { message?: string };
       } | null;
       if (!response.ok) {
         throw new Error(payload?.error?.message ?? "Could not update role.");
       }
+      const resolvedCustomId =
+        nextRole === "OWNER" ? null : (payload?.customRoleId ?? nextCustomRoleId ?? null);
+      const resolvedCustomName = resolvedCustomId
+        ? (customRoles.find((r) => r.id === resolvedCustomId)?.name ?? null)
+        : null;
       setMembers((rows) =>
         rows.map((member) =>
-          member.userId === userId ? { ...member, role: nextRole } : member,
+          member.userId === userId
+            ? {
+                ...member,
+                role: nextRole,
+                ...(nextCustomRoleId !== undefined || nextRole === "OWNER"
+                  ? {
+                      customRoleId: resolvedCustomId,
+                      customRoleName: resolvedCustomName,
+                    }
+                  : {}),
+              }
+            : member,
         ),
       );
       setMemberMessage("Member role updated.");
@@ -404,7 +461,11 @@ export function WorkspaceManager({
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+          body: JSON.stringify({
+            email: inviteEmail,
+            role: inviteRole,
+            ...(inviteCustomRoleId ? { customRoleId: inviteCustomRoleId } : {}),
+          }),
         },
       );
       const payload = (await response.json().catch(() => null)) as {
@@ -643,6 +704,22 @@ export function WorkspaceManager({
                   <option value="ADMIN">Admin</option>
                   <option value="VIEWER">Viewer</option>
                 </select>
+                {customRoles.length > 0 && (
+                  <select
+                    value={memberCustomRoleId}
+                    onChange={(event) => setMemberCustomRoleId(event.target.value)}
+                    aria-label="Member custom role"
+                    disabled={addingMember}
+                    className="rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink"
+                  >
+                    <option value="">Default permissions</option>
+                    {customRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <Button type="submit" disabled={addingMember || !identifier.trim()}>
                   {addingMember ? "Adding…" : "Add existing user"}
                 </Button>
@@ -678,28 +755,57 @@ export function WorkspaceManager({
                       )}
                       <div className="ml-auto flex items-center gap-2">
                         {roleChoices ? (
-                          <select
-                            aria-label={`Role for ${primary}`}
-                            value={member.role}
-                            disabled={busy}
-                            onChange={(event) =>
-                              void changeMemberRole(
-                                member.userId,
-                                event.target.value as WorkspaceRole,
-                              )
-                            }
-                            className="rounded-md border border-line bg-panel px-2.5 py-1 font-mono text-xs text-ink"
-                          >
-                            {roleChoices.map((roleOption) => (
-                              <option key={roleOption} value={roleOption}>
-                                {roleOption}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <select
+                              aria-label={`Role for ${primary}`}
+                              value={member.role}
+                              disabled={busy}
+                              onChange={(event) =>
+                                void changeMemberRole(
+                                  member.userId,
+                                  event.target.value as WorkspaceRole,
+                                )
+                              }
+                              className="rounded-md border border-line bg-panel px-2.5 py-1 font-mono text-xs text-ink"
+                            >
+                              {roleChoices.map((roleOption) => (
+                                <option key={roleOption} value={roleOption}>
+                                  {roleOption}
+                                </option>
+                              ))}
+                            </select>
+                            {customRoles.length > 0 && member.role !== "OWNER" && (
+                              <select
+                                aria-label={`Custom role for ${primary}`}
+                                value={member.customRoleId ?? ""}
+                                disabled={busy}
+                                onChange={(event) =>
+                                  void changeMemberRole(
+                                    member.userId,
+                                    member.role,
+                                    event.target.value || null,
+                                  )
+                                }
+                                className="rounded-md border border-line bg-panel px-2 py-1 text-xs text-ink"
+                              >
+                                <option value="">Default</option>
+                                {customRoles.map((role) => (
+                                  <option key={role.id} value={role.id}>
+                                    {role.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
                         ) : (
-                          <Badge tone="neutral" mono>
-                            {member.role}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge tone="neutral" mono>
+                              {member.role}
+                            </Badge>
+                            {member.customRoleName && (
+                              <Badge tone="neutral">{member.customRoleName}</Badge>
+                            )}
+                          </div>
                         )}
                         {removable && (
                           <Button
@@ -769,6 +875,22 @@ export function WorkspaceManager({
                   <option value="ADMIN">Admin</option>
                   <option value="VIEWER">Viewer</option>
                 </select>
+                {customRoles.length > 0 && (
+                  <select
+                    value={inviteCustomRoleId}
+                    onChange={(event) => setInviteCustomRoleId(event.target.value)}
+                    aria-label="Invite custom role"
+                    disabled={creatingInvite}
+                    className="rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink"
+                  >
+                    <option value="">Default permissions</option>
+                    {customRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <Button type="submit" disabled={creatingInvite || !inviteEmail.trim()}>
                   {creatingInvite ? "Creating…" : "Create invite link"}
                 </Button>
@@ -802,6 +924,9 @@ export function WorkspaceManager({
                       <Badge tone="neutral" mono>
                         {invite.role}
                       </Badge>
+                      {invite.customRoleName && (
+                        <Badge tone="neutral">{invite.customRoleName}</Badge>
+                      )}
                       <span className="text-xs text-ink-faint">
                         Expires {formatDate(invite.expiresAt)}
                       </span>
@@ -835,6 +960,17 @@ export function WorkspaceManager({
               )}
             </Card>
           )}
+
+          {(canManage || customRoles.length > 0) && (
+            <WorkspaceRolesPanel
+              workspaceId={current.id}
+              roles={customRoles}
+              canManage={canManage}
+              onRolesChange={(nextRoles) => setCustomRoles(nextRoles)}
+            />
+          )}
+
+          {isOwner && <WorkspaceScimPanel workspaceId={current.id} />}
         </>
       )}
 

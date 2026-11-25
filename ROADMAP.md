@@ -20,8 +20,6 @@ This roadmap lists work that is not complete. It is not a release promise.
 - Decide the billing provider, currency, tax, refund, and customer mapping;
   activate metered invoice collection on top of the existing usage ledger and
   `/app/usage` dashboard.
-- Add custom workspace roles beyond `OWNER`/`ADMIN`/`MEMBER`/`VIEWER` and
-  optional org-level SSO / SCIM provisioning.
 
 ## Later
 

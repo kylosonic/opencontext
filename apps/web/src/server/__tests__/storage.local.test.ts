@@ -168,4 +168,43 @@ describe("LocalDiskStorage (ADR-0004 dev provider)", () => {
       storage.copy("jobs/missing/source.mp4", "jobs/j8/other.mp4"),
     ).rejects.toThrow(/does not exist/);
   });
+
+  it("supports resumable multipart upload init, out-of-order parts, complete, and abort", async () => {
+    const { uploadId } = await storage.initMultipartUpload(
+      "incoming/multi.mp4",
+      "video/mp4",
+    );
+    const part2 = await storage.uploadPart(
+      "incoming/multi.mp4",
+      uploadId,
+      2,
+      new Uint8Array([4, 5, 6]),
+    );
+    const part1 = await storage.uploadPart(
+      "incoming/multi.mp4",
+      uploadId,
+      1,
+      new Uint8Array([1, 2, 3]),
+    );
+    await storage.completeMultipartUpload("incoming/multi.mp4", uploadId, [
+      { partNumber: 2, etag: part2.etag },
+      { partNumber: 1, etag: part1.etag },
+    ]);
+    expect(await storage.get("incoming/multi.mp4")).toEqual(
+      new Uint8Array([1, 2, 3, 4, 5, 6]),
+    );
+
+    const aborted = await storage.initMultipartUpload(
+      "incoming/aborted.mp4",
+      "video/mp4",
+    );
+    await storage.uploadPart(
+      "incoming/aborted.mp4",
+      aborted.uploadId,
+      1,
+      new Uint8Array([9, 9]),
+    );
+    await storage.abortMultipartUpload("incoming/aborted.mp4", aborted.uploadId);
+    expect(await storage.get("incoming/aborted.mp4")).toBeNull();
+  });
 });

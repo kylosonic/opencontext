@@ -36,7 +36,7 @@ export async function renameJob(
     },
   });
   if (!existing) return { kind: "NOT_FOUND" };
-  if (!(await canManageJob(existing, userId))) {
+  if (!(await canManageJob(existing, userId, "jobs:edit"))) {
     return { kind: "FORBIDDEN" };
   }
   const normalized = normalizeJobDisplayName(rawName);

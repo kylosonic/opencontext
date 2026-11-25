@@ -203,23 +203,103 @@ export interface GitHubAuthConfig {
   clientSecret: string;
 }
 
+export interface GoogleAuthConfig {
+  clientId: string;
+  clientSecret: string;
+}
+
+export interface OidcAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  issuer: string;
+  name: string;
+}
+
+export interface ConfiguredAuthProvider {
+  id: "github" | "google" | "oidc";
+  name: string;
+}
+
 /**
  * GitHub OAuth configuration. GitHub sign-in is only offered when both
  * values are present; otherwise the app boots with an empty providers
  * array and the sign-in page shows an honest "not configured" notice.
  */
-export function authGithub(): GitHubAuthConfig | undefined {
-  const clientId = getEnv("AUTH_GITHUB_ID");
-  const clientSecret = getEnv("AUTH_GITHUB_SECRET");
-  if (clientId && clientSecret) {
-    return { clientId, clientSecret };
+export function authGithub(env: EnvRecord = process.env): GitHubAuthConfig | undefined {
+  const clientId = env.AUTH_GITHUB_ID?.trim();
+  const clientSecret = env.AUTH_GITHUB_SECRET?.trim();
+  if (isConfiguredValue(clientId) && isConfiguredValue(clientSecret)) {
+    return { clientId: clientId!, clientSecret: clientSecret! };
   }
   return undefined;
 }
 
 /** True when GitHub sign-in is fully configured. */
-export function authGithubConfigured(): boolean {
-  return authGithub() !== undefined;
+export function authGithubConfigured(env: EnvRecord = process.env): boolean {
+  return authGithub(env) !== undefined;
+}
+
+/** Optional Google OAuth configuration. */
+export function authGoogle(env: EnvRecord = process.env): GoogleAuthConfig | undefined {
+  const clientId = env.AUTH_GOOGLE_ID?.trim();
+  const clientSecret = env.AUTH_GOOGLE_SECRET?.trim();
+  if (isConfiguredValue(clientId) && isConfiguredValue(clientSecret)) {
+    return { clientId: clientId!, clientSecret: clientSecret! };
+  }
+  return undefined;
+}
+
+/** True when Google sign-in is fully configured. */
+export function authGoogleConfigured(env: EnvRecord = process.env): boolean {
+  return authGoogle(env) !== undefined;
+}
+
+/** Optional generic Enterprise OIDC SSO configuration. */
+export function authOidc(env: EnvRecord = process.env): OidcAuthConfig | undefined {
+  const clientId = env.AUTH_OIDC_ID?.trim();
+  const clientSecret = env.AUTH_OIDC_SECRET?.trim();
+  const issuer = env.AUTH_OIDC_ISSUER?.trim();
+  if (!isConfiguredValue(clientId) || !isConfiguredValue(clientSecret) || !isConfiguredValue(issuer)) {
+    return undefined;
+  }
+  try {
+    const parsed = new URL(issuer!);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return undefined;
+    }
+  } catch {
+    return undefined;
+  }
+  const name = env.AUTH_OIDC_NAME?.trim() || "Enterprise SSO";
+  return {
+    clientId: clientId!,
+    clientSecret: clientSecret!,
+    issuer: issuer!.replace(/\/+$/, ""),
+    name,
+  };
+}
+
+/** True when generic OIDC SSO is fully configured. */
+export function authOidcConfigured(env: EnvRecord = process.env): boolean {
+  return authOidc(env) !== undefined;
+}
+
+/** Ordered list of configured interactive sign-in providers. */
+export function configuredAuthProviders(
+  env: EnvRecord = process.env,
+): ConfiguredAuthProvider[] {
+  const providers: ConfiguredAuthProvider[] = [];
+  if (authGithub(env)) {
+    providers.push({ id: "github", name: "GitHub" });
+  }
+  if (authGoogle(env)) {
+    providers.push({ id: "google", name: "Google" });
+  }
+  const oidc = authOidc(env);
+  if (oidc) {
+    providers.push({ id: "oidc", name: oidc.name });
+  }
+  return providers;
 }
 
 /**

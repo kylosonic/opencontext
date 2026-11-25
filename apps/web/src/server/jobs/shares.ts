@@ -22,7 +22,7 @@ export async function createJobShare(
   jobId: string,
   userId: string,
 ): Promise<CreateShareResult> {
-  const access = await getOwnedJobRow(jobId, userId);
+  const access = await getOwnedJobRow(jobId, userId, "jobs:share");
   if (access.kind !== "OK") {
     return access.kind === "NOT_FOUND"
       ? { kind: "NOT_FOUND" }
@@ -58,7 +58,7 @@ export async function revokeJobShares(
   jobId: string,
   userId: string,
 ): Promise<RevokeShareResult> {
-  const access = await getOwnedJobRow(jobId, userId);
+  const access = await getOwnedJobRow(jobId, userId, "jobs:share");
   if (access.kind !== "OK") {
     return access.kind === "NOT_FOUND"
       ? { kind: "NOT_FOUND" }

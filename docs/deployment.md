@@ -98,6 +98,12 @@ Create the GitHub OAuth app with the callback URL:
 
 `https://your-app.example/api/auth/callback/github`
 
+Optionally enable Google OAuth (`AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`, callback
+`/api/auth/callback/google`) or any generic Enterprise OIDC provider
+(`AUTH_OIDC_ID` / `AUTH_OIDC_SECRET` / `AUTH_OIDC_ISSUER` / optional `AUTH_OIDC_NAME`,
+callback `/api/auth/callback/oidc`). Workspace owners can generate SCIM 2.0
+provisioning bearer tokens under `/app/teams` targeting `/api/scim/v2`.
+
 Generate the PostgreSQL Prisma client and apply the schema:
 
 ```bash

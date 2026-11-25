@@ -36,7 +36,7 @@ export async function rerunJob(
     },
   });
   if (!existing) return { kind: "NOT_FOUND" };
-  if (!(await canManageJob(existing, userId))) {
+  if (!(await canManageJob(existing, userId, "jobs:rerun"))) {
     return { kind: "FORBIDDEN" };
   }
   if (

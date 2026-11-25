@@ -25,6 +25,7 @@ const AddMemberSchema = z
   .object({
     identifier: z.string().trim().min(1).max(255),
     role: z.enum(WORKSPACE_ROLES).default("MEMBER"),
+    customRoleId: z.string().trim().min(1).max(128).nullable().optional(),
   })
   .strict();
 
@@ -53,6 +54,8 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
           email: member.user.id === session.user.id ? member.user.email : null,
           githubLogin: member.user.githubLogin,
           role: member.role,
+          customRoleId: member.customRoleId ?? null,
+          customRoleName: member.customRole?.name ?? null,
         })),
       ),
       limit,
@@ -84,10 +87,14 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
       session.user.id,
       parsed.data.identifier,
       parsed.data.role,
+      parsed.data.customRoleId ?? null,
     );
     if (result.kind === "NOT_FOUND") return errorResponse("NOT_FOUND", "Team not found");
     if (result.kind === "FORBIDDEN") {
       return errorResponse("FORBIDDEN", "Only team owners and admins can add members");
+    }
+    if (result.kind === "INVALID_CUSTOM_ROLE") {
+      return errorResponse("VALIDATION_ERROR", "Selected custom role does not exist in this team");
     }
     if (result.kind === "USER_NOT_FOUND") {
       return errorResponse("NOT_FOUND", "That person has not signed in to OpenContext yet");
@@ -97,7 +104,14 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
     }
     const { user } = result;
     return applyRateLimitHeaders(
-      NextResponse.json({ userId: user.id, role: parsed.data.role }, { status: 201 }),
+      NextResponse.json(
+        {
+          userId: user.id,
+          role: parsed.data.role,
+          customRoleId: parsed.data.customRoleId ?? null,
+        },
+        { status: 201 },
+      ),
       limit,
     );
   });

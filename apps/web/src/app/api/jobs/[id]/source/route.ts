@@ -8,6 +8,7 @@ import {
   buildSourceStreamResponse,
   getJob,
   resolveSourceAsset,
+  sanitizeDownloadFilename,
 } from "@/server/jobs";
 import {
   applyRateLimitHeaders,
@@ -48,16 +49,27 @@ export async function GET(
       return errorResponse("FORBIDDEN", "You don't have access to this job");
     }
 
+    const url = new URL(request.url);
+    const wantsDownload = url.searchParams.get("download") === "1";
     const asset = resolveSourceAsset(
       result.job.source,
-      new URL(request.url).searchParams.get("asset"),
-      { allowVideo: false },
+      url.searchParams.get("asset"),
+      { allowVideo: wantsDownload },
     );
     if (!asset) {
       return errorResponse("NOT_FOUND", "Source preview not found");
     }
     const response = await buildSourceStreamResponse(asset, {
-      pdfFilenameDisposition: true,
+      includeContentLength: wantsDownload,
+      pdfFilenameDisposition: !wantsDownload,
+      ...(wantsDownload
+        ? {
+            downloadFilename: sanitizeDownloadFilename(
+              result.job.displayName,
+              asset.extension,
+            ),
+          }
+        : {}),
     });
     if (!response) {
       return errorResponse("NOT_FOUND", "Source preview not found");

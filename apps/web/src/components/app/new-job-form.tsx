@@ -11,8 +11,10 @@ import {
   cancelPendingUploads,
   DETAIL_LEVELS,
   putFileWithProgress,
+  RESUMABLE_THRESHOLD_BYTES,
   uploadError,
   UploadRequestError,
+  uploadResumableFile,
   type DetailLevelId,
   type WorkspaceOption,
 } from "./upload-transfer";
@@ -35,6 +37,46 @@ interface UploadError {
 }
 
 const ALLOWED_ACCEPT = UPLOAD_ACCEPT_ATTR;
+const RESUMABLE_STORAGE_KEY = "oc:resumable-upload:v1";
+
+function fileFingerprint(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function readStoredResumableSession(fingerprint: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(RESUMABLE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { uploadId?: string; fingerprint?: string };
+    return parsed.fingerprint === fingerprint && parsed.uploadId
+      ? parsed.uploadId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredResumableSession(uploadId: string, fingerprint: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      RESUMABLE_STORAGE_KEY,
+      JSON.stringify({ uploadId, fingerprint }),
+    );
+  } catch {
+    // Ignore private-mode storage restrictions.
+  }
+}
+
+function clearStoredResumableSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(RESUMABLE_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup errors.
+  }
+}
 
 /**
  * New-job upload form (upload.md B1-B6 + analysis-modes.md B2).
@@ -60,6 +102,11 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
   const [busyNotice, setBusyNotice] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [resumableUploadId, setResumableUploadId] = useState<string | null>(null);
+  const [partProgress, setPartProgress] = useState<{
+    part: number;
+    total: number;
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -124,7 +171,13 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
     setError(null);
     setBusyNotice(null);
     setProgress(0);
+    setPartProgress(null);
     setFiles(candidates);
+    if (candidates.length === 1 && candidates[0].size > RESUMABLE_THRESHOLD_BYTES) {
+      setResumableUploadId(readStoredResumableSession(fileFingerprint(candidates[0])));
+    } else {
+      setResumableUploadId(null);
+    }
     setPhase("ready");
   }
 
@@ -134,48 +187,79 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
     setError(null);
     setPhase("uploading");
     setProgress(0);
+    setPartProgress(null);
+
+    const isResumableSingle =
+      files.length === 1 && files[0].size > RESUMABLE_THRESHOLD_BYTES;
+    let activeResumableUploadId = resumableUploadId;
 
     try {
       const uploadIds: string[] = [];
-      for (const [index, selected] of files.entries()) {
-        const intentResponse = await fetch("/api/uploads", {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
+      if (isResumableSingle) {
+        const selected = files[0];
+        const fingerprint = fileFingerprint(selected);
+        const uploadId = await uploadResumableFile(selected, {
+          detailLevel,
+          workspaceId: workspaceId || undefined,
+          existingUploadId: activeResumableUploadId,
+          isAborted: () => attempt !== attemptRef.current,
+          onSessionCreated: (createdUploadId, totalParts) => {
+            activeResumableUploadId = createdUploadId;
+            setResumableUploadId(createdUploadId);
+            writeStoredResumableSession(createdUploadId, fingerprint);
+            activeUploadIdsRef.current = [createdUploadId];
+            setPartProgress({ part: 1, total: totalParts });
           },
-          body: JSON.stringify({
-            filename: selected.name,
-            sizeBytes: selected.size,
-            mime: selected.type || undefined,
-            detailLevel,
-            workspaceId: workspaceId || undefined,
-          }),
+          onProgress: (percent, currentPart, totalParts) => {
+            setProgress(percent);
+            setPartProgress({ part: currentPart, total: totalParts });
+          },
+          registerAbort: (abortFn) => {
+            abortTransferRef.current = abortFn;
+          },
         });
-        if (!intentResponse.ok) throw await uploadError(intentResponse);
-        const target = (await intentResponse.json()) as {
-          uploadId: string;
-          url: string;
-          headers: Record<string, string>;
-        };
-        if (attempt !== attemptRef.current) {
-          await fetch(`/api/uploads/${encodeURIComponent(target.uploadId)}`, {
-            method: "DELETE",
-          }).catch(() => undefined);
-          return;
-        }
-        uploadIds.push(target.uploadId);
-        activeUploadIdsRef.current = [...uploadIds];
+        uploadIds.push(uploadId);
+      } else {
+        for (const [index, selected] of files.entries()) {
+          const intentResponse = await fetch("/api/uploads", {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              filename: selected.name,
+              sizeBytes: selected.size,
+              mime: selected.type || undefined,
+              detailLevel,
+              workspaceId: workspaceId || undefined,
+            }),
+          });
+          if (!intentResponse.ok) throw await uploadError(intentResponse);
+          const target = (await intentResponse.json()) as {
+            uploadId: string;
+            url: string;
+            headers: Record<string, string>;
+          };
+          if (attempt !== attemptRef.current) {
+            await fetch(`/api/uploads/${encodeURIComponent(target.uploadId)}`, {
+              method: "DELETE",
+            }).catch(() => undefined);
+            return;
+          }
+          uploadIds.push(target.uploadId);
+          activeUploadIdsRef.current = [...uploadIds];
 
-        const transfer = putFileWithProgress(target, selected, (fileProgress) => {
-          setProgress(
-            Math.round(((index + fileProgress / 100) / files.length) * 95),
-          );
-        });
-        abortTransferRef.current = transfer.abort;
-        await transfer.promise;
-        if (attempt !== attemptRef.current) return;
-        abortTransferRef.current = null;
+          const transfer = putFileWithProgress(target, selected, (fileProgress) => {
+            setProgress(
+              Math.round(((index + fileProgress / 100) / files.length) * 95),
+            );
+          });
+          abortTransferRef.current = transfer.abort;
+          await transfer.promise;
+          if (attempt !== attemptRef.current) return;
+          abortTransferRef.current = null;
+        }
       }
 
       setProgress(95);
@@ -207,6 +291,9 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
       if (!summary.id) throw new Error("The job response did not contain an id");
 
       activeUploadIdsRef.current = [];
+      setResumableUploadId(null);
+      setPartProgress(null);
+      clearStoredResumableSession();
       setCreatedId(summary.id);
       setPhase("created");
       navigationTimerRef.current = window.setTimeout(() => {
@@ -214,9 +301,22 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
       }, 450);
     } catch (caught) {
       if (attempt !== attemptRef.current) return;
-      const pendingIds = activeUploadIdsRef.current;
-      activeUploadIdsRef.current = [];
-      await cancelPendingUploads(pendingIds);
+      const keepResumable =
+        isResumableSingle &&
+        activeResumableUploadId !== null &&
+        !(
+          caught instanceof UploadRequestError &&
+          (caught.code === "UPLOAD_EXPIRED" || caught.code === "VALIDATION_ERROR")
+        );
+      const pendingIds = keepResumable ? [] : activeUploadIdsRef.current;
+      activeUploadIdsRef.current = keepResumable ? [activeResumableUploadId!] : [];
+      if (pendingIds.length > 0) {
+        await cancelPendingUploads(pendingIds);
+      }
+      if (!keepResumable) {
+        clearStoredResumableSession();
+        setResumableUploadId(null);
+      }
       const envelope =
         caught instanceof UploadRequestError
           ? { code: caught.code, message: caught.message }
@@ -235,7 +335,14 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
   }
 
   function resetForm(): void {
+    const pendingIds = activeUploadIdsRef.current;
     activeUploadIdsRef.current = [];
+    if (pendingIds.length > 0) {
+      void cancelPendingUploads(pendingIds);
+    }
+    clearStoredResumableSession();
+    setResumableUploadId(null);
+    setPartProgress(null);
     setFiles([]);
     setPhase("idle");
     setProgress(0);
@@ -516,7 +623,7 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
             </Button>
             {phase === "error" && (
               <Button variant="secondary" size="md" onClick={() => void startUpload(true)}>
-                Try upload again
+                {resumableUploadId ? "Resume upload" : "Try upload again"}
               </Button>
             )}
           </div>
@@ -530,7 +637,9 @@ export function NewJobForm({ workspaces = [] }: { workspaces?: WorkspaceOption[]
               <span className="font-medium">
                 {files.length > 1
                   ? `Uploading ${files.length} images`
-                  : `Uploading ${file?.name ?? "media"}`}
+                  : partProgress
+                    ? `Uploading part ${partProgress.part} of ${partProgress.total} — ${file?.name ?? "media"}`
+                    : `Uploading ${file?.name ?? "media"}`}
               </span>
               <span className="font-mono">{progress}%</span>
             </div>

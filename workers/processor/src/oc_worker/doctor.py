@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 
 from oc_worker.config import Settings
+from oc_worker.hardware import detect_hardware, resolve_whisper_device
 
 
 def _command_status(label: str, command: str, *, required: bool) -> dict[str, str]:
@@ -356,6 +357,25 @@ def run_doctor(
             http_get=http_get,
         )
     )
+    hw = detect_hardware()
+    try:
+        device, compute_type = resolve_whisper_device(
+            settings.worker_device,
+            settings.whisper_compute_type,
+            hardware=hw,
+        )
+        checks.append(
+            {
+                "name": "hardware",
+                "status": "ok",
+                "detail": (
+                    f"{hw.detail}; faster_whisper device={device}, "
+                    f"compute_type={compute_type}"
+                ),
+            }
+        )
+    except ValueError as exc:
+        checks.append({"name": "hardware", "status": "missing", "detail": str(exc)})
     ok = not any(check["status"] == "missing" for check in checks)
     if json_output:
         print(json.dumps({"ok": ok, "checks": checks}, sort_keys=True))

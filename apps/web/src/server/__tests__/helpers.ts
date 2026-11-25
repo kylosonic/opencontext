@@ -16,8 +16,10 @@ export async function resetDatabase(): Promise<void> {
   await prisma.media.deleteMany();
   await prisma.uploadIntent.deleteMany();
   await prisma.job.deleteMany();
+  await prisma.workspaceScimToken.deleteMany();
   await prisma.workspaceInvite.deleteMany();
   await prisma.workspaceMember.deleteMany();
+  await prisma.workspaceCustomRole.deleteMany();
   await prisma.workspace.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();

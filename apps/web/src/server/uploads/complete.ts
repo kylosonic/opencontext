@@ -9,6 +9,7 @@ import { storage } from "@/server/storage";
 import { sanitizeDisplayName, validateStoredMedia } from "@/server/validation/upload";
 import { canContributeToWorkspace } from "@/server/workspaces";
 import { getUploadIntent } from "./intents";
+import { parseUploadedParts } from "./multipart";
 
 class UploadClaimConflict extends Error {}
 
@@ -108,6 +109,31 @@ export async function completeUpload(
   if (!(await claimUploadIntents([intent.id], userId))) {
     return { kind: "IN_PROGRESS" };
   }
+
+  if (intent.multipartUploadId) {
+    const parts = parseUploadedParts(intent.uploadedPartsJson);
+    const totalParts = intent.totalParts ?? 0;
+    const allPresent =
+      totalParts > 0 &&
+      parts.length === totalParts &&
+      parts.every((part, idx) => part.partNumber === idx + 1) &&
+      parts.reduce((sum, part) => sum + part.sizeBytes, 0) === intent.sizeBytes;
+    if (!allPresent) {
+      await releaseUploadClaims([intent.id]);
+      return { kind: "INCOMPLETE" };
+    }
+    try {
+      await storage.completeMultipartUpload(
+        intent.tempKey,
+        intent.multipartUploadId,
+        parts.map((part) => ({ partNumber: part.partNumber, etag: part.etag })),
+      );
+    } catch (error) {
+      await releaseUploadClaims([intent.id]).catch(() => undefined);
+      throw error;
+    }
+  }
+
   let object: Awaited<ReturnType<typeof storage.head>>;
   try {
     object = await storage.head(intent.tempKey);

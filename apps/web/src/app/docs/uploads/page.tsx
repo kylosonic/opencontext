@@ -112,8 +112,12 @@ export default function UploadsPage() {
               transfer.
             </li>
             <li>
-              Large files upload directly to configured object storage, rather
-              than passing through the page request.
+              Large files (&gt; 5 MB single transfers) automatically use
+              resumable chunked multipart uploads (<code>POST /api/uploads/multipart</code>,{" "}
+              <code>PUT /api/uploads/[id]/chunks/[partNumber]</code>, and{" "}
+              <code>GET /api/uploads/[id]/status</code>), while smaller files
+              upload directly to configured object storage rather than passing
+              through the page request.
             </li>
             <li>
               After transfer, the server verifies the stored object. Images also
@@ -139,7 +143,11 @@ export default function UploadsPage() {
           </p>
           <p className="mt-3">
             Uploads and URL imports can be scoped to your Personal view or any
-            Team workspace you belong to.
+            Team workspace where your role grants job creation. Original uploaded
+            source files can also be downloaded by authorized team members via{" "}
+            <code>GET /api/jobs/[id]/source?download=1</code> or the{" "}
+            <strong className="text-ink">Download original</strong> action on
+            finished jobs.
           </p>
         </section>
 

@@ -27,16 +27,19 @@ export default function SecurityPage() {
             Accounts and access
           </h2>
           <p className="mt-3">
-            The hosted app signs in with GitHub. User job routes use the
-            signed-in session and return resources owned by the current user or
-            accessible through their team workspace memberships (Owners, Admins,
-            Members, and Viewers — owners and admins manage memberships and all
-            team jobs, members upload and manage their own jobs, and viewers have
-            read-only access). Email invitations store SHA-256 token hashes with a
-            configurable TTL (<code>WORKSPACE_INVITE_TTL_HOURS</code>, default 7
-            days) and accept only when the signed-in verified email matches.
-            Explicit expiring public share links grant read-only snapshot access
-            without sign-in until revoked.
+            The hosted app supports GitHub OAuth, Google OAuth, and generic
+            Enterprise OIDC SSO (<code>AUTH_GOOGLE_*</code>,{" "}
+            <code>AUTH_OIDC_*</code>). User job routes use the signed-in session
+            and return resources owned by the current user or accessible through
+            their team workspace memberships (Owners, Admins, Members, Viewers,
+            plus per-workspace custom permission roles). Workspace owners can
+            also issue hashed SCIM 2.0 bearer tokens for automated user and group
+            provisioning at <code>/api/scim/v2</code>. Email invitations store
+            SHA-256 token hashes with a configurable TTL (
+            <code>WORKSPACE_INVITE_TTL_HOURS</code>, default 7 days) and accept
+            only when the signed-in verified email matches. Explicit expiring
+            public share links grant read-only snapshot access without sign-in
+            until revoked.
           </p>
         </section>
 

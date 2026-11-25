@@ -54,6 +54,7 @@ export default function PackagesPage() {
               label="Video analysis"
               code={`opencontext analyze recording.mp4 \\
   --sampling-mode hybrid --scene-threshold 0.25 \\
+  --compress compact --max-context-tokens 8000 \\
   --out context.md --json context.json`}
             />
             <CodeBlock
@@ -64,7 +65,7 @@ export default function PackagesPage() {
             />
           </div>
           <p className="mt-4">
-            <code>--sampling-mode hybrid</code> captures FFmpeg scene transitions alongside interval keyframes (controlled by <code>--scene-threshold</code> in 0.05–0.95).{" "}
+            <code>--sampling-mode hybrid</code> captures FFmpeg scene transitions alongside interval keyframes (controlled by <code>--scene-threshold</code> in 0.05–0.95). <code>--compress compact|aggressive</code> merges redundant adjacent frames and transcript segments, and <code>--plugin module:Attr</code> or <code>--device cuda</code> enables worker plugins and GPU acceleration.{" "}
             <code>--offline</code> exercises extraction and export with labeled fixture transcription and vision data. It does not claim model inference.
           </p>
         </section>
@@ -103,7 +104,8 @@ opencontext doctor --offline --json`}
               ["opencontext brief", "Generate a repository-aware implementation brief from JSON."],
               ["opencontext replay", "Validate an evidence ledger and regenerate a brief."],
               ["opencontext evaluate", "Score a context result against ground truth."],
-              ["opencontext doctor", "Check local runtime and provider configuration."],
+              ["opencontext doctor", "Check local runtime, hardware accelerator, and provider configuration."],
+              ["opencontext plugins list", "Inspect configured or entry-point worker plugins."],
             ].map(([command, purpose]) => (
               <div key={command} className="grid gap-1 py-3 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-4">
                 <code className="text-xs text-ink">{command}</code>

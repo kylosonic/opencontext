@@ -19,7 +19,10 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string; userId: string }> };
 
 const UpdateRoleSchema = z
-  .object({ role: z.enum(WORKSPACE_ALL_ROLES) })
+  .object({
+    role: z.enum(WORKSPACE_ALL_ROLES),
+    customRoleId: z.string().trim().min(1).max(128).nullable().optional(),
+  })
   .strict();
 
 /** PATCH /api/workspaces/[id]/members/[userId] — update a member's role. */
@@ -48,6 +51,7 @@ export async function PATCH(
       authState.userId,
       userId,
       parsed.data.role,
+      parsed.data.customRoleId,
     );
     if (result.kind === "NOT_FOUND") {
       return errorWithLimit("NOT_FOUND", "Team member not found", authState.limit);
@@ -59,6 +63,13 @@ export async function PATCH(
         authState.limit,
       );
     }
+    if (result.kind === "INVALID_CUSTOM_ROLE") {
+      return errorWithLimit(
+        "VALIDATION_ERROR",
+        "Selected custom role does not exist in this team",
+        authState.limit,
+      );
+    }
     if (result.kind === "LAST_OWNER") {
       return errorWithLimit(
         "VALIDATION_ERROR",
@@ -66,7 +77,10 @@ export async function PATCH(
         authState.limit,
       );
     }
-    return jsonWithLimit({ userId: result.userId, role: result.role }, authState.limit);
+    return jsonWithLimit(
+      { userId: result.userId, role: result.role, customRoleId: result.customRoleId },
+      authState.limit,
+    );
   });
 }
 
