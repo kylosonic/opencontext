@@ -124,8 +124,20 @@ function buildSmokeChecks(baseUrl, opsApiToken) {
         const body = await response.json();
         assert.equal(body?.ready, true, "Expected ready === true");
         assert.ok(
-          Array.isArray(body?.blockers) && body.blockers.length === 0,
-          `Expected zero readiness blockers, got ${JSON.stringify(body?.blockers ?? null)}`,
+          typeof body?.environment === "string" && body.environment.trim().length > 0,
+          "Expected non-empty environment string",
+        );
+        assert.ok(
+          Array.isArray(body?.checks) && body.checks.length > 0,
+          "Expected non-empty readiness checks array",
+        );
+        const failingChecks = body.checks.filter((check) => check?.ok !== true);
+        assert.equal(
+          failingChecks.length,
+          0,
+          `Expected all readiness checks ok, failing: ${JSON.stringify(
+            failingChecks.map((check) => check?.id ?? "unknown"),
+          )}`,
         );
       },
     });

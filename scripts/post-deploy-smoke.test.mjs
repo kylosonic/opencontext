@@ -59,8 +59,9 @@ test("runSmokeChecks passes all checks with and without OPS_API_TOKEN (including
       if (req.headers.authorization === "Bearer test-ops-token") {
         return sendJson(res, 200, "application/json", {
           ready: true,
+          environment: "production",
+          checks: [{ id: "database", ok: true, detail: "PostgreSQL URL configured" }],
           checkedAt: "2026-11-25T10:00:00.000Z",
-          blockers: [],
         });
       }
       return sendJson(res, 200, "application/json", {
@@ -255,6 +256,62 @@ test("runSmokeChecks fails when readiness stays false and delivers signed alert 
       .update(`${timestamp}.${webhook.rawBody}`, "utf8")
       .digest("hex");
     assert.equal(signature, `sha256=${expectedHex}`);
+  } finally {
+    await server.close();
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("runSmokeChecks fails when authenticated readiness includes a failing check", async () => {
+  const server = await startTestServer((req, res) => {
+    if (req.url === "/api/health/ready") {
+      if (req.headers.authorization === "Bearer test-ops-token") {
+        return sendJson(res, 200, "application/json", {
+          ready: true,
+          environment: "production",
+          checks: [
+            { id: "database", ok: true, detail: "PostgreSQL URL configured" },
+            { id: "storage", ok: false, detail: "S3 configuration incomplete" },
+          ],
+          checkedAt: "2026-11-25T10:00:00.000Z",
+        });
+      }
+      return sendJson(res, 200, "application/json", {
+        ready: true,
+        checkedAt: "2026-11-25T10:00:00.000Z",
+      });
+    }
+    if (req.url === "/api/scim/v2/ServiceProviderConfig") {
+      return sendJson(res, 200, "application/scim+json", {
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"],
+      });
+    }
+    if (req.url === "/api/auth/providers") {
+      return sendJson(res, 200, "application/json", { github: { id: "github" } });
+    }
+    if (req.url === "/auth/signin" || req.url === "/") {
+      return sendHtml(res, 200, "<html><body>ok</body></html>");
+    }
+    res.writeHead(404);
+    res.end();
+  });
+
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "oc-smoke-check-fail-"));
+  try {
+    const report = await runSmokeChecks({
+      env: {
+        OPENCONTEXT_BASE_URL: server.baseUrl,
+        OPS_API_TOKEN: "test-ops-token",
+        SMOKE_RETRIES: "0",
+        SMOKE_RETRY_DELAY_MS: "5",
+      },
+      summaryPath: path.join(tmpDir, "summary.json"),
+    });
+    assert.equal(report.passed, false);
+    assert.equal(report.failedCount, 1);
+    const authCheck = report.checks.find((c) => c.name === "Readiness (authenticated)");
+    assert.equal(authCheck?.passed, false);
+    assert.match(authCheck?.error ?? "", /storage/);
   } finally {
     await server.close();
     await rm(tmpDir, { recursive: true, force: true });
