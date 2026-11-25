@@ -65,8 +65,11 @@ jobs:
           node --check scripts/compose-smoke.mjs
           node --check scripts/prisma-migrate-build.mjs
           node --check scripts/post-deploy-smoke.mjs
+          node --check scripts/vercel-rollback.mjs
+          node --check scripts/github-incident-alert.mjs
           node --check scripts/check-operations.mjs
           node --check scripts/configure-vercel-waf.mjs
+          python -c "import tomllib; d = tomllib.load(open('fly.toml', 'rb')); assert d['build']['dockerfile'] == 'docker/worker-hosted.Dockerfile'"
           docker compose -f docker-compose.yml config --quiet
 
       - name: Install worker for contract and end-to-end tests

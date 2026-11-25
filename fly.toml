@@ -1,0 +1,30 @@
+app = "opencontext-worker"
+primary_region = "iad"
+kill_signal = "SIGTERM"
+kill_timeout = "180s"
+
+[build]
+  dockerfile = "docker/worker-hosted.Dockerfile"
+
+[env]
+  OPENCONTEXT_SKIP_DOTENV = "1"
+  WORKER_ID = "fly-worker"
+  WORKER_CONCURRENCY = "1"
+  WORKER_SHUTDOWN_GRACE_SECONDS = "120"
+  WORKER_JOB_TIMEOUT_SECONDS = "900"
+  HF_HOME = "/models"
+  TRANSCRIPTION_PROVIDER = "faster_whisper"
+  TRANSCRIPTION_MODEL = "base"
+  VISION_PROVIDER = "openai_compatible"
+  VISION_MODEL = "hy4-flash-free"
+  VISION_FALLBACK_MODELS = "glm-5.3-flash"
+  VISION_REQUEST_INTERVAL_SECONDS = "5"
+  VISION_CONCURRENCY = "1"
+  VISION_MAX_FRAMES = "60"
+  OCR_PROVIDER = "vision"
+  TEXT_PROVIDER = "template"
+  OPENAI_BASE_URL = "https://opencode.ai/inference/go/openai/v1"
+
+[mounts]
+  source = "opencontext_models"
+  destination = "/models"

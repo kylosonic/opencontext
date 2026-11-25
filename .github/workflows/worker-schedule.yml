@@ -3,6 +3,8 @@ name: Worker schedule
 on:
   schedule:
     - cron: "*/5 * * * *"
+  repository_dispatch:
+    types: [job-queued]
   workflow_dispatch:
 
 concurrency:
@@ -11,6 +13,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   drain:
@@ -66,6 +69,7 @@ jobs:
         timeout-minutes: 17
 
       - name: Check operations alerts
+        id: ops_check
         if: always()
         env:
           OPENCONTEXT_BASE_URL: ${{ vars.WORKER_API_URL }}
@@ -82,6 +86,25 @@ jobs:
             exit 0
           fi
           node scripts/check-operations.mjs
+
+      - name: Sync operations incident issue
+        if: always() && (steps.ops_check.outcome == 'success' || steps.ops_check.outcome == 'failure')
+        env:
+          WORKER_API_URL: ${{ vars.WORKER_API_URL }}
+          OPS_API_TOKEN: ${{ secrets.OPS_API_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INCIDENT_KEY: ops-alert
+          INCIDENT_TITLE: "OpenContext operations health alert"
+          INCIDENT_STATUS: ${{ steps.ops_check.outcome == 'success' && 'healthy' || 'unhealthy' }}
+          INCIDENT_SUMMARY_PATH: .artifacts/operations/summary.json
+          INCIDENT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WORKER_API_URL" ] || [ -z "$OPS_API_TOKEN" ]; then
+            echo "Operations incident sync skipped because WORKER_API_URL or OPS_API_TOKEN is unset."
+            exit 0
+          fi
+          node scripts/github-incident-alert.mjs
 
       - name: Reconcile terminal usage records
         if: always()

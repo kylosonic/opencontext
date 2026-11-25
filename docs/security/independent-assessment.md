@@ -7,12 +7,17 @@ as independent review.
 ## Repository preparation
 
 The [Security DAST baseline workflow](../../.github/workflows/security-dast.yml)
-runs weekly against the URL in the `OPENCONTEXT_DAST_TARGET` repository
-variable (or an explicit `target_url` on manual `workflow_dispatch`; scheduled
-runs emit a warning and skip cleanly when `OPENCONTEXT_DAST_TARGET` is unset).
-Point it at a staging deployment that has production-equivalent
-headers, authentication, S3 policy, and rate limits, but contains synthetic
-data only. Do not give the scanner credentials for a real user.
+runs weekly against the URL in `OPENCONTEXT_DAST_TARGET` (or an explicit
+`target_url` on manual `workflow_dispatch`). When no external URL is set, it
+automatically boots an ephemeral, synthetic-data Docker Compose staging stack
+(`db` + `web` at `http://localhost:3000`), scans it using
+[`.zap/rules.tsv`](../../.zap/rules.tsv) (failing on high-signal header/cookie
+regressions while keeping HTTP-localhost/Next.js findings as warnings), uploads
+the `zap-baseline-report` HTML/Markdown/JSON artifacts, and tears down the
+stack cleanly. If configuring `OPENCONTEXT_DAST_TARGET` externally, point it at a
+staging deployment that has production-equivalent headers, authentication, S3
+policy, and rate limits, containing synthetic data only — never real user
+credentials.
 
 Automated static analysis and dependency auditing also run on `main`, pull
 requests, and weekly schedules via
