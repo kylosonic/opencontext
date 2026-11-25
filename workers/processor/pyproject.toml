@@ -51,7 +51,7 @@ agent = [
 ]
 local = [
   "faster-whisper>=1.2.1,<2",
-  "av>=11,<19",
+  "av>=11,<20",
 ]
 
 [tool.setuptools.packages.find]
