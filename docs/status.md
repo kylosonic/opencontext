@@ -8,12 +8,18 @@ about the current Vercel deployment or future releases.
 ## Verified in the repository
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
-  local web suite reports 206 passed plus one opt-in S3 integration skip; CI runs
-  that integration and passes all web tests. Shared config contributes nine
-  passing tests and the contract suite contributes five.
-- Worker Ruff and all 337 local tests pass, with four environment-dependent
-  skips. Real Tesseract and OpenCode Go vision/audio smoke tests run when their
-  binaries or stored credentials and opt-in flags are present.
+  local web suite reports 251 passed plus two env-gated skips
+  (`storage.s3.integration.test.ts` and `url-import.e2e.test.ts`); CI runs the
+  S3 integration against S3Mock. Shared config contributes nine passing tests
+  and the contract suite contributes five.
+- Worker Ruff and all 356 local tests pass, with four environment-dependent
+  skips (`test_audio_e2e.py`, `test_ocr_providers.py`,
+  `test_opencode_audio_smoke.py`, and `test_opencode_vision_smoke.py`). Real
+  Tesseract and OpenCode Go vision/audio smoke tests run when their binaries or
+  stored credentials and opt-in flags are present.
+- UI consistency, accessibility, team RBAC UI gating, interactive public share
+  controls, landing page, and in-app docs parity checks were audited and
+  verified across `apps/web`.
 - The 429 regression path is covered at both layers: provider tests verify
   model cool-down/fallback behavior, and queue tests verify that a provider
   throttle can use its bounded 40-attempt quota budget while ordinary poison
