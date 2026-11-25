@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
+    inputs:
+      target_url:
+        description: Non-production staging base URL to scan (defaults to vars.OPENCONTEXT_DAST_TARGET)
+        required: false
+        type: string
 
 concurrency:
   group: opencontext-security-dast
@@ -18,18 +23,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Require staging target
+      - name: Resolve staging target
+        id: target
         env:
+          INPUT_TARGET_URL: ${{ inputs.target_url }}
           OPENCONTEXT_DAST_TARGET: ${{ vars.OPENCONTEXT_DAST_TARGET }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          test -n "$OPENCONTEXT_DAST_TARGET" || {
-            echo "::error::Set the OPENCONTEXT_DAST_TARGET repository variable to a non-production staging URL.";
-            exit 1;
-          }
+          target="${INPUT_TARGET_URL:-$OPENCONTEXT_DAST_TARGET}"
+          target="${target%"${target##*[![:space:]]}"}"
+          target="${target#"${target%%[![:space:]]*}"}"
+
+          if [ -z "$target" ]; then
+            if [ "$EVENT_NAME" = "schedule" ]; then
+              echo "::warning::OPENCONTEXT_DAST_TARGET repository variable is unset; skipping scheduled OWASP ZAP baseline scan. Set it to a non-production staging URL to enable weekly DAST."
+              if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+                {
+                  echo "## Security DAST baseline skipped"
+                  echo ""
+                  echo "Repository variable \`OPENCONTEXT_DAST_TARGET\` is not configured. Set it to a non-production staging URL to enable scheduled OWASP ZAP scans."
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::Provide target_url or set the OPENCONTEXT_DAST_TARGET repository variable to a non-production staging URL."
+            exit 1
+          fi
+
+          if ! [[ "$target" =~ ^https?://[^[:space:]]+$ ]]; then
+            echo "::error::DAST target must be an http:// or https:// URL."
+            exit 1
+          fi
+
+          echo "run=true" >> "$GITHUB_OUTPUT"
+          echo "url=$target" >> "$GITHUB_OUTPUT"
+
       - name: OWASP ZAP baseline
+        if: steps.target.outputs.run == 'true'
         uses: zaproxy/action-baseline@41aee98ebc7cf2802c3beae4e7d4336413a21e43 # v0.9.0
         with:
-          target: ${{ vars.OPENCONTEXT_DAST_TARGET }}
+          target: ${{ steps.target.outputs.url }}
           fail_action: true
           allow_issue_writing: false
           cmd_options: "-a -m 5 -T 120"

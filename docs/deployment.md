@@ -77,6 +77,18 @@ curl -fsS -H "Authorization: Bearer $OPS_API_TOKEN" \
 Detailed responses never return secret values. This is a configuration check,
 not a remote connectivity test.
 
+On push/PR to `main`, the repository ruleset requires pull requests and all
+checks in `.github/workflows/ci.yml` (including `CI — all checks passed`) to
+pass before merging. After a Production Vercel deployment succeeds,
+`.github/workflows/deploy-verify.yml` automatically runs
+`scripts/post-deploy-smoke.mjs` (`npm run smoke:deploy`) against
+`/api/health/ready`, `/api/scim/v2/ServiceProviderConfig`,
+`/api/auth/providers`, `/auth/signin`, and `/`, retrying transient errors. If
+verification fails and `VERCEL_TOKEN` (secret) plus `VERCEL_ORG_ID` and
+`VERCEL_PROJECT_ID` (repository variables) are configured, the workflow triggers
+`vercel rollback --yes` automatically and sends an HMAC-signed alert when
+`ALERT_WEBHOOK_URL` and `ALERT_WEBHOOK_SECRET` are set.
+
 The repository includes a multi-process PostgreSQL contention test. Against a
 disposable database:
 
@@ -119,8 +131,9 @@ Prisma 7 reads the database URL from `apps/web/prisma.config.ts` for SQLite and
 native Prisma query engine is required.
 
 On Vercel Production deployments (`VERCEL=1`, `VERCEL_ENV=production`),
-`apps/web` `prebuild` automatically runs `scripts/prisma-migrate-build.mjs` to
-apply pending migrations via `prisma migrate deploy` before Next.js builds.
+`apps/web` `postbuild` automatically runs `scripts/prisma-migrate-build.mjs`
+after `next build` succeeds so pending migrations via `prisma migrate deploy`
+only execute when the production bundle compiles cleanly.
 Migrations prefer `DIRECT_URL`, then `DATABASE_URL_UNPOOLED`, then
 `POSTGRES_URL_NON_POOLING`, and otherwise fall back to `DATABASE_URL` (for Neon
 `-pooler` URLs, `prisma.postgres.config.ts` automatically strips `-pooler` to
@@ -289,19 +302,21 @@ export OPS_FAILURE_LOOKBACK_MINUTES='60'
 
 Run the alert checker from a scheduling service or server that can reach the web
 app. `ALERT_WEBHOOK_URL` is optional for a report-only check, but production
-alerting needs a receiver for the JSON event:
+alerting needs a receiver for the JSON event and `ALERT_WEBHOOK_SECRET` to sign
+requests with `X-OpenContext-Timestamp` and `X-OpenContext-Signature`:
 
 ```bash
 export OPENCONTEXT_BASE_URL='https://your-app.example'
 export OPS_API_TOKEN='a-separate-long-random-secret'
 export ALERT_WEBHOOK_URL='https://your-alert-receiver.example/opencontext'
+export ALERT_WEBHOOK_SECRET='a-separate-webhook-hmac-secret'
 node scripts/check-operations.mjs
 ```
 
 The scheduled GitHub worker runs the same check after its drain. Add
-`OPS_API_TOKEN` and, for an actual notification, `ALERT_WEBHOOK_URL` as GitHub
-Actions secrets. A missing receiver is reported; an alert is never silently
-treated as a successful notification.
+`OPS_API_TOKEN` and, for an actual notification, `ALERT_WEBHOOK_URL` and
+`ALERT_WEBHOOK_SECRET` as GitHub Actions secrets. A missing receiver is
+reported; an alert is never silently treated as a successful notification.
 
 ### Hosted worker options
 

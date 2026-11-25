@@ -8,9 +8,18 @@ as independent review.
 
 The [Security DAST baseline workflow](../../.github/workflows/security-dast.yml)
 runs weekly against the URL in the `OPENCONTEXT_DAST_TARGET` repository
-variable. Point it at a staging deployment that has production-equivalent
+variable (or an explicit `target_url` on manual `workflow_dispatch`; scheduled
+runs emit a warning and skip cleanly when `OPENCONTEXT_DAST_TARGET` is unset).
+Point it at a staging deployment that has production-equivalent
 headers, authentication, S3 policy, and rate limits, but contains synthetic
 data only. Do not give the scanner credentials for a real user.
+
+Automated static analysis and dependency auditing also run on `main`, pull
+requests, and weekly schedules via
+[`codeql.yml`](../../.github/workflows/codeql.yml) (JavaScript/TypeScript,
+Python, and GitHub Actions),
+[`security-audit.yml`](../../.github/workflows/security-audit.yml) (`npm audit`
+and `pip-audit`), and [Dependabot](../../.github/dependabot.yml).
 
 The checked-in threat boundaries are documented in
 [`docs/security-review.md`](../security-review.md). The scanner complements the
