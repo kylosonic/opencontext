@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "prebuild": "node ../../scripts/prisma-generate.mjs && npm --prefix ../../packages/schemas run build",
+    "prebuild": "node ../../scripts/prisma-generate.mjs && node ../../scripts/prisma-migrate-build.mjs && npm --prefix ../../packages/schemas run build",
     "build": "next build --webpack",
     "start": "next start",
     "postinstall": "node ../../scripts/prisma-generate.mjs",

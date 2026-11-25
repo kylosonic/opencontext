@@ -112,6 +112,18 @@ Prisma 7 reads the database URL from `apps/web/prisma.config.ts` for SQLite and
 `better-sqlite3` or `pg` driver adapter from the `DATABASE_URL` scheme; no
 native Prisma query engine is required.
 
+On Vercel Production deployments (`VERCEL=1`, `VERCEL_ENV=production`),
+`apps/web` `prebuild` automatically runs `scripts/prisma-migrate-build.mjs` to
+apply pending migrations via `prisma migrate deploy` before Next.js builds.
+Migrations prefer `DIRECT_URL`, then `DATABASE_URL_UNPOOLED`, then
+`POSTGRES_URL_NON_POOLING`, and otherwise fall back to `DATABASE_URL` (for Neon
+`-pooler` URLs, `prisma.postgres.config.ts` automatically strips `-pooler` to
+connect directly so Prisma advisory locks succeed). Local builds, Docker builds
+(where the runtime container executes `prisma migrate deploy` on startup), and
+Vercel Preview deployments skip build-time migrations unless
+`PRISMA_MIGRATE_ON_BUILD=true` is set; set `PRISMA_MIGRATE_ON_BUILD=false` to
+disable automatic migrations on Vercel Production builds.
+
 PostgreSQL migrations live in `apps/web/prisma/postgres/migrations`. Generate
 and review a new migration before deploying schema changes. An existing
 database that was created with the old `db push` path needs its schema
