@@ -8,9 +8,15 @@ on:
         description: Optional base URL to verify (defaults to vars.WORKER_API_URL or deployment environment_url)
         required: false
         type: string
+      rollback_dry_run:
+        description: Run Vercel Instant Rollback resolution in dry-run mode without mutating Production
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: deploy-verify-${{ github.event.deployment.environment || 'manual' }}
@@ -35,6 +41,7 @@ jobs:
           cache: npm
 
       - name: Run post-deploy smoke checks
+        id: smoke
         env:
           INPUT_TARGET_URL: ${{ inputs.target_url }}
           VAR_TARGET_URL: ${{ vars.WORKER_API_URL }}
@@ -54,14 +61,34 @@ jobs:
           node scripts/post-deploy-smoke.mjs
 
       - name: Roll back failed Vercel production deployment
-        if: failure() && github.event_name == 'deployment_status'
+        if: >-
+          !cancelled() && (
+            (failure() && github.event_name == 'deployment_status') ||
+            (github.event_name == 'workflow_dispatch' && inputs.rollback_dry_run == true)
+          )
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          FAILED_DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url }}
+          FAILED_COMMIT_SHA: ${{ github.sha }}
+          VERCEL_ROLLBACK_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.rollback_dry_run == true && 'true' || 'false' }}
         run: |
-          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
-            echo "::warning::Automatic rollback skipped: set VERCEL_TOKEN secret and VERCEL_ORG_ID + VERCEL_PROJECT_ID repository variables to enable automatic rollback."
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::warning::Automatic rollback skipped: set VERCEL_TOKEN secret and VERCEL_PROJECT_ID repository variable to enable Vercel rollback."
             exit 0
           fi
-          npx --yes vercel@latest rollback --yes --token "$VERCEL_TOKEN"
+          node scripts/vercel-rollback.mjs
+
+      - name: Sync GitHub incident issue
+        if: always() && (steps.smoke.outcome == 'success' || steps.smoke.outcome == 'failure')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INCIDENT_KEY: deploy-smoke
+          INCIDENT_TITLE: "Production post-deploy smoke check failed"
+          INCIDENT_STATUS: ${{ steps.smoke.outcome == 'success' && 'healthy' || 'unhealthy' }}
+          INCIDENT_SUMMARY_PATH: .artifacts/deploy-smoke/summary.json
+          INCIDENT_ROLLBACK_PATH: .artifacts/deploy-smoke/rollback.json
+          INCIDENT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/github-incident-alert.mjs

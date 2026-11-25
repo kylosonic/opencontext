@@ -84,10 +84,16 @@ pass before merging. After a Production Vercel deployment succeeds,
 `scripts/post-deploy-smoke.mjs` (`npm run smoke:deploy`) against
 `/api/health/ready`, `/api/scim/v2/ServiceProviderConfig`,
 `/api/auth/providers`, `/auth/signin`, and `/`, retrying transient errors. If
-verification fails and `VERCEL_TOKEN` (secret) plus `VERCEL_ORG_ID` and
-`VERCEL_PROJECT_ID` (repository variables) are configured, the workflow triggers
-`vercel rollback --yes` automatically and sends an HMAC-signed alert when
-`ALERT_WEBHOOK_URL` and `ALERT_WEBHOOK_SECRET` are set.
+verification fails and `VERCEL_TOKEN` (secret) plus `VERCEL_PROJECT_ID` (and
+optional `VERCEL_ORG_ID` repository variables) are configured, the workflow
+invokes `scripts/vercel-rollback.mjs` (`npm run rollback:dry-run` for local
+target checks) to trigger Vercel Instant Rollback to the immediate previous
+`READY` production deployment, opens or updates a deduplicated `ops-incident`
+GitHub issue via `scripts/github-incident-alert.mjs` (auto-closing it once smoke
+recovers), and sends an HMAC-signed alert when `ALERT_WEBHOOK_URL` and
+`ALERT_WEBHOOK_SECRET` are set. Note that Vercel pauses automatic production
+alias assignment after an Instant Rollback until you promote a fixed deployment
+with `vercel promote`.
 
 The repository includes a multi-process PostgreSQL contention test. Against a
 disposable database:
@@ -313,10 +319,12 @@ export ALERT_WEBHOOK_SECRET='a-separate-webhook-hmac-secret'
 node scripts/check-operations.mjs
 ```
 
-The scheduled GitHub worker runs the same check after its drain. Add
-`OPS_API_TOKEN` and, for an actual notification, `ALERT_WEBHOOK_URL` and
-`ALERT_WEBHOOK_SECRET` as GitHub Actions secrets. A missing receiver is
-reported; an alert is never silently treated as a successful notification.
+The scheduled GitHub worker runs the same check after its drain and syncs a
+deduplicated `ops-incident` GitHub issue (`INCIDENT_KEY=ops-alert`, closing
+automatically once `healthy=true`). Add `OPS_API_TOKEN` and, for external
+webhook notifications, `ALERT_WEBHOOK_URL` and `ALERT_WEBHOOK_SECRET` as GitHub
+Actions secrets. A missing external webhook receiver is still reported so
+webhook routing failures are never silently treated as successful delivery.
 
 ### Hosted worker options
 
@@ -361,8 +369,10 @@ The GitHub Actions schedule remains the fallback when no always-on worker host
 is configured.
 
 If you do not have a long-running host yet, `.github/workflows/worker-schedule.yml`
-drains the queue from GitHub Actions every five minutes. It is a real worker,
-not a simulation, but job start latency is up to one cron interval. Set these
+drains the queue from GitHub Actions on a schedule (and on `repository_dispatch`
+`job-queued` or manual `workflow_dispatch`). It is a real worker, not a
+simulation, but cron job start latency depends on GitHub Actions scheduling. Set
+these
 repository secrets and variables before enabling it:
 
 ```bash
@@ -419,15 +429,20 @@ credentials.
 
 ## Persistent worker blueprint
 
-The repository includes `render.yaml`, which defines a Render background-worker
-service built from `docker/worker-hosted.Dockerfile`. It keeps the Faster
-Whisper cache on a 5 GB persistent disk mounted at `/models`, drains on
-`SIGTERM`, and reads `WORKER_API_URL`, `WORKER_API_TOKEN`, and
-`OPENAI_API_KEY` from Render secrets.
+The repository ships two persistent worker definitions built from
+`docker/worker-hosted.Dockerfile`, both keeping the Faster Whisper cache at
+`/models`, draining on `SIGTERM`, and expecting `WORKER_API_URL`,
+`WORKER_API_TOKEN`, and `OPENAI_API_KEY` as secrets:
 
-Before applying the blueprint, set those three secrets and confirm the selected
-plan supports background workers and persistent disks. After the first deploy,
-verify:
+- **`render.yaml`**: Render background-worker Blueprint with a 5 GB persistent
+  disk mounted at `/models`.
+- **`fly.toml`**: Fly.io app configuration with a persistent `opencontext_models`
+  volume mounted at `/models` (provision secrets via `fly secrets set` and
+  deploy via `fly deploy`).
+
+Before applying either definition, set those three secrets and confirm the
+selected plan supports background workers and persistent disks/volumes. After
+the first deploy, verify:
 
 ```bash
 curl -fsS "$WORKER_API_URL/api/health/ready"
