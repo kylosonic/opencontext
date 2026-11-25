@@ -1,9 +1,12 @@
 # Releasing OpenContext
 
-The repository has two publishable artifacts:
+The repository has two publishable package artifacts and three container images:
 
 - Python distribution `opencontext-video`, including the `opencontext` CLI.
 - npm package `@kylosonic/opencontext-schemas`.
+- GHCR container images `ghcr.io/kylosonic/opencontext-web`,
+  `ghcr.io/kylosonic/opencontext-worker`, and
+  `ghcr.io/kylosonic/opencontext-worker-cli`.
 
 Versions are currently `0.1.1` in both package manifests. A Git tag must be
 `v0.1.1` (without extra text), and the release workflow verifies that the tag,
@@ -11,9 +14,13 @@ npm version, and Python version match before building.
 
 ## Protected publishing
 
-`.github/workflows/release.yml` runs on `v*` tags. Publishing jobs use GitHub
-Environments named `pypi` and `npm`. A pushed tag therefore builds and verifies
-the release without publishing until an environment is approved manually.
+`.github/workflows/release.yml` runs on `v*` tags (and can be triggered via
+`workflow_dispatch` on a branch as a dry-run build/verify without publishing
+packages, pushing container images, or creating a release). Publishing jobs use
+GitHub Environments named `pypi` and `npm`. A pushed tag therefore builds and
+verifies the release without publishing until an environment is approved
+manually, then builds and pushes the GHCR container images and creates the
+GitHub Release automatically if absent.
 
 - PyPI uses Trusted Publishing through GitHub OIDC; no PyPI token is stored.
 - npm uses Trusted Publishing through GitHub OIDC; no npm publish token is

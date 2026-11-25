@@ -59,10 +59,14 @@ jobs:
           npm run evaluation:hearing-video
           npm run vision:fixture
 
-      - name: Verify demo launcher syntax
+      - name: Verify demo launcher and operational scripts syntax
         run: |
           node --check scripts/real-vision-demo.mjs
           node --check scripts/compose-smoke.mjs
+          node --check scripts/prisma-migrate-build.mjs
+          node --check scripts/post-deploy-smoke.mjs
+          node --check scripts/check-operations.mjs
+          node --check scripts/configure-vercel-waf.mjs
           docker compose -f docker-compose.yml config --quiet
 
       - name: Install worker for contract and end-to-end tests
@@ -210,6 +214,12 @@ jobs:
 
       - name: Build worker image
         run: docker build -f docker/worker.Dockerfile -t opencontext-worker:ci .
+
+      - name: Validate hosted and GPU Dockerfiles
+        run: |
+          docker buildx build --check -f docker/worker.gpu.Dockerfile .
+          docker buildx build --check -f docker/worker-hosted.Dockerfile .
+          docker buildx build --check -f docker/web-hosted.Dockerfile .
 
       - name: Verify packaged CLI
         run: docker run --rm opencontext-worker:ci opencontext --version
@@ -361,3 +371,35 @@ jobs:
       - name: Stop Compose stack
         if: always()
         run: docker compose down -v --remove-orphans
+
+  ci-gate:
+    name: CI — all checks passed
+    needs: [web, worker, ffmpeg-6-image-regression, worker-container, postgres, compose]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify all required CI jobs succeeded
+        env:
+          WEB_RESULT: ${{ needs.web.result }}
+          WORKER_RESULT: ${{ needs.worker.result }}
+          FFMPEG_RESULT: ${{ needs.ffmpeg-6-image-regression.result }}
+          CONTAINER_RESULT: ${{ needs.worker-container.result }}
+          POSTGRES_RESULT: ${{ needs.postgres.result }}
+          COMPOSE_RESULT: ${{ needs.compose.result }}
+        run: |
+          for pair in \
+            "web:$WEB_RESULT" \
+            "worker:$WORKER_RESULT" \
+            "ffmpeg-6-image-regression:$FFMPEG_RESULT" \
+            "worker-container:$CONTAINER_RESULT" \
+            "postgres:$POSTGRES_RESULT" \
+            "compose:$COMPOSE_RESULT"; do
+            name="${pair%%:*}"
+            result="${pair#*:}"
+            echo "$name: $result"
+            if [ "$result" != "success" ]; then
+              echo "::error::CI job '$name' did not succeed (result=$result)."
+              exit 1
+            fi
+          done
