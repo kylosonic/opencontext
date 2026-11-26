@@ -213,14 +213,14 @@ Video/audio/image/PDF → Upload intent → Object storage → Queue → FFmpeg/
 The worker includes a standalone CLI:
 
 ```bash
-python -m pip install "opencontext-video[local]==0.1.1"
+python -m pip install "opencontext-video[local]==0.1.2"
 opencontext analyze video.mp4 --out context.md --json context.json
 opencontext analyze mockup.png --out image.md --json image.json
 opencontext analyze reference.pdf --out pdf.md --json pdf.json
 ```
 
-The Python package is published as `opencontext-video==0.1.1`. The TypeScript
-contracts are available as `@kylosonic/opencontext-schemas@0.1.1` with ESM and
+The Python package is published as `opencontext-video==0.1.2`. The TypeScript
+contracts are available as `@kylosonic/opencontext-schemas@0.1.2` with ESM and
 declarations. See
 [docs/installable-packages.md](docs/installable-packages.md) and
 [docs/releasing.md](docs/releasing.md).

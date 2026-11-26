@@ -3,8 +3,13 @@
 All notable changes are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.1.2 - 2026-11-26
 
+- Refreshed the compatible dependency set: AWS SDK S3 clients, ESLint 10,
+  TypeScript ESLint 8.74, `@types/node` 26, setuptools/twine bounds, patched
+  PyAV 18.1.1, and current Node 24/Python 3.13 base-image digests. TypeScript
+  7, PyAV 19, Node 25, and CUDA 13.5 remain intentionally blocked pending
+  upstream compatibility and runtime-major validation.
 - Closed the audit's production-critical gaps: worker and upload mutations are
   lease-fenced, local and S3 object access is scoped to the owning job, media
   downloads and provider calls are bounded, browser mutations require trusted

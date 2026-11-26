@@ -226,8 +226,8 @@ the non-root worker container and the Compose upload-to-export flow.
   four-slide workload. Its conservative defaults need evidence-loss review on a
   larger real-world visual corpus before they can be described as broadly
   optimal.
-- `opencontext-video==0.1.1` is published on PyPI and
-  `@kylosonic/opencontext-schemas@0.1.1` is published on npm. Both use Trusted
+- `opencontext-video==0.1.2` is published on PyPI and
+  `@kylosonic/opencontext-schemas@0.1.2` is published on npm. Both use Trusted
   Publishing through their protected release workflows.
 - `npm audit` reports zero known vulnerabilities at the time of verification;
   dependency advisories must still be rechecked on every release.
