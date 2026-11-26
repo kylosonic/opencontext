@@ -10,11 +10,12 @@ from pathlib import Path
 
 import httpx
 import pytest
+from PIL import Image
 
 from oc_worker import package_version
-from oc_worker.cli import main
-from oc_worker.config import resolve_ffmpeg_path
-from oc_worker.models import Segment
+from oc_worker.cli import analyze_file, main
+from oc_worker.config import Settings, resolve_ffmpeg_path
+from oc_worker.models import DetailLevel, Segment
 from oc_worker.replay import validate_context
 
 FFMPEG = resolve_ffmpeg_path()
@@ -73,6 +74,70 @@ def _audio_fixture(path: Path) -> None:
         check=True,
         capture_output=True,
     )
+
+
+def test_hybrid_cli_frame_dedup_runs_before_vision(tmp_path: Path, monkeypatch) -> None:
+    class CountingVision:
+        name = "counting-vision"
+
+        def __init__(self) -> None:
+            self.timestamps: list[float] = []
+
+        def analyze(self, frame_bytes: bytes, context: dict) -> dict:
+            assert frame_bytes
+            self.timestamps.append(context["timestampSec"])
+            return {
+                "certainty": "OBSERVED",
+                "sceneTitle": "Static slide",
+                "visualDescription": "A static slide",
+                "uiElements": [],
+                "visibleText": [],
+                "interactions": [],
+                "designObservations": {},
+                "importantChanges": [],
+            }
+
+    source = tmp_path / "static.mp4"
+    source.write_bytes(b"fake-video")
+    vision = CountingVision()
+
+    def fake_extract_frames(source_path: str, output_dir: str, **kwargs) -> list[dict]:
+        assert kwargs["sampling_mode"] == "hybrid"
+        directory = Path(output_dir)
+        directory.mkdir(parents=True, exist_ok=True)
+        frames = []
+        for index, timestamp in enumerate((0.0, 1.0, 2.0, 3.0), start=1):
+            frame_path = directory / f"frame-{index}.jpg"
+            Image.new("RGB", (96, 54), (24, 40, 56)).save(
+                frame_path, format="JPEG", quality=95
+            )
+            frames.append({"timestamp": timestamp, "path": str(frame_path)})
+        return frames
+
+    monkeypatch.setattr(
+        "oc_worker.cli.probe",
+        lambda *_args, **_kwargs: {
+            "duration": 4.0,
+            "width": 640,
+            "height": 360,
+            "video_present": True,
+            "audio_present": False,
+        },
+    )
+    monkeypatch.setattr("oc_worker.cli.extract_frames", fake_extract_frames)
+    monkeypatch.setattr("oc_worker.cli.build_vision", lambda _settings: vision)
+    settings = Settings(
+        transcription_provider="fixture",
+        vision_provider="fixture",
+        ocr_provider="off",
+        text_provider="template",
+        frame_sampling_mode="hybrid",
+    )
+
+    _markdown, payload = analyze_file(source, settings, detail_level=DetailLevel.HIGH)
+
+    assert vision.timestamps == [0.0, 3.0]
+    assert {entry["timestampSec"] for entry in payload["visualFindings"]} == {0.0, 3.0}
 
 
 def test_offline_cli_writes_markdown_and_json(tmp_path: Path, monkeypatch) -> None:

@@ -109,7 +109,10 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - PNG, JPEG, and WebP uploads support one image or an ordered set of up to 10.
   The server checks bytes, MIME type, format, and a 40-megapixel ceiling; the
   worker applies EXIF orientation, flattens transparency onto white, removes
-  metadata, and adds cross-image changes to the context.
+  metadata, emits deterministic normalized JPEG, and adds cross-image changes
+  to the context. Real-FFmpeg tests cover every EXIF orientation, all three
+  formats, malformed inputs, metadata removal, and the pinned static FFmpeg CI
+  path.
 - PDFs up to 50 MB and 30 pages are rendered into ordered pages. Embedded text
   becomes OCR evidence and each rendered page follows the same vision,
   evidence, and export path as an image.
@@ -135,6 +138,10 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   authenticated aggregation, and scheduled reconciliation for future metered
   billing.
 - Generated-video end-to-end test from upload through worker output.
+- Hybrid video sampling has an optional fail-open Python de-duplication pass.
+  A reproducible synthetic benchmark retained every slide boundary while
+  reducing modeled vision/OCR calls from 16 to 5; see
+  [the measurements and limits](docs/performance/frame-dedup-2026-11-26.md).
 - Audio-backed worker end-to-end test that transcribes the committed Harvard
   recording with real Faster Whisper in CI and checks transcript WER/CER and
   evidence timestamp bounds.

@@ -50,6 +50,13 @@ Inputs:
 `analyze_video` and `analyze_image` are explicit compatibility entry points
 with the same options.
 
+These three tools perform analysis; they do not only read a completed result.
+They run FFmpeg extraction, the local pipeline, and the configured providers.
+Remote providers remain disabled unless the server is started with
+`--allow-remote` and the caller passes `offline: false`. The Phase 3
+result-server gate required the existing MCP server to be read-only, so no
+second server was introduced.
+
 ### `implementation_brief`
 
 Reads an existing OpenContext JSON result and emits a brief without rerunning
@@ -88,3 +95,9 @@ The MCP server runs locally and reads only paths supplied by the MCP client. It
 does not upload repository contents. Repository detection examines file names,
 extensions, and common manifest metadata; it does not execute repository code.
 Inferred and uncertain claims remain explicitly marked as hypotheses.
+
+`analyze_media` and its compatibility aliases can send the supplied media to a
+configured remote provider only under the explicit two-level opt-in described
+above. Use `offline: true` for deterministic local fixture output, or use the
+read-only `implementation_brief` and `context_evidence` tools with a captured
+OpenContext JSON result.

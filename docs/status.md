@@ -1,6 +1,6 @@
 # Project Status
 
-Last verified: 2026-11-24
+Last verified: 2026-11-26
 
 This page describes the repository and verification evidence, not a guarantee
 about the current Vercel deployment or future releases.
@@ -8,15 +8,25 @@ about the current Vercel deployment or future releases.
 ## Verified in the repository
 
 - Web lint, typecheck, production build, and the complete local suite pass. The
-  local web suite reports 251 passed plus two env-gated skips
+  local web suite reports 283 passed plus two env-gated skips
   (`storage.s3.integration.test.ts` and `url-import.e2e.test.ts`); CI runs the
-  S3 integration against S3Mock. Shared config contributes nine passing tests
-  and the contract suite contributes five.
-- Worker Ruff and all 356 local tests pass, with four environment-dependent
+  S3 integration against S3Mock. Shared config contributes ten passing tests
+  and the contract suite contributes 28.
+- Worker Ruff and all 404 local tests pass, with four environment-dependent
   skips (`test_audio_e2e.py`, `test_ocr_providers.py`,
   `test_opencode_audio_smoke.py`, and `test_opencode_vision_smoke.py`). Real
   Tesseract and OpenCode Go vision/audio smoke tests run when their binaries or
   stored credentials and opt-in flags are present.
+- Still-image normalization has real-FFmpeg parity coverage for PNG, JPEG, and
+  WebP; EXIF orientations 2–8; transparent and translucent compositing; long-edge
+  scaling; metadata removal; deterministic output; and malformed inputs. The
+  full suite passes against the bundled FFmpeg and the hash-pinned static FFmpeg
+  CI binary. All 11 downloaded JPEG/PNG/WebP photos in the local acceptance
+  corpus also normalized to bounded RGB JPEGs without orientation metadata.
+- Hybrid video sampling has a fail-open Python de-duplication pass. The
+  synthetic four-slide measurement retained every slide boundary and the final
+  frame while reducing modeled vision/OCR calls from 16 to 5 (68.75%). The raw
+  result, method, timings, and limits are under `docs/performance/`.
 - UI consistency, accessibility, team RBAC UI gating, interactive public share
   controls, landing page, and in-app docs parity checks were audited and
   verified across `apps/web`.
@@ -212,6 +222,10 @@ the non-root worker container and the Compose upload-to-export flow.
 - The live media acceptance corpus contains downloaded photographs and trailer
   footage, not a long real application walkthrough or a statistically
   representative sample of user-uploaded codecs and screen recordings.
+- Frame de-duplication evidence currently comes from one reproducible synthetic
+  four-slide workload. Its conservative defaults need evidence-loss review on a
+  larger real-world visual corpus before they can be described as broadly
+  optimal.
 - `opencontext-video==0.1.1` is published on PyPI and
   `@kylosonic/opencontext-schemas@0.1.1` is published on npm. Both use Trusted
   Publishing through their protected release workflows.

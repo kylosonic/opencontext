@@ -76,6 +76,50 @@ Container hosts add a second boundary: the worker runs as UID 10001 with a
 read-only root filesystem, dropped Linux capabilities, `no-new-privileges`,
 bounded pids/memory, and writable tmpfs plus the model volume only.
 
+### Still-image normalization
+
+PNG, JPEG, and WebP inputs share one FFmpeg normalization path. FFmpeg applies
+EXIF autorotation, the long edge is bounded to 1280 pixels by default, alpha is
+composited onto white, input metadata is discarded, and MJPEG output uses
+bitexact flags so the muxer cannot add an encoder comment. The output is an RGB
+JPEG used by vision and OCR. The web boundary rejects images over 40 megapixels
+before the worker decodes them.
+
+The real-FFmpeg suite compares all EXIF orientations 2–8 with Pillow's
+orientation result, checks PNG/JPEG/WebP colours against that oracle, verifies
+translucent compositing, metadata removal, output dimensions, byte determinism,
+and a malformed-image corpus. CI runs the complete suite against both the
+bundled FFmpeg and the pinned static FFmpeg regression binary.
+
+### Hybrid frame sampling and de-duplication
+
+`FRAME_SAMPLING_MODE=hybrid` lets FFmpeg keep scene changes in addition to its
+interval samples. For videos in this mode, the worker then fingerprints each
+normalized frame as a 64×64 RGB thumbnail plus a 64-bit difference hash derived
+from a 9×8 grayscale sample. It removes an adjacent frame only when the hash is
+within two bits and the RGB pixel RMS is at most 1.25. Both checks must pass.
+
+The first and final frames are always retained. A frame that cannot be decoded
+is retained and resets the comparison chain, so the optional optimization fails
+open. Fixed sampling, ordered image sets, PDFs, and audio are unchanged. The
+same pass runs in both the database worker pipeline and the standalone
+CLI/MCP analysis path.
+
+The measured synthetic four-slide run selected 16 raw hybrid frames, retained
+five after de-duplication, preserved all slide boundaries and the final frame,
+and reduced modeled vision/OCR calls by 68.75%. The reproducible method and
+limits are in
+[`docs/performance/frame-dedup-2026-11-26.md`](performance/frame-dedup-2026-11-26.md).
+
+### MCP analysis boundary
+
+The current Python MCP server is not a result-only reader. `analyze_media`,
+`analyze_video`, and `analyze_image` invoke extraction and can trigger local or
+opted-in remote vision, OCR, and presentation compression. The Phase 3 gate for
+a replacement MCP server over existing result JSON was therefore not met, so
+there is no parallel Rust or Python server. `implementation_brief`,
+`context_evidence`, and `replay` remain the read-only result paths.
+
 ## Where to Make Common Changes
 
 - **Add a supported media format or tweak size limits:** Update `UPLOAD_LIMITS` / `sourceKindForExtension` in `packages/schemas/src/job.ts` and `MIMES_BY_EXTENSION` in `apps/web/src/lib/media-formats.ts`, then run `npm run typecheck` and `npm run test:contracts`.

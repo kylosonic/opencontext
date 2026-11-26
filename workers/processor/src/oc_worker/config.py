@@ -200,6 +200,16 @@ class Settings:
             0.05, min(0.95, _env_float("SCENE_CHANGE_THRESHOLD", 0.25))
         )
     )
+    frame_dedup_hash_distance: int = field(
+        default_factory=lambda: max(
+            0, min(16, _env_int("FRAME_DEDUP_HASH_DISTANCE", 2))
+        )
+    )
+    frame_dedup_pixel_rms: float = field(
+        default_factory=lambda: max(
+            0.0, min(32.0, _env_float("FRAME_DEDUP_PIXEL_RMS", 1.25))
+        )
+    )
     ocr_provider: str = field(
         default_factory=lambda: _env("OCR_PROVIDER", "vision") or "vision"
     )

@@ -434,6 +434,10 @@ def extract_image_frame(
             f"{scale},{flatten}",
             "-map_metadata",
             "-1",
+            # The MJPEG muxer otherwise adds a Lavc encoder comment even after
+            # input metadata is dropped. Bitexact mode also keeps output stable.
+            "-flags",
+            "+bitexact",
             "-update",
             "1",
             "-q:v",

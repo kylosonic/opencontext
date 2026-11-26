@@ -74,6 +74,8 @@ def test_extract_image_frame_uses_single_frame_conversion(
     assert (
         "-autorotate" not in captured["args"][: captured["args"].index("-i")]
     ), "autorotate is output-only; FFmpeg 6.1 rejects it before the input"
+    assert captured["args"][captured["args"].index("-flags") + 1] == "+bitexact"
+    assert captured["args"][captured["args"].index("-map_metadata") + 1] == "-1"
     assert captured["args"][-1] == str(destination)
     assert "shell" not in captured["kwargs"]
     assert frame == {"timestamp": 0.0, "path": destination}

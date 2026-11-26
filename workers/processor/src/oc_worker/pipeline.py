@@ -43,6 +43,7 @@ from oc_worker.errors import (
     bind_abort,
 )
 from oc_worker.ffmpeg import extract_audio, extract_frames, extract_image_frame, probe
+from oc_worker.frame_dedup import deduplicate_similar_frames
 from oc_worker.models import (
     DetailLevel,
     OCRObservation,
@@ -652,6 +653,31 @@ class Pipeline:
             or aggregation.frame_selected(float(frame["timestamp"]), detail_level)
         ]
         selected = aggregation.limit_frames(selected, self.settings.vision_max_frames)
+        frames_before_dedup = len(selected)
+        dedup = None
+        if self.settings.frame_sampling_mode == "hybrid" and self._source_kind(job) == "video":
+            dedup = deduplicate_similar_frames(
+                selected,
+                max_hash_distance=self.settings.frame_dedup_hash_distance,
+                max_rms=self.settings.frame_dedup_pixel_rms,
+            )
+            selected = dedup.frames
+            if dedup.fingerprint_errors:
+                log.warning(
+                    "job=%s stage=ANALYZING frame_dedup_fingerprint_errors=%d",
+                    job_id,
+                    dedup.fingerprint_errors,
+                )
+        frames_saved = frames_before_dedup - len(selected)
+        log.info(
+            "job=%s stage=ANALYZING frames_selected=%d frames_deduplicated=%d "
+            "vision_calls_saved=%d frames_scheduled=%d",
+            job_id,
+            frames_before_dedup,
+            frames_saved,
+            frames_saved,
+            len(selected),
+        )
         stop_after_failure = threading.Event()
 
         def analyze_one(
