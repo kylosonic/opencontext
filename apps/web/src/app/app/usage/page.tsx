@@ -63,6 +63,7 @@ export default async function UsagePage() {
               <UsageDashboard
                 initialSummary={summary}
                 workspaces={workspaces}
+                initialInvoiceMonth={new Date().toISOString().slice(0, 7)}
               />
             )}
 

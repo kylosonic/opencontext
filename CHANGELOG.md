@@ -3,6 +3,13 @@
 All notable changes are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Added provider-neutral monthly JSON and CSV invoice exports over the usage
+  ledger, including account/team permission checks, deterministic draft invoice
+  numbers, USD micro-unit totals, response download headers, and spreadsheet
+  formula-injection protection.
+
 ## 0.1.2 - 2026-11-26
 
 - Refreshed the compatible dependency set: AWS SDK S3 clients, ESLint 10,

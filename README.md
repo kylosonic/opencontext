@@ -135,8 +135,8 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
 - Idempotent analysis usage records with configurable resale prices,
-  authenticated aggregation, and scheduled reconciliation for future metered
-  billing.
+  authenticated aggregation, scheduled reconciliation, and monthly JSON/CSV
+  draft invoice exports for a future metered-billing integration.
 - Generated-video end-to-end test from upload through worker output.
 - Hybrid video sampling has an optional fail-open Python de-duplication pass.
   A reproducible synthetic benchmark retained every slide boundary while

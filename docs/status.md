@@ -131,7 +131,9 @@ about the current Vercel deployment or future releases.
   `docs/evaluation/heldout-2026-11-24/`.
 - Every terminal analysis writes one idempotent usage record with configurable
   resale prices. The scheduled worker reconciles interrupted writes, and an
-  authenticated operations endpoint exposes aggregate usage.
+  authenticated operations endpoint exposes aggregate usage. Signed-in users
+  and permitted team members can also download deterministic monthly JSON/CSV
+  draft invoices without connecting a payment provider.
 - PostgreSQL pooling is bounded through environment-controlled connection,
   idle, and acquisition settings. A repository script can preview or apply a
   Vercel WAF policy while preserving existing rules, and a weekly OWASP ZAP
@@ -237,9 +239,9 @@ the non-root worker container and the Compose upload-to-export flow.
 - A dedicated persistent worker deployment and runtime alerts have not been
   verified against a live host. Until they are, the recorded production worker
   remains the scheduled GitHub Actions drain.
-- The usage ledger does not collect money or activate a metered billing
-  subscription. Pricing, tax, refunds, currency, and customer mapping need an
-  explicit product decision.
+- The usage ledger and draft invoice exports do not collect money or activate a
+  metered billing subscription. Payment provider, tax, refunds, final invoice
+  numbering, and customer mapping need an explicit product decision.
 
 Scoped work is tracked in [ROADMAP.md](../ROADMAP.md) and
 [docs/issues](issues/README.md).

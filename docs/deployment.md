@@ -618,6 +618,22 @@ curl -fsS -H "Authorization: Bearer $OPS_API_TOKEN" \
   "$APP_BASE_URL/api/ops/usage?since=2026-11-01T00:00:00Z"
 ```
 
+Signed-in users and team members with `usage:view` can download a monthly draft
+invoice in JSON or CSV from `/app/usage`:
+
+```bash
+curl -fsS -b cookies.txt \
+  "$APP_BASE_URL/api/usage/invoice?month=2026-11&format=csv" \
+  --output opencontext-2026-11.csv
+```
+
+Personal invoice exports contain only jobs outside a team workspace; team
+exports contain the selected workspace's usage. Invoice numbers are stable for
+the scope and month, totals use integer micro-USD, and CSV descriptions guard
+against spreadsheet formula execution. The response is explicitly marked as a
+`DRAFT`; it does not create a subscription, collect payment, or call a billing
+provider.
+
 This is the billing-system boundary, not a payment processor. Before automated
 charging, choose the billing provider, configure tax/currency/refund policy,
 map customers to subscriptions, publish prices, and reconcile the exported

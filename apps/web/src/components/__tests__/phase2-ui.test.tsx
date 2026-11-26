@@ -90,6 +90,7 @@ describe("phase 2 UI components", () => {
     render(
       <UsageDashboard
         workspaces={[{ id: "ws-1", name: "Core Ops", role: "OWNER" }]}
+        initialInvoiceMonth="2026-11"
         initialSummary={{
           days: 30,
           since: "2026-10-26T00:00:00.000Z",
@@ -111,6 +112,12 @@ describe("phase 2 UI components", () => {
     await waitFor(() => {
       expect(screen.getByText("$2.50")).toBeTruthy();
     });
+    expect(
+      screen.getByRole("link", { name: "JSON invoice" }).getAttribute("href"),
+    ).toBe("/api/usage/invoice?month=2026-11&format=json&workspaceId=ws-1");
+    expect(
+      screen.getByRole("link", { name: "CSV invoice" }).getAttribute("href"),
+    ).toBe("/api/usage/invoice?month=2026-11&format=csv&workspaceId=ws-1");
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/usage?workspaceId=ws-1&days=30",
       expect.objectContaining({ headers: { Accept: "application/json" } }),

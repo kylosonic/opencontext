@@ -172,6 +172,11 @@ const ENDPOINTS = [
     "Read completed analysis usage counts, duration, and recorded costs (workspaceId, days).",
   ],
   [
+    "GET",
+    "/api/usage/invoice",
+    "Download a deterministic monthly draft invoice as JSON or CSV (month, format, optional workspaceId).",
+  ],
+  [
     "POST",
     "/api/worker/heartbeat",
     "Internal worker-token heartbeat for idle worker health (204).",

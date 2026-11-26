@@ -25,4 +25,4 @@ These previously deferred capabilities are now implemented (`apps/web/src/app/do
 1. **Additional agent-specific integrations** beyond the implemented local MCP server.
 2. **Additional CLI distribution channels** beyond the implemented Python CLI.
 3. **Real-time streaming processing.**
-4. **Metered billing checkout** — self-service usage aggregation (`/app/usage`) and idempotent recording exist, while payment provider, tax, and invoice collection remain pending.
+4. **Metered billing checkout** — self-service usage aggregation (`/app/usage`), idempotent recording, and monthly JSON/CSV draft invoice exports exist, while payment provider, tax, final invoicing, and payment collection remain pending.
