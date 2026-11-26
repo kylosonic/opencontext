@@ -57,6 +57,15 @@ HF_HOME=/models`}
           <p className="mt-4">
             Mount a persistent volume at <code>/models</code>. Configure the host to restart the container on failure and give it at least 130 seconds to stop. The hosted image runs as UID 10001 and receives <code>SIGTERM</code> directly.
           </p>
+          <p className="mt-4">
+            For a zero-cost public-repository fallback, the checked-in GitHub
+            Actions relay keeps a scheduled worker alive for 15 minutes while
+            the next five-minute run waits in a serialized concurrency group.
+            It claims queued work within the worker&apos;s three-second idle
+            poll and caches the Whisper model between runs. It remains subject
+            to GitHub scheduling and acceptable-use limits and is not a
+            replacement for dedicated-host restart evidence.
+          </p>
         </section>
 
         <section aria-labelledby="lifecycle-title">

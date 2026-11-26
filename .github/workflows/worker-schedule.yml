@@ -23,9 +23,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Prevent private-repository compute charges
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALLOW_PRIVATE_ACTIONS_MINUTES: ${{ vars.ALLOW_PRIVATE_ACTIONS_MINUTES }}
+        run: |
+          visibility="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.visibility')"
+          if [ "$visibility" != "public" ] && [ "$ALLOW_PRIVATE_ACTIONS_MINUTES" != "true" ]; then
+            echo "::error::The continuous Actions relay is enabled only for this public repository. Set ALLOW_PRIVATE_ACTIONS_MINUTES=true only if you accept private Actions minute billing."
+            exit 1
+          fi
+
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: workers/processor/pyproject.toml
 
       - name: Cache transcription models
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -49,9 +62,10 @@ jobs:
       - name: Drain queue
         env:
           OPENCONTEXT_SKIP_DOTENV: "1"
+          CONTINUOUS_RELAY: ${{ github.event_name == 'schedule' && '1' || '0' }}
           WORKER_API_URL: ${{ vars.WORKER_API_URL }}
           WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
-          WORKER_ID: gh-${{ github.run_id }}
+          WORKER_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
           TRANSCRIPTION_PROVIDER: faster_whisper
           TRANSCRIPTION_MODEL: ${{ vars.TRANSCRIPTION_MODEL || 'base' }}
           VISION_PROVIDER: openai_compatible
@@ -65,7 +79,15 @@ jobs:
           OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://opencode.ai/inference/go/openai/v1' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python -m oc_worker.main --drain-seconds 900 --exit-on-idle
+          # Scheduled runs stay alive while the next run waits in the serialized
+          # concurrency group. Together they provide continuous low-latency
+          # claiming without a paid host. Manual and dispatched runs exit when
+          # the queue is empty so they do not hold a runner unnecessarily.
+          if [ "$CONTINUOUS_RELAY" = "1" ]; then
+            python -m oc_worker.main --drain-seconds 900
+          else
+            python -m oc_worker.main --drain-seconds 900 --exit-on-idle
+          fi
         timeout-minutes: 17
 
       - name: Check operations alerts
