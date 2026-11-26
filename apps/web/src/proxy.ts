@@ -55,5 +55,6 @@ export const config = {
     "/api/imports/:path*",
     "/api/usage",
     "/api/usage/:path*",
+    "/api/billing/:path*",
   ],
 };

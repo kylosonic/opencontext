@@ -83,6 +83,15 @@ export async function retentionSweep(): Promise<RetentionSweepResult> {
   await prisma.rateLimitBucket.deleteMany({
     where: { resetAt: { lt: new Date(now - DAY) } },
   });
+  await prisma.stripeWebhookEvent.deleteMany({
+    where: { processedAt: { lt: new Date(now - 30 * DAY) } },
+  });
+  await prisma.stripeUsageItem.deleteMany({
+    where: {
+      status: { in: ["PENDING", "FAILED"] },
+      createdAt: { lt: new Date(now - 30 * DAY) },
+    },
+  });
 
   return { scanned, deleted };
 }

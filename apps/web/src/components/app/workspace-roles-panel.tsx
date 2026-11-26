@@ -14,6 +14,7 @@ const PERMISSION_OPTIONS = [
   { id: "members:invite", label: "Invite members" },
   { id: "members:manage", label: "Manage members" },
   { id: "roles:manage", label: "Manage custom roles" },
+  { id: "billing:manage", label: "Manage team billing" },
   { id: "usage:view", label: "View usage dashboard" },
 ] as const;
 

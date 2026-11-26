@@ -34,7 +34,7 @@ export default function StatusPage() {
               "Team-shared jobs, expiring read-only public links, and URL imports",
               "Live job events with automatic polling fallback",
               "Evidence review, Markdown and JSON exports, and retry",
-              "Idempotent usage accounting for future provider-cost rebilling",
+              "Idempotent usage accounting and optional Stripe subscription billing",
               "Local CLI, repository-aware briefs, replay checks, and an MCP server",
             ].map((item) => (
               <li key={item} className="flex gap-2">
@@ -101,9 +101,12 @@ export default function StatusPage() {
               Public sharing and URL ingestion are read-only/import workflows,
               not collaboration on a live media stream. URL servers must expose{" "}
               <code>Content-Length</code>, and serverless duration limits bound very large
-              imports. Usage accounting does not activate payment processing or
-              collect money until billing-provider, price, tax, and customer
-              mapping choices are configured.
+              imports. Stripe subscription Checkout, Billing Portal, signed
+              webhooks, customer mapping, and usage invoice items are implemented,
+              but billing stays disabled without an explicitly configured price
+              and test-mode key. Usage charges also require an enabled flag,
+              positive resale prices, and a billable subscription. Tax, refunds,
+              dunning, and final invoice policy remain operator choices.
             </li>
             <li>
               npm audit currently reports no known vulnerabilities in

@@ -47,6 +47,7 @@ export const RATE_LIMITS = {
   jobUpdate: { limit: 60, windowMs: 60_000 },
   jobRerun: { limit: 30, windowMs: 60_000 },
   usageRead: { limit: 120, windowMs: 60_000 },
+  billingMutation: { limit: 20, windowMs: 60 * 60_000 },
   urlImport: { limit: 20, windowMs: 60 * 60_000 },
   workspaceCreate: { limit: 10, windowMs: 60 * 60_000 },
   publicShareSource: { limit: 240, windowMs: 60_000 },

@@ -7,7 +7,11 @@ import { createUser, resetDatabase, resetStorage, TEST_BYTES } from "./helpers";
 
 const DAY = 24 * 60 * 60 * 1000;
 
-async function makeJob(userId: string, createdAt: Date, completedAt: Date | null) {
+async function makeJob(
+  userId: string,
+  createdAt: Date,
+  completedAt: Date | null,
+) {
   return prisma.job.create({
     data: {
       userId,
@@ -53,9 +57,13 @@ describe("retentionSweep (jobs.md B9)", () => {
       where: { id: stale.id },
       data: { sourceKey: `jobs/${stale.id}/source.mp4` },
     });
-    await storage.put(`jobs/${stale.id}/source.mp4`, new Blob([TEST_BYTES]).stream(), {
-      sizeBytes: TEST_BYTES.length,
-    });
+    await storage.put(
+      `jobs/${stale.id}/source.mp4`,
+      new Blob([TEST_BYTES]).stream(),
+      {
+        sizeBytes: TEST_BYTES.length,
+      },
+    );
 
     const result = await retentionSweep();
     expect(result.deleted).toBe(1);
@@ -65,7 +73,11 @@ describe("retentionSweep (jobs.md B9)", () => {
 
   it("keeps completed jobs younger than 14 days", async () => {
     const user = await createUser();
-    await makeJob(user.id, new Date(Date.now() - 10 * DAY), new Date(Date.now() - 9 * DAY));
+    await makeJob(
+      user.id,
+      new Date(Date.now() - 10 * DAY),
+      new Date(Date.now() - 9 * DAY),
+    );
     const result = await retentionSweep();
     expect(result).toEqual({ scanned: 0, deleted: 0 });
     expect(await prisma.job.count()).toBe(1);
@@ -143,5 +155,85 @@ describe("retentionSweep (jobs.md B9)", () => {
     expect(
       await prisma.rateLimitBucket.findUnique({ where: { key: "active" } }),
     ).not.toBeNull();
+  });
+
+  it("keeps recent Stripe event IDs while pruning stale deduplication rows", async () => {
+    await prisma.stripeWebhookEvent.createMany({
+      data: [
+        {
+          id: "evt_recent",
+          type: "customer.subscription.updated",
+          livemode: false,
+          processedAt: new Date(Date.now() - 10 * DAY),
+        },
+        {
+          id: "evt_stale",
+          type: "customer.subscription.updated",
+          livemode: false,
+          processedAt: new Date(Date.now() - 31 * DAY),
+        },
+      ],
+    });
+
+    await retentionSweep();
+    expect(
+      await prisma.stripeWebhookEvent.findUnique({
+        where: { id: "evt_recent" },
+      }),
+    ).not.toBeNull();
+    expect(
+      await prisma.stripeWebhookEvent.findUnique({
+        where: { id: "evt_stale" },
+      }),
+    ).toBeNull();
+  });
+
+  it("prunes stale unsynced usage rows without deleting Stripe-linked usage", async () => {
+    const user = await createUser();
+    const usageIds: string[] = [];
+    for (const suffix of ["pending", "failed", "synced"]) {
+      const usage = await prisma.usageRecord.create({
+        data: {
+          eventKey: `analysis:retention-${suffix}`,
+          userId: user.id,
+          kind: "ANALYSIS",
+          quantity: 1,
+          unit: "job",
+          unitCostMicros: 1_000,
+          totalCostMicros: 1_000,
+          createdAt: new Date(Date.now() - 31 * DAY),
+        },
+      });
+      usageIds.push(usage.id);
+    }
+
+    await prisma.stripeUsageItem.createMany({
+      data: [
+        {
+          usageRecordId: usageIds[0],
+          status: "PENDING",
+          createdAt: new Date(Date.now() - 31 * DAY),
+        },
+        {
+          usageRecordId: usageIds[1],
+          status: "FAILED",
+          createdAt: new Date(Date.now() - 31 * DAY),
+        },
+        {
+          usageRecordId: usageIds[2],
+          status: "SYNCED",
+          stripeInvoiceItemId: "ii_retained",
+          createdAt: new Date(Date.now() - 31 * DAY),
+        },
+      ],
+    });
+
+    await retentionSweep();
+    expect(await prisma.stripeUsageItem.count()).toBe(1);
+    expect(
+      await prisma.stripeUsageItem.findUnique({
+        where: { usageRecordId: usageIds[2] },
+      }),
+    ).toMatchObject({ status: "SYNCED", stripeInvoiceItemId: "ii_retained" });
   });
 });

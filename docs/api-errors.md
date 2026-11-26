@@ -27,6 +27,7 @@ exceptions are never exposed as public codes.
 | `UPLOAD_EXPIRED` | 410 | The upload intent expired before the object was completed. |
 | `UPLOAD_INCOMPLETE` | 409 | The uploaded object is missing or does not match its intent. |
 | `RATE_LIMITED` | 429 | The caller exceeded the configured request rate. |
+| `BILLING_UNAVAILABLE` | 503 | Stripe billing is disabled or temporarily unavailable. |
 | `WORKER_UNAUTHORIZED` | 401 | The worker token or worker identity is invalid. |
 | `INTERNAL` | 500 | The server encountered an unexpected internal failure. |
 

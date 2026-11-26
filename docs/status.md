@@ -139,7 +139,9 @@ about the current Vercel deployment or future releases.
   resale prices. The scheduled worker reconciles interrupted writes, and an
   authenticated operations endpoint exposes aggregate usage. Signed-in users
   and permitted team members can also download deterministic monthly JSON/CSV
-  draft invoices without connecting a payment provider.
+  draft invoices. When Stripe usage billing is explicitly enabled, positive
+  records are also posted as idempotent invoice items and retried by the
+  operations reconciliation job.
 - PostgreSQL pooling is bounded through environment-controlled connection,
   idle, and acquisition settings. A repository script can preview or apply a
   Vercel WAF policy while preserving existing rules, and a weekly OWASP ZAP
@@ -246,9 +248,14 @@ the non-root worker container and the Compose upload-to-export flow.
 - A dedicated persistent worker deployment and runtime alerts have not been
   verified against a live host. Until they are, the recorded production worker
   remains the scheduled GitHub Actions drain.
-- The usage ledger and draft invoice exports do not collect money or activate a
-  metered billing subscription. Payment provider, tax, refunds, final invoice
-  numbering, and customer mapping need an explicit product decision.
+- Stripe subscription Checkout, Billing Portal, signed webhook synchronization,
+  personal/team customer mapping, and usage invoice items are implemented.
+  Billing stays disabled unless a test-mode key, webhook secret, recurring
+  price, and public app URL are configured. Usage items also require
+  `STRIPE_USAGE_BILLING_ENABLED=true`, positive resale prices, and an active or
+  otherwise billable subscription. Live mode requires an explicit override.
+  Tax, refunds, dunning, and final invoice policy still require an operator
+  decision.
 
 Scoped work is tracked in [ROADMAP.md](../ROADMAP.md) and
 [docs/issues](issues/README.md).

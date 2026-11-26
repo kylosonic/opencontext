@@ -1,5 +1,6 @@
 import type { Job, Prisma } from "@prisma/client";
 import { sourceKindForExtension } from "@kylosonic/opencontext-schemas";
+import { syncUsageRecordToStripe } from "@/server/billing/stripe-usage";
 import { prisma } from "@/server/db/prisma";
 import { hasWorkspacePermission } from "@/server/workspaces";
 
@@ -53,7 +54,7 @@ export async function recordAnalysisUsage(
     sourceExt: job.sourceExt,
     detailLevel: job.detailLevel,
   } satisfies Prisma.InputJsonObject;
-  await prisma.usageRecord.upsert({
+  const record = await prisma.usageRecord.upsert({
     where: { eventKey: eventKey(job.id) },
     create: {
       eventKey: eventKey(job.id),
@@ -77,6 +78,9 @@ export async function recordAnalysisUsage(
       totalCostMicros: price.totalCostMicros,
       metadata,
     },
+  });
+  await syncUsageRecordToStripe(record.id).catch((error) => {
+    console.error("Stripe usage sync failed; reconciliation will retry:", error);
   });
   return true;
 }

@@ -26,4 +26,4 @@ These previously deferred capabilities are now implemented (`apps/web/src/app/do
 1. **Additional agent-specific integrations** beyond MCP and GitHub Actions, such as hosted SDK-specific wrappers or chat-platform connectors.
 2. **Additional CLI distribution channels** beyond PyPI/`uvx`, such as signed standalone binaries or package-manager formulas.
 3. **Real-time streaming processing.**
-4. **Metered billing checkout** — self-service usage aggregation (`/app/usage`), idempotent recording, and monthly JSON/CSV draft invoice exports exist, while payment provider, tax, final invoicing, and payment collection remain pending.
+4. **Metered billing checkout** — self-service usage aggregation (`/app/usage`), idempotent recording, monthly JSON/CSV draft exports, and optional Stripe subscription Checkout/Billing Portal exist. Automatic metered usage submission, tax, final invoicing, and refund policy remain pending.

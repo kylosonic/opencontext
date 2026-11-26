@@ -41,7 +41,7 @@ enum Certainty { OBSERVED INFERRED UNCERTAIN }
 
 ## 2. API contract
 
-Auth classes: **session** (GitHub), **worker** (`Authorization: Bearer $WORKER_API_TOKEN`, constant-time compare), **public**. Error envelope: `{"error": {"code", "message", "stage?"}}`. Codes: `FILE_TOO_LARGE`, `FORMAT_UNSUPPORTED`, `VALIDATION_ERROR`, `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `RETRY_NOT_ALLOWED` (409), `WORKER_UNAUTHORIZED`, `INTERNAL`.
+Auth classes: **session** (GitHub), **worker** (`Authorization: Bearer $WORKER_API_TOKEN`, constant-time compare), **public**. Error envelope: `{"error": {"code", "message", "stage?"}}`. Codes: `FILE_TOO_LARGE`, `FORMAT_UNSUPPORTED`, `VALIDATION_ERROR`, `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `RETRY_NOT_ALLOWED` (409), `UPLOAD_EXPIRED`, `UPLOAD_INCOMPLETE`, `RATE_LIMITED`, `BILLING_UNAVAILABLE` (503), `WORKER_UNAUTHORIZED`, `INTERNAL`.
 
 ### User routes
 

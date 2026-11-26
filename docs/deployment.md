@@ -634,7 +634,26 @@ against spreadsheet formula execution. The response is explicitly marked as a
 `DRAFT`; it does not create a subscription, collect payment, or call a billing
 provider.
 
-This is the billing-system boundary, not a payment processor. Before automated
-charging, choose the billing provider, configure tax/currency/refund policy,
-map customers to subscriptions, publish prices, and reconcile the exported
-events. Do not represent the zero-priced default ledger as active billing.
+The usage ledger remains separate from the recurring subscription plan. To
+enable optional Stripe Checkout and Billing Portal flows, create a recurring
+Price in Stripe, configure the webhook endpoint described in
+[billing.md](billing.md), and set:
+
+```bash
+export STRIPE_SECRET_KEY='sk_test_...'
+export STRIPE_WEBHOOK_SECRET='whsec_...'
+export STRIPE_PRICE_ID='price_...'
+export APP_BASE_URL='https://your-app.example'
+export STRIPE_USAGE_BILLING_ENABLED='true'
+export BILLING_ANALYSIS_MICROS_PER_SECOND='250'
+export BILLING_STILL_JOB_MICROS='7500'
+```
+
+Billing is disabled unless all four values are valid. A live-mode key is
+rejected unless `STRIPE_ALLOW_LIVE_MODE=true` is also set deliberately. The
+recurring Price may be zero or paid. When `STRIPE_USAGE_BILLING_ENABLED=true`
+and a positive resale rate is configured, each positive analysis usage record is
+posted to Stripe as an idempotent invoice item on the scope's subscription and
+appears on the next invoice. The operations reconciliation endpoint retries
+pending and failed items. Keep tax, refunds, dunning, final invoice policy, and
+price approval as explicit operator decisions before enabling live charging.

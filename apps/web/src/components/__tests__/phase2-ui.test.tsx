@@ -15,14 +15,12 @@ afterEach(() => {
 describe("phase 2 UI components", () => {
   it("filters JobsList by status/format and shows empty filter feedback", async () => {
     const user = userEvent.setup();
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     render(
       <JobsList
@@ -59,7 +57,9 @@ describe("phase 2 UI components", () => {
       "/api/jobs?sourceKind=audio",
       expect.objectContaining({ headers: { Accept: "application/json" } }),
     );
-    expect(screen.getAllByRole("button", { name: "Clear filters" }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", { name: "Clear filters" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("switches UsageDashboard scope and window via /api/usage", async () => {
@@ -85,12 +85,34 @@ describe("phase 2 UI components", () => {
             headers: { "Content-Type": "application/json" },
           },
         ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            configured: true,
+            mode: "test",
+            usageBillingEnabled: true,
+            canManage: true,
+            subscription: null,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
       );
 
     render(
       <UsageDashboard
         workspaces={[{ id: "ws-1", name: "Core Ops", role: "OWNER" }]}
         initialInvoiceMonth="2026-11"
+        initialBilling={{
+          configured: false,
+          mode: null,
+          usageBillingEnabled: false,
+          canManage: true,
+          subscription: null,
+        }}
         initialSummary={{
           days: 30,
           since: "2026-10-26T00:00:00.000Z",
@@ -120,6 +142,10 @@ describe("phase 2 UI components", () => {
     ).toBe("/api/usage/invoice?month=2026-11&format=csv&workspaceId=ws-1");
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/usage?workspaceId=ws-1&days=30",
+      expect.objectContaining({ headers: { Accept: "application/json" } }),
+    );
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/billing/status?workspaceId=ws-1",
       expect.objectContaining({ headers: { Accept: "application/json" } }),
     );
   });
@@ -212,7 +238,9 @@ describe("phase 2 UI components", () => {
 
     await user.type(screen.getByLabelText("Invite email"), "new@example.com");
     await user.selectOptions(screen.getByLabelText("Invite role"), "VIEWER");
-    await user.click(screen.getByRole("button", { name: "Create invite link" }));
+    await user.click(
+      screen.getByRole("button", { name: "Create invite link" }),
+    );
 
     const linkInput = (await screen.findByLabelText(
       "Invitation link",
