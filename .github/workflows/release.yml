@@ -233,7 +233,17 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          python -m pip install --disable-pip-version-check "opencontext-video==${version}"
+          for attempt in $(seq 1 18); do
+            if python -m pip install --disable-pip-version-check \
+              "opencontext-video==${version}"; then
+              break
+            fi
+            if [[ "$attempt" == "18" ]]; then
+              echo "PyPI artifact did not become installable in time" >&2
+              exit 1
+            fi
+            sleep 10
+          done
           test "$(opencontext --version)" = "opencontext ${version}"
           python - <<PY
           import oc_worker
@@ -242,8 +252,17 @@ jobs:
           PY
 
           npm_dir="$(mktemp -d)"
-          npm install --prefix "$npm_dir" --no-audit --no-fund \
-            "@kylosonic/opencontext-schemas@${version}"
+          for attempt in $(seq 1 18); do
+            if npm install --prefix "$npm_dir" --no-audit --no-fund --prefer-online \
+              "@kylosonic/opencontext-schemas@${version}"; then
+              break
+            fi
+            if [[ "$attempt" == "18" ]]; then
+              echo "npm artifact did not become installable in time" >&2
+              exit 1
+            fi
+            sleep 10
+          done
           cd "$npm_dir"
           node --input-type=module - <<'NODE'
           const schemas = await import("@kylosonic/opencontext-schemas");
