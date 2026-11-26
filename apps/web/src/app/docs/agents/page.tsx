@@ -74,6 +74,41 @@ export default function AgentsPage() {
             The server reads only paths supplied by the client and does not upload repository contents. Repository detection examines file names, extensions, and manifest metadata; it does not execute project code.
           </p>
         </section>
+
+        <section aria-labelledby="actions-title">
+          <h2 id="actions-title" className="text-xl font-semibold text-ink">
+            GitHub Actions
+          </h2>
+          <p className="mt-3">
+            The repository root is a composite action that analyzes media and
+            writes an evidence-linked implementation brief. It uses the same
+            local CLI contract and makes no remote model calls in its default
+            offline mode.
+          </p>
+          <div className="mt-4">
+            <CodeBlock
+              label="Analyze media in a workflow"
+              code={`- uses: actions/checkout@v7
+- uses: kylosonic/opencontext@v0.1.3
+  id: context
+  with:
+    media: .artifacts/walkthrough.mp4
+    repository: .
+    output-dir: .artifacts/opencontext
+    offline: "true"
+
+- uses: actions/upload-artifact@v7
+  with:
+    name: opencontext-context
+    path: .artifacts/opencontext/`}
+            />
+          </div>
+          <p className="mt-3">
+            Outputs are <code>markdown</code>, <code>json</code>, and{" "}
+            <code>brief</code>. Remote providers remain opt-in through the
+            workflow environment.
+          </p>
+        </section>
       </div>
     </DocsShell>
   );

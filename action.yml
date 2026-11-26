@@ -1,0 +1,178 @@
+name: OpenContext Media Context
+description: Analyze media and produce evidence-linked context plus an implementation brief for coding agents.
+author: OpenContext contributors
+
+branding:
+  icon: film
+  color: purple
+
+inputs:
+  media:
+    description: File or directory containing the video, audio, image, image set, or PDF to analyze.
+    required: true
+  repository:
+    description: Repository path used for technology and implementation hints.
+    required: false
+    default: "."
+  task:
+    description: Implementation task included in the generated agent brief.
+    required: false
+    default: Implement the workflow shown in the media using the supplied evidence.
+  output-dir:
+    description: Directory for context Markdown, context JSON, and the implementation brief.
+    required: false
+    default: .opencontext
+  detail-level:
+    description: Analysis detail level (LOW, MEDIUM, or HIGH).
+    required: false
+    default: MEDIUM
+  sampling-mode:
+    description: Video frame sampling mode (fixed or hybrid).
+    required: false
+    default: hybrid
+  offline:
+    description: Use deterministic fixture providers without remote model calls.
+    required: false
+    default: "true"
+  install-local:
+    description: Install optional local speech-recognition dependencies.
+    required: false
+    default: "false"
+  version:
+    description: Exact opencontext-video package version to install; a leading v is accepted.
+    required: false
+    default: "0.1.3"
+
+outputs:
+  markdown:
+    description: Absolute path to the evidence-linked context Markdown.
+    value: ${{ steps.analyze.outputs.markdown }}
+  json:
+    description: Absolute path to the structured context JSON.
+    value: ${{ steps.analyze.outputs.json }}
+  brief:
+    description: Absolute path to the repository-aware implementation brief.
+    value: ${{ steps.analyze.outputs.brief }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with:
+        python-version: "3.13"
+
+    - name: Install OpenContext CLI
+      shell: bash
+      env:
+        OPENCONTEXT_VERSION: ${{ inputs.version }}
+        OPENCONTEXT_INSTALL_LOCAL: ${{ inputs.install-local }}
+      run: |
+        set -euo pipefail
+        version="${OPENCONTEXT_VERSION#v}"
+        if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+_-][0-9A-Za-z.+_-]+)?$ ]]; then
+          echo "version must be an exact package version such as 0.1.2 or v0.1.2" >&2
+          exit 2
+        fi
+        case "${OPENCONTEXT_INSTALL_LOCAL,,}" in
+          true) spec="opencontext-video[local]==${version}" ;;
+          false) spec="opencontext-video==${version}" ;;
+          *)
+            echo "install-local must be true or false" >&2
+            exit 2
+            ;;
+        esac
+        python -m pip install --disable-pip-version-check "$spec"
+
+    - name: Analyze media and build agent brief
+      id: analyze
+      shell: bash
+      env:
+        OPENCONTEXT_MEDIA: ${{ inputs.media }}
+        OPENCONTEXT_REPOSITORY: ${{ inputs.repository }}
+        OPENCONTEXT_TASK: ${{ inputs.task }}
+        OPENCONTEXT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        OPENCONTEXT_DETAIL_LEVEL: ${{ inputs.detail-level }}
+        OPENCONTEXT_SAMPLING_MODE: ${{ inputs.sampling-mode }}
+        OPENCONTEXT_OFFLINE: ${{ inputs.offline }}
+      run: |
+        set -euo pipefail
+        for value in \
+          "$OPENCONTEXT_MEDIA" \
+          "$OPENCONTEXT_REPOSITORY" \
+          "$OPENCONTEXT_TASK" \
+          "$OPENCONTEXT_OUTPUT_DIR"; do
+          if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+            echo "media, repository, task, and output-dir cannot contain line breaks" >&2
+            exit 2
+          fi
+        done
+
+        if [[ ! -e "$OPENCONTEXT_MEDIA" ]]; then
+          echo "media does not exist: $OPENCONTEXT_MEDIA" >&2
+          exit 2
+        fi
+        if [[ ! -d "$OPENCONTEXT_REPOSITORY" ]]; then
+          echo "repository is not a directory: $OPENCONTEXT_REPOSITORY" >&2
+          exit 2
+        fi
+        case "${OPENCONTEXT_DETAIL_LEVEL^^}" in
+          LOW|MEDIUM|HIGH) detail_level="${OPENCONTEXT_DETAIL_LEVEL^^}" ;;
+          *)
+            echo "detail-level must be LOW, MEDIUM, or HIGH" >&2
+            exit 2
+            ;;
+        esac
+        case "${OPENCONTEXT_SAMPLING_MODE,,}" in
+          fixed|hybrid) sampling_mode="${OPENCONTEXT_SAMPLING_MODE,,}" ;;
+          *)
+            echo "sampling-mode must be fixed or hybrid" >&2
+            exit 2
+            ;;
+        esac
+        case "${OPENCONTEXT_OFFLINE,,}" in
+          true) offline=true ;;
+          false) offline=false ;;
+          *)
+            echo "offline must be true or false" >&2
+            exit 2
+            ;;
+        esac
+
+        mkdir -p "$OPENCONTEXT_OUTPUT_DIR"
+        markdown="$OPENCONTEXT_OUTPUT_DIR/context.md"
+        json="$OPENCONTEXT_OUTPUT_DIR/context.json"
+        brief="$OPENCONTEXT_OUTPUT_DIR/implementation-brief.md"
+        args=(
+          analyze
+          --detail-level="$detail_level"
+          --sampling-mode="$sampling_mode"
+          --out="$markdown"
+          --json="$json"
+        )
+        if [[ "$offline" == "true" ]]; then args+=(--offline); fi
+        args+=(-- "$OPENCONTEXT_MEDIA")
+        opencontext "${args[@]}"
+        opencontext brief \
+          --repo="$OPENCONTEXT_REPOSITORY" \
+          --task="$OPENCONTEXT_TASK" \
+          --out="$brief" \
+          -- "$json"
+
+        python - "$markdown" "$json" "$brief" <<'PY'
+        import json
+        import sys
+        from pathlib import Path
+
+        markdown, context_json, brief = map(Path, sys.argv[1:])
+        for path in (markdown, context_json, brief):
+            if not path.is_file() or path.stat().st_size == 0:
+                raise SystemExit(f"OpenContext produced an empty output: {path}")
+        payload = json.loads(context_json.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or not payload.get("evidence"):
+            raise SystemExit("context JSON does not contain an evidence ledger")
+        PY
+
+        echo "markdown=$(realpath "$markdown")" >> "$GITHUB_OUTPUT"
+        echo "json=$(realpath "$json")" >> "$GITHUB_OUTPUT"
+        echo "brief=$(realpath "$brief")" >> "$GITHUB_OUTPUT"

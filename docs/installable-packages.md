@@ -24,6 +24,33 @@ The MCP server exposes `analyze_media`, `analyze_video`, `analyze_image`,
 `implementation_brief`, and `context_evidence`. See
 [agent-integration.md](agent-integration.md).
 
+## Ephemeral `uv` CLI
+
+`uvx` can run an exact release without a persistent Python environment:
+
+```bash
+uvx --from "opencontext-video[local]==0.1.2" opencontext --version
+uvx --from "opencontext-video[local]==0.1.2" opencontext analyze media.mp4 \
+  --out context.md --json context.json
+```
+
+## GitHub Actions
+
+Use the root composite action to analyze repository-local media and publish an
+implementation brief:
+
+```yaml
+- uses: kylosonic/opencontext@v0.1.3
+  with:
+    media: .artifacts/walkthrough.mp4
+    repository: .
+    output-dir: .artifacts/opencontext
+    offline: "true"
+```
+
+See [agent integration](agent-integration.md) for outputs, validation, and
+remote-provider opt-in details.
+
 ## npm schemas
 
 ```bash

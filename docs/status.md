@@ -100,6 +100,10 @@ about the current Vercel deployment or future releases.
 - The `opencontext-mcp` stdio server exposes local video and image analysis,
   implementation brief generation, and bounded evidence lookup to coding
   agents.
+- The root composite GitHub Action installs an exact CLI release, analyzes
+  repository-local media, writes Markdown/JSON context and an implementation
+  brief, and runs a committed-image smoke test in CI. `uvx` supports an
+  ephemeral CLI install from the same PyPI artifact.
 - `opencontext evaluate` computes transcript WER/CER, OCR precision/recall/F1,
   and visual keyword recall against a versioned synthetic dataset, while keeping
   fixture baselines, smoke tests, and measured model runs separately labeled.

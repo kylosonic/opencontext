@@ -4,6 +4,40 @@ OpenContext exposes its evidence-linked context through a local stdio MCP
 server. The server is designed for coding agents that can read files but cannot
 inspect video or images directly.
 
+## GitHub Actions
+
+The repository root is also a composite GitHub Action. It installs an exact
+`opencontext-video` release, analyzes a repository-local media file or
+directory, writes Markdown and JSON context, and generates an implementation
+brief for the next coding step.
+
+```yaml
+- uses: actions/checkout@v7
+- uses: kylosonic/opencontext@v0.1.3
+  id: context
+  with:
+    media: .artifacts/walkthrough.mp4
+    repository: .
+    task: Implement the settings flow shown in the walkthrough.
+    output-dir: .artifacts/opencontext
+    detail-level: HIGH
+    offline: "true"
+
+- uses: actions/upload-artifact@v7
+  with:
+    name: opencontext-context
+    path: .artifacts/opencontext/
+```
+
+The action exposes `markdown`, `json`, and `brief` output paths. Offline mode is
+the default and makes no remote model calls. Set `offline: "false"` only when
+the job already has the desired provider environment; the action never embeds
+or requests model credentials. `install-local: "true"` adds the optional local
+speech-recognition dependencies.
+
+The action is smoke-tested on pull requests by analyzing a committed reference
+image, validating the evidence ledger, and replaying the implementation brief.
+
 ## Install
 
 ```bash
