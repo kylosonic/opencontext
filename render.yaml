@@ -12,8 +12,13 @@ services:
       name: opencontext-model-cache
       mountPath: /models
       sizeGB: 5
+    # Render Blueprints do not expose read-only rootfs, Linux capability drops,
+    # no-new-privileges, or runtime pids limits. The worker image itself runs as
+    # UID 10001 and writes only to /models and the platform temporary area.
     envVars:
       - key: OPENCONTEXT_SKIP_DOTENV
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
         value: "1"
       - key: WORKER_ID
         value: render-worker
@@ -25,6 +30,12 @@ services:
         value: "900"
       - key: HF_HOME
         value: /models
+      - key: HOME
+        value: /tmp
+      - key: TMPDIR
+        value: /tmp
+      - key: XDG_CACHE_HOME
+        value: /tmp/.cache
       - key: WORKER_API_URL
         sync: false
       - key: WORKER_API_TOKEN

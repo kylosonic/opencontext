@@ -1,7 +1,9 @@
 """FFmpeg subprocess wrappers.
 
 All invocations use explicit list arguments (never ``shell=True``) and
-run through `subprocess.run` with captured output.
+run through the bounded process sandbox with captured output. POSIX workers
+pass the source as one inherited descriptor and allow only FFmpeg's ``fd``
+protocol, so nested playlists cannot reopen local paths or network URLs.
 
 ``probe`` prefers ffprobe (JSON). Some minimal Windows installs ship
 only ffmpeg.exe (no ffprobe); in that case it deterministically falls
@@ -21,6 +23,15 @@ from pathlib import Path
 from typing import Any
 
 from oc_worker.errors import PermanentFailure, TransientFailure
+from oc_worker.process_sandbox import (
+    FFMPEG_LIMITS,
+    PROBE_LIMITS,
+    ResourceLimits,
+    SandboxTimeout,
+    media_input_args,
+    resolve_executable,
+    run_sandboxed,
+)
 
 _DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
 # Resolution tokens in ffmpeg's stream summary are plain decimal dimensions
@@ -32,7 +43,7 @@ _MAX_SANE_DIMENSION = 100_000
 _STREAM_RE = re.compile(r"Stream #\d+:\d+")
 _SHOWINFO_PTS_RE = re.compile(r"pts_time:\s*([0-9]+(?:\.[0-9]+)?)")
 
-FFMPEG_TIMEOUT_SECONDS = 300
+FFMPEG_TIMEOUT_SECONDS = int(FFMPEG_LIMITS.timeout_seconds)
 MAX_MEDIA_DURATION_SECONDS = 1800
 
 
@@ -52,20 +63,23 @@ def _ffprobe_path(ffmpeg: str) -> str:
 
 def _run(
     args: list[str],
-    timeout: int = FFMPEG_TIMEOUT_SECONDS,
+    *,
+    limits: ResourceLimits = FFMPEG_LIMITS,
+    input_path: str | Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    args = list(args)
     try:
-        return subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=timeout,
-            stdin=subprocess.DEVNULL,
-        )
+        args[0] = str(resolve_executable(args[0]))
     except FileNotFoundError as exc:
         raise PermanentFailure(f"ffmpeg binary not found: {args[0]}") from exc
-    except subprocess.TimeoutExpired as exc:
+    try:
+        return run_sandboxed(
+            args,
+            limits=limits,
+            input_path=input_path,
+            text=True,
+        )
+    except SandboxTimeout as exc:
         raise TransientFailure(f"ffmpeg timed out: {' '.join(args)}") from exc
 
 
@@ -87,21 +101,23 @@ def _probe_with_ffprobe(target: str, ffmpeg: str) -> dict[str, Any] | None:
     ffprobe = _ffprobe_path(ffmpeg)
     if not Path(ffprobe).is_file() and shutil.which(ffprobe) is None:
         return None
+    input_args, input_path = media_input_args(target)
     proc = _run(
         [
             ffprobe,
             "-v",
             "error",
+            "-nostdin",
+            *input_args,
             "-show_entries",
             "format=duration",
             "-show_entries",
             "stream=codec_type,width,height",
             "-of",
             "json",
-            "-protocol_whitelist",
-            "file,pipe",
-            target,
-        ]
+        ],
+        limits=PROBE_LIMITS,
+        input_path=input_path,
     )
     if proc.returncode != 0:
         return None
@@ -122,7 +138,12 @@ def _probe_with_ffprobe(target: str, ffmpeg: str) -> dict[str, Any] | None:
 
 
 def _probe_with_ffmpeg_stderr(target: str, ffmpeg: str) -> dict[str, Any]:
-    proc = _run([ffmpeg, "-nostdin", "-protocol_whitelist", "file,pipe", "-i", target])
+    input_args, input_path = media_input_args(target)
+    proc = _run(
+        [ffmpeg, "-nostdin", *input_args],
+        limits=PROBE_LIMITS,
+        input_path=input_path,
+    )
     stderr = proc.stderr
     duration: float | None = None
     width: int | None = None
@@ -184,15 +205,15 @@ def extract_audio(
     error, results.md B4). Other failures raise TransientFailure.
     """
     ffmpeg = _ffmpeg_path(ffmpeg_path)
+    destination = Path(dst).resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    input_args, input_path = media_input_args(src)
     proc = _run(
         [
             ffmpeg,
             "-nostdin",
-            "-protocol_whitelist",
-            "file,pipe",
+            *input_args,
             "-y",
-            "-i",
-            str(src),
             "-t",
             f"{max_duration_seconds:g}",
             "-vn",
@@ -202,10 +223,10 @@ def extract_audio(
             "16000",
             "-c:a",
             "pcm_s16le",
-            str(dst),
-        ]
+            str(destination),
+        ],
+        input_path=input_path,
     )
-    destination = Path(dst)
     if (
         proc.returncode == 0
         and destination.is_file()
@@ -253,19 +274,19 @@ def _extract_fixed_frames(
     ffmpeg: str,
     max_duration_seconds: float,
 ) -> list[dict[str, Any]]:
+    directory = directory.resolve()
+    directory.mkdir(parents=True, exist_ok=True)
     pattern = directory / "frame_%06d.jpg"
     for stale in directory.glob("frame_*.jpg"):
         stale.unlink(missing_ok=True)
     scale = _bounded_scale(max_width)
+    input_args, input_path = media_input_args(src)
     proc = _run(
         [
             ffmpeg,
             "-y",
             "-nostdin",
-            "-protocol_whitelist",
-            "file,pipe",
-            "-i",
-            str(src),
+            *input_args,
             "-t",
             f"{max_duration_seconds:g}",
             "-vf",
@@ -275,7 +296,8 @@ def _extract_fixed_frames(
             "-q:v",
             "3",
             str(pattern),
-        ]
+        ],
+        input_path=input_path,
     )
     if proc.returncode != 0:
         raise TransientFailure(f"frame extraction failed: {proc.stderr.strip()[-300:]}")
@@ -303,7 +325,7 @@ def extract_frames(
     Returns a list of ``{timestamp, path}`` entries sorted chronologically.
     """
     ffmpeg = _ffmpeg_path(ffmpeg_path)
-    directory = Path(outdir)
+    directory = Path(outdir).resolve()
     directory.mkdir(parents=True, exist_ok=True)
     if sampling_mode != "hybrid":
         return _extract_fixed_frames(
@@ -319,15 +341,13 @@ def extract_frames(
     pattern = directory / "frame_%06d.jpg"
     for stale in directory.glob("frame_*.jpg"):
         stale.unlink(missing_ok=True)
+    input_args, input_path = media_input_args(src)
     proc = _run(
         [
             ffmpeg,
             "-y",
             "-nostdin",
-            "-protocol_whitelist",
-            "file,pipe",
-            "-i",
-            str(src),
+            *input_args,
             "-t",
             f"{max_duration_seconds:g}",
             "-vf",
@@ -339,7 +359,8 @@ def extract_frames(
             "-q:v",
             "3",
             str(pattern),
-        ]
+        ],
+        input_path=input_path,
     )
     if proc.returncode != 0:
         raise TransientFailure(f"frame extraction failed: {proc.stderr.strip()[-300:]}")
@@ -384,7 +405,7 @@ def extract_image_frame(
     before the input would fail on FFmpeg 6.1 because it is output-only.
     """
     ffmpeg = _ffmpeg_path(ffmpeg_path)
-    destination = Path(dst)
+    destination = Path(dst).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.unlink(missing_ok=True)
     scale = _bounded_scale(max_width)
@@ -400,15 +421,13 @@ def extract_image_frame(
         "a=255,"
         "format=yuv420p"
     )
+    input_args, input_path = media_input_args(src)
     proc = _run(
         [
             ffmpeg,
             "-y",
             "-nostdin",
-            "-protocol_whitelist",
-            "file,pipe",
-            "-i",
-            str(src),
+            *input_args,
             "-frames:v",
             "1",
             "-vf",
@@ -420,7 +439,8 @@ def extract_image_frame(
             "-q:v",
             "3",
             str(destination),
-        ]
+        ],
+        input_path=input_path,
     )
     if proc.returncode != 0 or not destination.is_file() or destination.stat().st_size == 0:
         detail = proc.stderr.strip()[-300:] if proc.stderr else "no output frame"

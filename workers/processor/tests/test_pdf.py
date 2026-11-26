@@ -1,5 +1,6 @@
 """PDF rendering contract tests."""
 
+import io
 from pathlib import Path
 
 import pytest
@@ -86,8 +87,8 @@ def test_extract_pdf_pages_bounds_both_dimensions_and_pixels(
             return None
 
     monkeypatch.setattr(pdf_module.pdfium, "PdfDocument", Document)
-    rendered = extract_pdf_pages(
-        tmp_path / "huge.pdf",
+    rendered = pdf_module._render_pdf_stream(
+        io.BytesIO(b"%PDF-1.4\n"),
         tmp_path / "pages",
         max_width=10_000,
         max_page_pixels=1_000_000,
@@ -126,4 +127,7 @@ def test_extract_pdf_pages_rejects_non_finite_or_non_positive_dimensions(
 
     monkeypatch.setattr(pdf_module.pdfium, "PdfDocument", Document)
     with pytest.raises(PermanentFailure, match="invalid dimensions"):
-        extract_pdf_pages(tmp_path / "bad-dim.pdf", tmp_path / "pages")
+        pdf_module._render_pdf_stream(
+            io.BytesIO(b"%PDF-1.4\n"),
+            tmp_path / "pages",
+        )

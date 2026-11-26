@@ -7,11 +7,14 @@ from pathlib import Path
 from typing import Any
 
 import oc_worker.ffmpeg as ffmpeg_module
+from oc_worker.process_sandbox import INPUT_FD_PLACEHOLDER
 
 
 def test_ffmpeg_uses_argument_list_without_a_shell(tmp_path: Path, monkeypatch) -> None:
     captured: dict = {}
     destination = tmp_path / "audio output.wav"
+    source = tmp_path / "input with spaces.mp4"
+    source.write_bytes(b"source")
 
     def fake_run(args, **kwargs):
         captured["args"] = args
@@ -19,16 +22,19 @@ def test_ffmpeg_uses_argument_list_without_a_shell(tmp_path: Path, monkeypatch) 
         Path(args[-1]).write_bytes(b"wav")
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(ffmpeg_module.subprocess, "run", fake_run)
-    ffmpeg_module.extract_audio("input with spaces.mp4", destination)
+    monkeypatch.setattr(ffmpeg_module, "run_sandboxed", fake_run)
+    ffmpeg_module.extract_audio(source, destination)
 
     assert isinstance(captured["args"], list)
     assert captured["args"][-1] == str(destination)
     assert captured["args"][captured["args"].index("-t") + 1] == "1800"
+    assert captured["args"][captured["args"].index("-protocol_whitelist") + 1] == "fd"
+    assert INPUT_FD_PLACEHOLDER in captured["args"]
+    assert Path(captured["kwargs"]["input_path"]) == source.resolve()
     assert "shell" not in captured["kwargs"]
 
 
-def test_ffmpeg_treats_option_like_filenames_as_paths(monkeypatch) -> None:
+def test_ffmpeg_treats_option_like_filenames_as_paths(tmp_path: Path, monkeypatch) -> None:
     captured: dict = {}
 
     def fake_run(args, **kwargs):
@@ -36,11 +42,12 @@ def test_ffmpeg_treats_option_like_filenames_as_paths(monkeypatch) -> None:
         captured["kwargs"] = kwargs
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(ffmpeg_module.subprocess, "run", fake_run)
-    dangerous = "-i /tmp/evil -vf drawtext=text=owned"
+    monkeypatch.setattr(ffmpeg_module, "run_sandboxed", fake_run)
+    dangerous = tmp_path / "-i evil -vf drawtext=text=owned"
+    dangerous.write_bytes(b"not media")
     ffmpeg_module.probe(dangerous, ffmpeg_path="ffmpeg")
 
-    assert dangerous in captured["args"]
+    assert str(dangerous.resolve()) not in captured["args"]
     assert all(isinstance(item, str) for item in captured["args"])
     assert "shell" not in captured["kwargs"]
 
@@ -50,6 +57,8 @@ def test_extract_image_frame_uses_single_frame_conversion(
 ) -> None:
     captured: dict = {}
     destination = tmp_path / "frame_000001.jpg"
+    source = tmp_path / "diagram.png"
+    source.write_bytes(b"png")
 
     def fake_run(args, **kwargs):
         captured["args"] = args
@@ -57,8 +66,8 @@ def test_extract_image_frame_uses_single_frame_conversion(
         destination.write_bytes(b"jpeg")
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(ffmpeg_module.subprocess, "run", fake_run)
-    frame = ffmpeg_module.extract_image_frame("diagram.png", destination)
+    monkeypatch.setattr(ffmpeg_module, "run_sandboxed", fake_run)
+    frame = ffmpeg_module.extract_image_frame(source, destination)
 
     assert "-frames:v" in captured["args"]
     assert captured["args"][captured["args"].index("-frames:v") + 1] == "1"

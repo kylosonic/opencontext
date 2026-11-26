@@ -53,6 +53,27 @@ application, shared TypeScript packages, and Python media worker.
    └─ Public share -> POST /api/jobs/[id]/share -> /share/[token] & /share/[token]/source
 ```
 
+### Untrusted media extraction boundary
+
+Downloaded media is treated as hostile input before any parser sees it. On
+POSIX, FFmpeg and ffprobe receive the source through one inherited, seekable
+file descriptor and allow only FFmpeg's `fd` protocol. Nested concat, HLS, or
+DASH manifests therefore cannot open arbitrary `file:` paths or network URLs.
+The Windows fallback keeps FFmpeg safe mode enabled and uses `file,pipe`
+because `pass_fds` is unavailable.
+
+Every FFmpeg/ffprobe command runs in a new process group through a pre-exec
+resource shim. The child receives a scrubbed environment, an empty temporary
+working directory, closed non-source descriptors, and limits for CPU, address
+space, output size, processes, open files, and core dumps. A hard wall-clock
+timeout kills the complete process group. PDFium and Tesseract OCR use the same
+boundary; PDFium runs in a dedicated helper process so a malformed document can
+be terminated without taking down the worker supervisor.
+
+Container hosts add a second boundary: the worker runs as UID 10001 with a
+read-only root filesystem, dropped Linux capabilities, `no-new-privileges`,
+bounded pids/memory, and writable tmpfs plus the model volume only.
+
 ## Where to Make Common Changes
 
 - **Add a supported media format or tweak size limits:** Update `UPLOAD_LIMITS` / `sourceKindForExtension` in `packages/schemas/src/job.ts` and `MIMES_BY_EXTENSION` in `apps/web/src/lib/media-formats.ts`, then run `npm run typecheck` and `npm run test:contracts`.
