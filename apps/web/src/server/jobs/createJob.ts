@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DetailLevel } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
+import { notifyWorkerJobQueued } from "@/server/queue/dispatchWorker";
 import { storage } from "@/server/storage";
 import { initialStageStates } from "./progress";
 
@@ -91,7 +92,7 @@ export async function createJobSources(input: CreateJobSourcesInput) {
       finalizedKeys.push(finalKeys[index]);
     }
 
-    return await prisma.$transaction(async (tx) => {
+    const job = await prisma.$transaction(async (tx) => {
       const created = await tx.job.create({
         data: {
           id: jobId,
@@ -125,6 +126,8 @@ export async function createJobSources(input: CreateJobSourcesInput) {
         data: { sourceKey: finalKeys[0] },
       });
     });
+    await notifyWorkerJobQueued(job.id);
+    return job;
   } catch (error) {
     // Best-effort cleanup for both unmoved intents and generated final keys.
     await Promise.all([

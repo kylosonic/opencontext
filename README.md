@@ -159,9 +159,11 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 
 ## What is not ready
 
-- The public worker drains the queue from a five-minute GitHub Actions schedule,
-  so job start latency is up to one interval. A Render persistent-worker
-  blueprint is checked in, but a live persistent host has not yet been verified.
+- The public worker drains the queue from a five-minute GitHub Actions schedule.
+  An opt-in `job-queued` repository dispatch can wake it immediately; without
+  that configuration, start latency remains up to one interval. A Render
+  persistent-worker blueprint is checked in, but a live persistent host has not
+  yet been verified.
 - Quality evidence now includes noisy conversational speech and real app
   screenshots, but it is still a bounded smoke corpus. It does not establish
   broad production accuracy; the measured visual pass is not complete.
