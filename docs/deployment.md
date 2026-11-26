@@ -262,8 +262,10 @@ Every job has a `WORKER_JOB_TIMEOUT_SECONDS` processing deadline (default 900
 seconds, also configurable with `--job-timeout-seconds`). A timeout records a
 permanent worker failure instead of leaving the job processing indefinitely.
 The deadline complements provider request timeouts and host container limits.
-Heap memory and CPU quotas are host policy; they cannot be enforced portably
-inside the existing worker process.
+FFmpeg/ffprobe, Tesseract, and the isolated PDFium helper also have hard CPU,
+memory, output-size, process-count, open-file, and wall-clock limits. Their child
+environment contains no API keys or worker tokens, and each command runs in a
+new process group and temporary working directory.
 
 Provider throttles do not hold a worker for a long `Retry-After` window. When
 an OpenAI-compatible model returns 429, the worker cools that model down, tries
@@ -283,8 +285,16 @@ results and artifacts remain resumable after a restart.
 The worker image runs as UID 10001 with `HF_HOME=/models`. Mount a persistent
 volume at `/models` to retain downloaded transcription models across restarts.
 The image forwards `SIGTERM` directly. Configure the host to restart the
-container on failure and set memory and CPU quotas appropriate for the selected
-providers.
+container on failure and keep the root filesystem read-only where the platform
+supports it. The Compose worker uses a read-only rootfs, `/tmp` and `/run`
+tmpfs mounts, `cap_drop: ALL`, `no-new-privileges`, 256 pids, and a 4 GiB memory
+ceiling. The model volume is the only persistent writable path.
+
+Render and Fly do not expose the full Compose security context in their current
+configuration formats. Their worker images still run as UID 10001, write cache
+data only below `/models` or `/tmp`, and use a bounded VM memory allocation in
+`fly.toml`. Do not treat the public web container as the media parser boundary:
+the worker is the component that directly processes untrusted attachments.
 
 Worker entrypoint logging suppresses `httpx` and `httpcore` access logs because
 those records include full presigned object-storage URLs. Application-level job,
@@ -450,10 +460,15 @@ The repository ships two persistent worker definitions built from
 `WORKER_API_TOKEN`, and `OPENAI_API_KEY` as secrets:
 
 - **`render.yaml`**: Render background-worker Blueprint with a 5 GB persistent
-  disk mounted at `/models`.
+  disk mounted at `/models`. Render does not expose read-only rootfs,
+  capability-drop, `no-new-privileges`, or pids limits in Blueprint YAML; the
+  image runs non-root and keeps writable state under the persistent disk or
+  platform temporary directory.
 - **`fly.toml`**: Fly.io app configuration with a persistent `opencontext_models`
   volume mounted at `/models` (provision secrets via `fly secrets set` and
-  deploy via `fly deploy`).
+  deploy via `fly deploy`). The VM has an explicit 4 GiB memory ceiling. Fly
+  does not expose read-only rootfs, capability-drop, or pids limits in
+  `fly.toml`; keep host-level isolation and the non-root image intact.
 
 Before applying either definition, set those three secrets and confirm the
 selected plan supports background workers and persistent disks/volumes. After

@@ -7,7 +7,12 @@ WORKDIR /app
 RUN mkdir -p /models && chown 10001:10001 /models && chmod 0755 /models
 
 ENV PYTHONUNBUFFERED=1 \
-    HF_HOME=/models
+    PYTHONDONTWRITEBYTECODE=1 \
+    HF_HOME=/models \
+    HOME=/tmp \
+    TMPDIR=/tmp \
+    XDG_CACHE_HOME=/tmp/.cache \
+    OPENCONTEXT_SKIP_DOTENV=1
 RUN useradd --create-home --uid 10001 worker \
     && mkdir -p /models \
     && chown worker:worker /models

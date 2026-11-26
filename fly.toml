@@ -8,11 +8,15 @@ kill_timeout = "180s"
 
 [env]
   OPENCONTEXT_SKIP_DOTENV = "1"
+  PYTHONDONTWRITEBYTECODE = "1"
   WORKER_ID = "fly-worker"
   WORKER_CONCURRENCY = "1"
   WORKER_SHUTDOWN_GRACE_SECONDS = "120"
   WORKER_JOB_TIMEOUT_SECONDS = "900"
   HF_HOME = "/models"
+  HOME = "/tmp"
+  TMPDIR = "/tmp"
+  XDG_CACHE_HOME = "/tmp/.cache"
   TRANSCRIPTION_PROVIDER = "faster_whisper"
   TRANSCRIPTION_MODEL = "base"
   VISION_PROVIDER = "openai_compatible"
@@ -28,3 +32,11 @@ kill_timeout = "180s"
 [mounts]
   source = "opencontext_models"
   destination = "/models"
+
+# Fly does not expose read-only rootfs, capability-drop, or pids-limit controls
+# in fly.toml. The container runs as UID 10001; the VM memory ceiling is set
+# below and the model volume is the only persistent writable path.
+[[vm]]
+  memory = "4gb"
+  cpu_kind = "shared"
+  cpus = 2

@@ -5,11 +5,17 @@ from __future__ import annotations
 import csv
 import io
 import re
-import subprocess
 from collections import OrderedDict
+from dataclasses import replace
 from typing import Any
 
 from oc_worker.errors import PermanentFailure, ProviderConfigurationError, TransientFailure
+from oc_worker.process_sandbox import (
+    TESSERACT_LIMITS,
+    SandboxTimeout,
+    resolve_executable,
+    run_sandboxed,
+)
 
 _LANGUAGE_RE = re.compile(r"^[A-Za-z0-9_+.-]{1,64}$")
 
@@ -77,9 +83,10 @@ class TesseractOcrProvider:
     ) -> list[dict[str, Any]]:
         del context
         try:
-            proc = subprocess.run(
+            executable = resolve_executable(self.executable)
+            proc = run_sandboxed(
                 [
-                    self.executable,
+                    str(executable),
                     "stdin",
                     "stdout",
                     "-l",
@@ -88,16 +95,14 @@ class TesseractOcrProvider:
                     "6",
                     "tsv",
                 ],
-                input=frame_bytes,
-                capture_output=True,
-                timeout=self.timeout_seconds,
-                check=False,
+                limits=replace(TESSERACT_LIMITS, timeout_seconds=self.timeout_seconds),
+                input_data=frame_bytes,
             )
         except FileNotFoundError as exc:
             raise PermanentFailure(
                 f"Tesseract executable not found: {self.executable}"
             ) from exc
-        except subprocess.TimeoutExpired as exc:
+        except SandboxTimeout as exc:
             raise TransientFailure("Tesseract OCR timed out") from exc
         if proc.returncode != 0:
             detail = proc.stderr.decode("utf-8", errors="replace").strip()[-300:]

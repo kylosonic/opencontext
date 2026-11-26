@@ -12,7 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/models \
+    HOME=/tmp \
+    TMPDIR=/tmp \
+    XDG_CACHE_HOME=/tmp/.cache \
+    OPENCONTEXT_SKIP_DOTENV=1 \
     WORKER_DEVICE=cuda \
     WHISPER_COMPUTE_TYPE=float16
 

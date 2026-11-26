@@ -4,7 +4,11 @@ FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf107
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/models \
+    HOME=/tmp \
+    TMPDIR=/tmp \
+    XDG_CACHE_HOME=/tmp/.cache \
     OPENCONTEXT_SKIP_DOTENV=1
 RUN mkdir -p /models \
     && groupadd --system --gid 10001 worker \
