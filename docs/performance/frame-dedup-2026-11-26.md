@@ -67,3 +67,7 @@ provider calls or billable services.
   provider latency.
 - The thresholds still need validation against a larger real-world corpus
   before they are changed or treated as broadly optimal.
+
+The follow-up run over 16 real Screen2Words screenshot states retained every
+state while avoiding 31 of 48 candidate calls; see
+[frame-dedup-screen2words-2026-11-26.md](frame-dedup-screen2words-2026-11-26.md).

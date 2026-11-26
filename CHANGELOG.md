@@ -9,6 +9,9 @@ All notable changes are documented here. The project follows
   ledger, including account/team permission checks, deterministic draft invoice
   numbers, USD micro-unit totals, response download headers, and spreadsheet
   formula-injection protection.
+- Added a reproducible real-screen frame de-duplication benchmark over 16
+  licensed Screen2Words states. It retained every visual state and the final
+  frame while reducing 48 raw candidates to 17 modeled frames (64.58% fewer).
 
 ## 0.1.2 - 2026-11-26
 

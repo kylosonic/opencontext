@@ -20,9 +20,9 @@ from PIL import __version__ as pillow_version
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "workers" / "processor" / "src"))
 
-from oc_worker.config import resolve_ffmpeg_path
-from oc_worker.ffmpeg import extract_frames
-from oc_worker.frame_dedup import (
+from oc_worker.config import resolve_ffmpeg_path  # noqa: E402
+from oc_worker.ffmpeg import extract_frames  # noqa: E402
+from oc_worker.frame_dedup import (  # noqa: E402
     deduplicate_similar_frames,
     fingerprint_frame,
     pixel_rms,
@@ -99,7 +99,9 @@ def _generate_video(path: Path) -> None:
         raise RuntimeError(f"benchmark video generation failed: {stderr[-500:]}")
 
 
-def _timed_extract(*, sampling_mode: str, source: Path, directory: Path) -> tuple[list[dict], float]:
+def _timed_extract(
+    *, sampling_mode: str, source: Path, directory: Path
+) -> tuple[list[dict], float]:
     started = time.perf_counter()
     frames = extract_frames(
         source,
@@ -222,7 +224,10 @@ def run(out: Path) -> dict[str, Any]:
                 "firstAndFinalRetained": bool(kept_timestamps)
                 and kept_timestamps[0] == float(raw_hybrid[0]["timestamp"])
                 and kept_timestamps[-1] == float(raw_hybrid[-1]["timestamp"]),
-                "ocrClaim": "not measured; Tesseract was not required for this frame-count benchmark",
+                "ocrClaim": (
+                    "not measured; Tesseract was not required for this "
+                    "frame-count benchmark"
+                ),
             },
             "limits": [
                 "Counts assume one vision and one OCR request per retained frame.",
