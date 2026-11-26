@@ -34,5 +34,8 @@
     "test:rate-limit-load": "node scripts/rate-limit-load-test.mjs",
     "test:contracts": "node --test scripts/*.test.mjs",
     "build": "npm run build --workspace @kylosonic/opencontext-schemas && npm run build --workspace web"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.3.2"
   }
 }

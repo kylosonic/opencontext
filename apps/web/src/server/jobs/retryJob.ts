@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { type StageState } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
+import { notifyWorkerJobQueued } from "@/server/queue/dispatchWorker";
 import { computeProgress } from "./progress";
 import { jobToDetail } from "./serialize";
 import { canManageJob } from "@/server/workspaces";
@@ -128,5 +129,6 @@ export async function retryJob(jobId: string, userId: string): Promise<RetryResu
     };
   }
 
+  await notifyWorkerJobQueued(jobId);
   return { kind: "OK", job: result };
 }

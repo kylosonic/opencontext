@@ -8,6 +8,9 @@ on:
   workflow_dispatch:
 
 concurrency:
+  # Scheduled and repository-dispatch runs share this group. GitHub keeps one
+  # active run and at most one pending run, so bursts are coalesced durably
+  # without relying on the serverless web process retaining memory.
   group: opencontext-worker
   cancel-in-progress: false
 

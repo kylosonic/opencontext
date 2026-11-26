@@ -38,6 +38,8 @@ application, shared TypeScript packages, and Python media worker.
 
 2. Queue & Worker Processing
    Worker main.py -> POST /api/worker/jobs/claim (leased in apps/web/src/server/queue/claimJob.ts)
+     Web queue commit -> optional GitHub `repository_dispatch` (`job-queued`)
+       -> worker-schedule.yml serialized concurrency group -> immediate drain
      └─ Pipeline.run_job (workers/processor/src/oc_worker/pipeline.py)
           ├─ EXTRACTING         (ffmpeg probe/audio/frames, pdfium pages, image normalization)
           ├─ TRANSCRIBING       (audio_chunks + whisper/openai/fixture providers)

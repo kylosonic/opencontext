@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { type StageState } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
 import { computeProgress } from "@/server/jobs/progress";
+import { notifyWorkerJobQueued } from "./dispatchWorker";
 import {
   BACKOFF_MS,
   QUEUE_MAX_ATTEMPTS,
@@ -38,7 +39,7 @@ export async function requeueJob(
     Math.max(0, options.retryAfterSec ?? 0) * 1_000,
   );
 
-  return prisma.$transaction(async (tx) => {
+  const requeued = await prisma.$transaction(async (tx) => {
     const job = await tx.job.findUnique({ where: { id: jobId } });
     if (!job) {
       throw new Error(`Cannot requeue missing job ${jobId}`);
@@ -83,6 +84,8 @@ export async function requeueJob(
     }
     return tx.job.update({ where: { id: jobId }, data });
   });
+  await notifyWorkerJobQueued(jobId);
+  return requeued;
 }
 
 /** Whether the transient retry budget is exhausted (B7). */

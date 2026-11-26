@@ -409,6 +409,38 @@ The workflow caches both pip downloads and the Faster Whisper model between
 runs. It uses `TEXT_PROVIDER=template`, so context generation needs no extra
 provider.
 
+### Immediate job dispatch
+
+The five-minute schedule is the durable fallback. To wake the GitHub Actions
+relay as soon as a job is queued, configure the web deployment with both of
+these server-only variables:
+
+```bash
+GITHUB_WORKER_DISPATCH_TOKEN='github_pat_...'
+GITHUB_WORKER_DISPATCH_REPOSITORY='kylosonic/opencontext'
+# Optional; defaults to 3000 ms and is bounded to 10 seconds.
+GITHUB_WORKER_DISPATCH_TIMEOUT_MS='3000'
+```
+
+Create a fine-grained personal access token for only this repository with the
+`Contents: Read and write` permission and no organization-wide permissions.
+The app uses that token solely for `POST /repos/{owner}/{repo}/dispatches`; it
+never falls back to an OAuth, worker, or general-purpose `GITHUB_TOKEN`.
+Dispatch is disabled unless both the token and repository are present, and
+leaving either unset restores schedule-only operation.
+
+The web app sends the event only after the queued job and source metadata are
+committed. A network timeout, GitHub error, or malformed optional configuration
+is logged without the token and does not fail the upload. The workflow listens
+for `job-queued`; scheduled and dispatched runs share the serialized
+`opencontext-worker` concurrency group, so GitHub keeps one active run and one
+latest pending run. That provides durable burst coalescing without serverless
+process memory. Verify a wake-up with:
+
+```bash
+gh run list --workflow worker-schedule.yml --event repository_dispatch --limit 5
+```
+
 ## Compose
 
 `docker compose up --build` provides a local PostgreSQL-backed web app, worker,
@@ -479,13 +511,44 @@ curl -fsS "$WORKER_API_URL/api/health/ready"
 # Upload one synthetic job, then confirm the first progress update arrives
 # without waiting for the five-minute GitHub Actions schedule.
 curl -fsS -H "Authorization: Bearer $OPS_API_TOKEN" \
-  "$WORKER_API_URL/api/ops/alerts"
+  "$WORKER_API_URL/api/ops/alerts" | tee persistent-worker-evidence.json
 ```
 
 Stop or disable `.github/workflows/worker-schedule.yml` only after the
 persistent worker has claimed a real job, survived a redeploy, and passed the
 authenticated operations check. Keeping both workers enabled is safe because
 claims are lease-fenced, but the scheduled worker may then idle.
+
+### Persistent worker restart evidence
+
+Use this checklist when moving from the scheduled relay to a persistent host:
+
+1. Set `WORKER_API_URL`, `WORKER_API_TOKEN`, and the configured AI provider key
+   on the worker host. Confirm `WORKER_ID` is the host-specific value from the
+   blueprint (`render-worker` or `fly-worker`).
+2. Deploy the blueprint and wait for the host to report a healthy/running
+   worker. Capture the deploy timestamp and the first `oc_worker.main ...
+   started` log entry.
+3. Temporarily disable the GitHub scheduled worker so the restart test cannot
+   be claimed by the relay. The persistent container polls the queue directly;
+   repository dispatch is only a wake-up for the GitHub-hosted relay.
+4. Upload one synthetic fixture and record its job ID. Confirm the persistent
+   worker claims it and emits the first stage/progress update before the next
+   five-minute schedule would start.
+5. Restart or redeploy the worker through the host dashboard, or run
+   `fly apps restart opencontext-worker` for Fly. Capture the restart timestamp
+   and the new `started` log entry.
+6. Upload a second synthetic fixture. Confirm it completes after the restart,
+   then save the authenticated `/api/ops/alerts` response showing
+   `healthy: true`, a recent `lastWorkerClaimAt`, and the expected worker count.
+7. Keep the deploy log, both job IDs/results, and the operations JSON together
+   as restart evidence. Re-enable the GitHub schedule only if you intentionally
+   want a fallback worker alongside the persistent host.
+
+The platform UI/log timestamps are the primary evidence for Render because its
+Blueprint format does not expose a portable restart command. For Fly, `fly
+status --app opencontext-worker` plus `fly logs --app opencontext-worker`
+captures machine state and the new process start.
 
 ## PostgreSQL pools
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DetailLevel } from "@kylosonic/opencontext-schemas";
 import { prisma } from "@/server/db/prisma";
+import { notifyWorkerJobQueued } from "@/server/queue/dispatchWorker";
 import { storage } from "@/server/storage";
 import { canContributeToWorkspace, canManageJob } from "@/server/workspaces";
 import { initialStageStates } from "./progress";
@@ -120,6 +121,7 @@ export async function rerunJob(
       return job;
     });
 
+    await notifyWorkerJobQueued(created.id);
     return {
       kind: "OK",
       job: jobToSummary(created, true, existing.workspace?.name ?? null),

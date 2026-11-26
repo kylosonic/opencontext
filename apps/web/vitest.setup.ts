@@ -15,3 +15,6 @@ process.env.STORAGE_PATH = ".test-storage";
 process.env.AUTH_SECRET = "test-auth-secret";
 process.env.AUTH_GITHUB_ID = "";
 process.env.AUTH_GITHUB_SECRET = "";
+delete process.env.GITHUB_WORKER_DISPATCH_TOKEN;
+delete process.env.GITHUB_WORKER_DISPATCH_REPOSITORY;
+delete process.env.GITHUB_WORKER_DISPATCH_TIMEOUT_MS;
