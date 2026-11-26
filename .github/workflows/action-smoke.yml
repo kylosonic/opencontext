@@ -1,0 +1,70 @@
+name: GitHub Action smoke
+
+on:
+  pull_request:
+    paths:
+      - "action.yml"
+      - ".github/workflows/action-smoke.yml"
+      - "workers/processor/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: action-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  action-smoke:
+    name: Analyze committed image through root action
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Run OpenContext action
+        id: context
+        uses: ./
+        with:
+          media: docs/assets/real-vision-checkout.png
+          repository: .
+          task: Implement the checkout controls shown in this reference image.
+          output-dir: .artifacts/action-smoke
+          detail-level: HIGH
+          sampling-mode: hybrid
+          offline: "true"
+          version: "0.1.2"
+
+      - name: Validate outputs and replay brief
+        env:
+          OPENCONTEXT_MARKDOWN: ${{ steps.context.outputs.markdown }}
+          OPENCONTEXT_JSON: ${{ steps.context.outputs.json }}
+          OPENCONTEXT_BRIEF: ${{ steps.context.outputs.brief }}
+        run: |
+          set -euo pipefail
+          test -s "$OPENCONTEXT_MARKDOWN"
+          test -s "$OPENCONTEXT_JSON"
+          test -s "$OPENCONTEXT_BRIEF"
+          python - "$OPENCONTEXT_JSON" <<'PY'
+          import json
+          import sys
+
+          payload = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert payload["evidence"], "missing evidence ledger"
+          assert payload["source"]["name"] == "real-vision-checkout.png"
+          print(f"validated {len(payload['evidence'])} evidence records")
+          PY
+          opencontext replay "$OPENCONTEXT_JSON" \
+            --repo . \
+            --task "Implement the checkout controls shown in this reference image." \
+            --out .artifacts/action-smoke/replayed-brief.md \
+            --report .artifacts/action-smoke/replay-report.json
+          cmp "$OPENCONTEXT_BRIEF" .artifacts/action-smoke/replayed-brief.md
+
+      - name: Upload context artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: opencontext-action-smoke
+          path: .artifacts/action-smoke/
+          if-no-files-found: error

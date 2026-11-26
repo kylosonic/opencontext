@@ -165,6 +165,9 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   workflows with release-ready shared schemas.
 - Repository-aware implementation briefs and a local MCP server that expose
   evidence-linked video and image context directly to coding agents.
+- A zero-token composite GitHub Action that installs an exact CLI release,
+  analyzes repository-local media, writes Markdown/JSON context, and emits a
+  repository-aware implementation brief.
 - Keyboard-tested result tabs, timeline seeking, and evidence labels.
 
 ## What is not ready

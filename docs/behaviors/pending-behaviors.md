@@ -19,10 +19,11 @@ These previously deferred capabilities are now implemented (`apps/web/src/app/do
 - **Google OAuth, generic OIDC SSO, custom workspace roles & SCIM 2.0** — Multi-provider Auth.js v5 (`AUTH_GOOGLE_*`, `AUTH_OIDC_*`), fine-grained workspace permission roles (`/api/workspaces/[id]/roles`), and workspace-scoped SCIM 2.0 user/group sync (`/api/scim/v2`).
 - **Context compression, plugin system & local GPU inference** — Redundancy merging and token-budget capping (`compression.py`), `WorkerPlugin` frame/context hooks (`plugins.py` + `opencontext plugins list`), CUDA/hardware detection (`hardware.py`), and `docker/worker.gpu.Dockerfile`.
 - **Real-time status channels** — Server-Sent Events stream at `/api/jobs/[id]/events` with automatic polling fallback.
+- **GitHub Actions agent integration** — Root composite action for repository-local analysis, Markdown/JSON context, and implementation briefs; `uvx` provides an ephemeral CLI path from the existing PyPI release.
 
 ## Still unimplemented
 
-1. **Additional agent-specific integrations** beyond the implemented local MCP server.
-2. **Additional CLI distribution channels** beyond the implemented Python CLI.
+1. **Additional agent-specific integrations** beyond MCP and GitHub Actions, such as hosted SDK-specific wrappers or chat-platform connectors.
+2. **Additional CLI distribution channels** beyond PyPI/`uvx`, such as signed standalone binaries or package-manager formulas.
 3. **Real-time streaming processing.**
 4. **Metered billing checkout** — self-service usage aggregation (`/app/usage`), idempotent recording, and monthly JSON/CSV draft invoice exports exist, while payment provider, tax, final invoicing, and payment collection remain pending.
