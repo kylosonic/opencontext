@@ -155,6 +155,14 @@ the worker. Provider settings are read from the worker process environment.
 - `VISION_MAX_FRAMES` sets the maximum number of evenly sampled video/PDF
   frames sent to the vision provider per job (default 60). Image sets are
   already limited to 10 source images.
+- `FRAME_SAMPLING_MODE=hybrid` combines scene cuts with interval sampling. For
+  videos in that mode, a conservative Python pass removes only adjacent frames
+  whose 64-bit difference hash and normalized pixel RMS both match the prior
+  retained frame. The first and final frames always survive, fingerprint
+  failures fail open, and image sets are never merged. Tune
+  `FRAME_DEDUP_HASH_DISTANCE` and `FRAME_DEDUP_PIXEL_RMS` only from measured
+  evidence-loss results; see
+  [the benchmark](../../docs/performance/frame-dedup-2026-11-26.md).
 - `OCR_PROVIDER=tesseract` extracts text independently with the local
   Tesseract binary. `OCR_PROVIDER=vision` keeps the compatibility behavior of
   deriving OCR rows from the vision provider's `visibleText`.

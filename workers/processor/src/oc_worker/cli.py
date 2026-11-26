@@ -32,6 +32,7 @@ from oc_worker.doctor import (
 from oc_worker.errors import PermanentFailure, TransientFailure
 from oc_worker.evaluation import evaluate_context
 from oc_worker.ffmpeg import extract_audio, extract_frames, extract_image_frame, probe
+from oc_worker.frame_dedup import deduplicate_similar_frames
 from oc_worker.models import DetailLevel, OCRObservation, VisualObservation
 from oc_worker.pdf import extract_pdf_pages
 from oc_worker.pipeline import (
@@ -287,6 +288,28 @@ def analyze_file(
                     "sourceName": source.name,
                 },
             )
+        frames_before_dedup = len(selected_frames)
+        if source_kind == "video" and settings.frame_sampling_mode == "hybrid":
+            dedup = deduplicate_similar_frames(
+                selected_frames,
+                max_hash_distance=settings.frame_dedup_hash_distance,
+                max_rms=settings.frame_dedup_pixel_rms,
+            )
+            selected_frames = dedup.frames
+            if dedup.fingerprint_errors:
+                log.warning(
+                    "stage=ANALYZING frame_dedup_fingerprint_errors=%d",
+                    dedup.fingerprint_errors,
+                )
+        frames_saved = frames_before_dedup - len(selected_frames)
+        log.info(
+            "stage=ANALYZING frames_selected=%d frames_deduplicated=%d "
+            "vision_calls_saved=%d frames_scheduled=%d",
+            frames_before_dedup,
+            frames_saved,
+            frames_saved,
+            len(selected_frames),
+        )
         observations = []
         ocr = []
         for frame in selected_frames:

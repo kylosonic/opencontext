@@ -13,6 +13,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from PIL import Image
 
 from oc_worker import context as context_module
 from oc_worker import pipeline as pipeline_module
@@ -239,6 +240,31 @@ def _extract_image_ok() -> Callable[[str, str], dict]:
         return {"timestamp": 0.0, "path": path}
 
     return extract_image
+
+
+def _extract_jpeg_frames(
+    timestamps: tuple[float, ...],
+    colours: tuple[tuple[int, int, int], ...] | None = None,
+) -> Callable[[str, str], list[dict]]:
+    def extract_frames(source: str, outdir: str) -> list[dict]:
+        directory = Path(outdir)
+        directory.mkdir(parents=True, exist_ok=True)
+        frames = []
+        for index, timestamp in enumerate(timestamps):
+            frame_path = directory / f"frame_{index + 1:06d}.jpg"
+            colour = colours[index] if colours else (24, 40, 56)
+            Image.new("RGB", (96, 54), colour).save(frame_path, format="JPEG", quality=95)
+            frames.append({"timestamp": timestamp, "path": str(frame_path)})
+        return frames
+
+    return extract_frames
+
+
+def _extract_same_jpeg(source: str, destination: str) -> dict:
+    path = Path(destination)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (96, 54), (24, 40, 56)).save(path, format="JPEG", quality=95)
+    return {"timestamp": 0.0, "path": path}
 
 
 def _extract_pdf_ok() -> Callable[[str, str], list[dict]]:
@@ -1006,6 +1032,93 @@ def test_vision_frame_cap_evenly_samples_long_video() -> None:
 
     assert pipeline.run_job(_job(detail_level="HIGH")) == "completed"
     assert [call[1]["timestampSec"] for call in vision.calls] == [0.0, 2.0, 4.0]
+
+
+def test_hybrid_frame_dedup_reduces_duplicate_video_vision_calls() -> None:
+    handler = _Handler()
+    vision = FakeVision()
+    settings = Settings(
+        worker_api_url=API_BASE,
+        worker_id="worker-1",
+        vision_concurrency=1,
+        frame_sampling_mode="hybrid",
+        frame_dedup_hash_distance=2,
+        frame_dedup_pixel_rms=1.25,
+    )
+    pipeline = _make_pipeline(
+        handler,
+        settings=settings,
+        vision=vision,
+        extract_frames=_extract_jpeg_frames((0.0, 1.0, 2.0, 3.0, 4.0)),
+    )
+
+    assert pipeline.run_job(_job(detail_level="HIGH")) == "completed"
+
+    assert [call[1]["timestampSec"] for call in vision.calls] == [0.0, 4.0]
+    analyzing = next(
+        body
+        for path, body in handler.json_requests()
+        if path.endswith("/stage-result") and body.get("stage") == "ANALYZING"
+    )
+    assert [item["timestampSec"] for item in analyzing["data"]["observations"]] == [0.0, 4.0]
+
+
+def test_fixed_sampling_keeps_duplicate_video_frames() -> None:
+    handler = _Handler()
+    vision = FakeVision()
+    settings = Settings(
+        worker_api_url=API_BASE,
+        worker_id="worker-1",
+        vision_concurrency=1,
+        frame_sampling_mode="fixed",
+    )
+    pipeline = _make_pipeline(
+        handler,
+        settings=settings,
+        vision=vision,
+        extract_frames=_extract_jpeg_frames((0.0, 1.0, 2.0, 3.0, 4.0)),
+    )
+
+    assert pipeline.run_job(_job(detail_level="HIGH")) == "completed"
+
+    assert [call[1]["timestampSec"] for call in vision.calls] == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+
+def test_hybrid_frame_dedup_does_not_merge_ordered_image_sets() -> None:
+    assets = [
+        {
+            "uri": "",
+            "provider": "local",
+            "sizeBytes": 3,
+            "filename": f"step-{index + 1}.png",
+            "kind": "image",
+            "ext": "png",
+            "mime": "image/png",
+            "order": index,
+            "bytes": b"png",
+        }
+        for index in range(2)
+    ]
+    handler = _Handler(assets)
+    vision = FakeVision()
+    settings = Settings(
+        worker_api_url=API_BASE,
+        worker_id="worker-1",
+        vision_concurrency=1,
+        frame_sampling_mode="hybrid",
+    )
+    pipeline = _make_pipeline(
+        handler,
+        settings=settings,
+        vision=vision,
+        probe=_probe_ok(audio_present=False, duration=None),
+        extract_image=_extract_same_jpeg,
+    )
+
+    assert pipeline.run_job(_job(source={"kind": "image", "ext": "png"})) == "completed"
+
+    assert len(vision.calls) == 2
+    assert sorted(call[1]["sourceIndex"] for call in vision.calls) == [0, 1]
 
 
 def test_permanent_failure_not_a_video_fails_job() -> None:

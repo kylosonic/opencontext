@@ -170,8 +170,8 @@ jobs:
           cmp ../../.artifacts/replayed-measured-brief.md ../../.artifacts/replayed-measured-brief-2.md
           cmp ../../.artifacts/replayed-measured-report.json ../../.artifacts/replayed-measured-report-2.json
 
-  ffmpeg-6-image-regression:
-    name: Worker — FFmpeg 6.1.1 image regression
+  ffmpeg-static-image-regression:
+    name: Worker — pinned static FFmpeg image regression
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -189,23 +189,23 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      - name: Download FFmpeg 6.1.1
+      - name: Download pinned static FFmpeg binary
         run: |
           curl --fail --location --retry 3 \
-            --output "$RUNNER_TEMP/ffmpeg-6.1.1" \
+            --output "$RUNNER_TEMP/ffmpeg-pinned" \
             https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64
-          echo "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99  $RUNNER_TEMP/ffmpeg-6.1.1" | sha256sum --check
-          chmod +x "$RUNNER_TEMP/ffmpeg-6.1.1"
+          echo "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99  $RUNNER_TEMP/ffmpeg-pinned" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/ffmpeg-pinned"
 
-      - name: Run real still-image checks against FFmpeg 6.1.1
+      - name: Run complete still-image suite against the pinned binary
         env:
-          FFMPEG_PATH: ${{ runner.temp }}/ffmpeg-6.1.1
+          FFMPEG_PATH: ${{ runner.temp }}/ffmpeg-pinned
         run: |
           "$FFMPEG_PATH" -version | head -n 1
-          pytest -vv tests/test_e2e_fixture.py::test_generated_image_completes_visual_pipeline \
+          pytest -vv \
+            tests/test_e2e_fixture.py::test_generated_image_completes_visual_pipeline \
             tests/test_e2e_fixture.py::test_generated_image_set_completes_cross_image_pipeline \
-            tests/test_image_normalization.py::test_transparency_is_flattened_to_white \
-            tests/test_image_normalization.py::test_exif_orientation_is_applied_once
+            tests/test_image_normalization.py
 
   worker-container:
     name: Worker container — packaged CLI smoke
@@ -386,7 +386,7 @@ jobs:
 
   ci-gate:
     name: CI — all checks passed
-    needs: [web, worker, ffmpeg-6-image-regression, worker-container, postgres, compose]
+    needs: [web, worker, ffmpeg-static-image-regression, worker-container, postgres, compose]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -395,7 +395,7 @@ jobs:
         env:
           WEB_RESULT: ${{ needs.web.result }}
           WORKER_RESULT: ${{ needs.worker.result }}
-          FFMPEG_RESULT: ${{ needs.ffmpeg-6-image-regression.result }}
+          FFMPEG_RESULT: ${{ needs.ffmpeg-static-image-regression.result }}
           CONTAINER_RESULT: ${{ needs.worker-container.result }}
           POSTGRES_RESULT: ${{ needs.postgres.result }}
           COMPOSE_RESULT: ${{ needs.compose.result }}
@@ -403,7 +403,7 @@ jobs:
           for pair in \
             "web:$WEB_RESULT" \
             "worker:$WORKER_RESULT" \
-            "ffmpeg-6-image-regression:$FFMPEG_RESULT" \
+            "ffmpeg-static-image-regression:$FFMPEG_RESULT" \
             "worker-container:$CONTAINER_RESULT" \
             "postgres:$POSTGRES_RESULT" \
             "compose:$COMPOSE_RESULT"; do

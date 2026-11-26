@@ -1,0 +1,120 @@
+{
+  "runDate": "2026-11-26",
+  "scope": "synthetic static slide video with four visual states",
+  "environment": {
+    "ffmpeg": "ffmpeg version n9.0.2-17-g2a571b6068-20260930 Copyright (c) 2000-2026 the FFmpeg developers",
+    "python": "3.13.18",
+    "pillow": "13.0.0"
+  },
+  "input": {
+    "durationSec": 16,
+    "fps": 10,
+    "resolution": "640x360",
+    "visualStates": 4,
+    "animation": "2px marker moving within each static slide"
+  },
+  "thresholds": {
+    "sceneChange": 0.25,
+    "differenceHashDistance": 2,
+    "pixelRms": 1.25
+  },
+  "fixed": {
+    "frameCount": 16,
+    "visionCalls": 16,
+    "timestamps": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0,
+      11.0,
+      12.0,
+      13.0,
+      14.0,
+      15.0
+    ],
+    "elapsedMs": 872.2
+  },
+  "rawHybrid": {
+    "frameCount": 16,
+    "visionCalls": 16,
+    "timestamps": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0,
+      9.0,
+      10.0,
+      11.0,
+      12.0,
+      13.0,
+      14.0,
+      15.0
+    ],
+    "elapsedMs": 618.0
+  },
+  "hybridDedup": {
+    "frameCount": 5,
+    "visionCalls": 5,
+    "timestamps": [
+      0.0,
+      4.0,
+      8.0,
+      12.0,
+      15.0
+    ],
+    "fingerprintErrors": 0,
+    "dedupElapsedMs": 86.8,
+    "visionCallsSavedVsRawHybrid": 11,
+    "visionCallReductionPct": 68.75,
+    "visionCallsSavedVsFixed": 11,
+    "removedTimestamps": [
+      1.0,
+      2.0,
+      3.0,
+      5.0,
+      6.0,
+      7.0,
+      9.0,
+      10.0,
+      11.0,
+      13.0,
+      14.0
+    ],
+    "maxRemovedNeighbourRms": 0.4018
+  },
+  "evidence": {
+    "rawSlideIds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "retainedSlideIds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "allSlideLabelsRepresented": true,
+    "sceneBoundariesRetained": true,
+    "firstAndFinalRetained": true,
+    "ocrClaim": "not measured; Tesseract was not required for this frame-count benchmark"
+  },
+  "limits": [
+    "Counts assume one vision and one OCR request per retained frame.",
+    "The benchmark measures extraction and fingerprint overhead, not provider latency.",
+    "The video and labels are synthetic and do not establish general model quality."
+  ]
+}
