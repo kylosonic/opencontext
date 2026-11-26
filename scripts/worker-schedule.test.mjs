@@ -18,7 +18,7 @@ test("GitHub worker relay stays free and continuously staffed on schedule", asyn
   assert.match(workflow, /cache-dependency-path: workers\/processor\/pyproject\.toml/);
   assert.match(workflow, /ALLOW_PRIVATE_ACTIONS_MINUTES/);
   assert.match(workflow, /visibility.*!=.*public/);
-  assert.match(workflow, /CONTINUOUS_RELAY:.*github\.event_name == 'schedule'/);
+  assert.match(workflow, /CONTINUOUS_RELAY:.*github\.event_name != 'workflow_dispatch'/);
   assert.match(
     workflow,
     /if \[ "\$CONTINUOUS_RELAY" = "1" \]; then\s+python -m oc_worker\.main --drain-seconds 900\s+else\s+python -m oc_worker\.main --drain-seconds 900 --exit-on-idle/s,
