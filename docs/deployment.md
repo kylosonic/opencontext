@@ -373,9 +373,10 @@ provides a zero-cost relay on GitHub-hosted runners for this public repository.
 Scheduled runs remain active for a 15-minute drain window, and the five-minute
 cron keeps the next run pending in the serialized concurrency group. The active
 worker polls every three seconds, so jobs normally start even though the cron
-expression only creates a new pending run every five minutes. `repository_dispatch`
-(`job-queued`) and manual `workflow_dispatch` runs also work and exit once the
-queue is idle.
+expression only creates a new pending run every five minutes. A
+`repository_dispatch` (`job-queued`) also enters the 15-minute relay window so
+follow-up jobs do not require another cold start. Manual `workflow_dispatch`
+runs exit once the queue is idle for validation and maintenance.
 
 The relay intentionally refuses to run when the repository is private unless
 the repository variable `ALLOW_PRIVATE_ACTIONS_MINUTES=true` is set. Private

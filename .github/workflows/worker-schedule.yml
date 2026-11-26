@@ -62,7 +62,7 @@ jobs:
       - name: Drain queue
         env:
           OPENCONTEXT_SKIP_DOTENV: "1"
-          CONTINUOUS_RELAY: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          CONTINUOUS_RELAY: ${{ github.event_name != 'workflow_dispatch' && '1' || '0' }}
           WORKER_API_URL: ${{ vars.WORKER_API_URL }}
           WORKER_API_TOKEN: ${{ secrets.WORKER_API_TOKEN }}
           WORKER_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
@@ -80,9 +80,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Scheduled runs stay alive while the next run waits in the serialized
-          # concurrency group. Together they provide continuous low-latency
-          # claiming without a paid host. Manual and dispatched runs exit when
-          # the queue is empty so they do not hold a runner unnecessarily.
+          # concurrency group. A repository dispatch also stays alive long
+          # enough to drain follow-up jobs after the triggering job. Manual runs
+          # exit when the queue is empty so they do not hold a runner
+          # unnecessarily.
           if [ "$CONTINUOUS_RELAY" = "1" ]; then
             python -m oc_worker.main --drain-seconds 900
           else
