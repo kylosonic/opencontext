@@ -36,6 +36,6 @@
     "build": "npm run build --workspace @kylosonic/opencontext-schemas && npm run build --workspace web"
   },
   "devDependencies": {
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^5.5.0"
   }
 }
