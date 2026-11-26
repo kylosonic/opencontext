@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { billingOverviewForUser } from "@/server/billing/stripe";
 import { usageSummaryForUser } from "@/server/billing/usage";
 import { listWorkspaces } from "@/server/workspaces";
 
@@ -23,9 +24,10 @@ export default async function UsagePage() {
   if (!session?.user?.id) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent("/app/usage")}`);
   }
-  const [summary, workspaces] = await Promise.all([
+  const [summary, workspaces, billing] = await Promise.all([
     usageSummaryForUser(session.user.id, { days: 30 }),
     listWorkspaces(session.user.id),
+    billingOverviewForUser(session.user.id),
   ]);
 
   return (
@@ -59,9 +61,10 @@ export default async function UsagePage() {
               </div>
             </div>
 
-            {summary && (
+            {summary && billing && (
               <UsageDashboard
                 initialSummary={summary}
+                initialBilling={billing}
                 workspaces={workspaces}
                 initialInvoiceMonth={new Date().toISOString().slice(0, 7)}
               />

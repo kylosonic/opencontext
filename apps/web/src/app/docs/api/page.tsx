@@ -177,6 +177,21 @@ const ENDPOINTS = [
     "Download a deterministic monthly draft invoice as JSON or CSV (month, format, optional workspaceId).",
   ],
   [
+    "GET",
+    "/api/billing/status",
+    "Read configured billing mode, usage-billing flag, and subscription state for a personal or team scope.",
+  ],
+  [
+    "POST",
+    "/api/billing/checkout",
+    "Create a Stripe-hosted subscription Checkout session when billing is configured.",
+  ],
+  [
+    "POST",
+    "/api/billing/portal",
+    "Open Stripe Billing Portal for an existing personal or team customer.",
+  ],
+  [
     "POST",
     "/api/worker/heartbeat",
     "Internal worker-token heartbeat for idle worker health (204).",

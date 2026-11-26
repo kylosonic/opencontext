@@ -18,6 +18,7 @@ export const ERROR_CODES = [
   "UPLOAD_EXPIRED",
   "UPLOAD_INCOMPLETE",
   "RATE_LIMITED",
+  "BILLING_UNAVAILABLE",
   "WORKER_UNAUTHORIZED",
   "INTERNAL",
 ] as const;
@@ -81,6 +82,10 @@ export const ERROR_CATALOG = {
   RATE_LIMITED: {
     status: 429,
     description: "The caller exceeded the configured request rate.",
+  },
+  BILLING_UNAVAILABLE: {
+    status: 503,
+    description: "Stripe billing is disabled or temporarily unavailable.",
   },
   WORKER_UNAUTHORIZED: {
     status: 401,

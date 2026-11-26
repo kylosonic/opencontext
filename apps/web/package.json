@@ -24,8 +24,8 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@aws-sdk/client-s3": "^3.1178.0",
     "@aws-sdk/s3-request-presigner": "^3.1178.0",
-    "@opencontext/config": "*",
     "@kylosonic/opencontext-schemas": "*",
+    "@opencontext/config": "*",
     "@prisma/adapter-better-sqlite3": "^7.10.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
@@ -36,7 +36,8 @@
     "prisma": "^7.10.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "stripe": "23.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

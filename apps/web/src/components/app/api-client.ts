@@ -1,4 +1,5 @@
 import type { DetailLevel, JobDetail, JobSummary } from "@kylosonic/opencontext-schemas";
+import type { BillingOverview } from "@kylosonic/opencontext-schemas";
 import type { UsageDashboardSummary } from "@/server/billing/usage";
 
 /**
@@ -140,6 +141,48 @@ export async function fetchUsageSummary(
   });
   await ensureOk(response);
   return (await response.json()) as UsageDashboardSummary;
+}
+
+/** GET /api/billing/status — subscription state for a personal or team scope. */
+export async function fetchBillingOverview(
+  workspaceId?: string,
+): Promise<BillingOverview> {
+  const params = new URLSearchParams();
+  if (workspaceId) params.set("workspaceId", workspaceId);
+  const qs = params.toString();
+  const response = await fetch(qs ? `/api/billing/status?${qs}` : "/api/billing/status", {
+    headers: { Accept: "application/json" },
+  });
+  await ensureOk(response);
+  return (await response.json()) as BillingOverview;
+}
+
+async function postBillingRedirect(
+  path: "/api/billing/checkout" | "/api/billing/portal",
+  workspaceId: string,
+): Promise<string> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ workspaceId: workspaceId || null }),
+  });
+  await ensureOk(response);
+  const payload = (await response.json()) as { url?: unknown };
+  if (typeof payload.url !== "string" || !URL.canParse(payload.url)) {
+    throw new Error("Billing redirect URL is invalid");
+  }
+  return payload.url;
+}
+
+export function startBillingCheckout(workspaceId: string): Promise<string> {
+  return postBillingRedirect("/api/billing/checkout", workspaceId);
+}
+
+export function openBillingPortal(workspaceId: string): Promise<string> {
+  return postBillingRedirect("/api/billing/portal", workspaceId);
 }
 
 /** DELETE /api/jobs/[id] — 204 when the job and its media are removed. */

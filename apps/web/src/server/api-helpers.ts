@@ -129,14 +129,15 @@ export type JsonBodyResult =
   | { ok: true; value: unknown }
   | { ok: false; reason: "TOO_LARGE" | "INVALID" };
 
-/** Read JSON from the request stream with a real byte cap (not only Content-Length). */
-export async function readJsonBody(
+export type RawBodyResult =
+  | { ok: true; bytes: Uint8Array }
+  | { ok: false; reason: "TOO_LARGE" | "INVALID" };
+
+/** Read a request body with a real byte cap (not only Content-Length). */
+export async function readRawBody(
   request: Request,
   maxBytes: number,
-): Promise<JsonBodyResult> {
-  if (!isJsonContentType(request.headers.get("content-type"))) {
-    return { ok: false, reason: "INVALID" };
-  }
+): Promise<RawBodyResult> {
   const reader = request.body?.getReader();
   if (!reader) {
     return { ok: false, reason: "INVALID" };
@@ -163,8 +164,24 @@ export async function readJsonBody(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return { ok: true, bytes };
+}
+
+/** Read JSON from the request stream with a real byte cap. */
+export async function readJsonBody(
+  request: Request,
+  maxBytes: number,
+): Promise<JsonBodyResult> {
+  if (!isJsonContentType(request.headers.get("content-type"))) {
+    return { ok: false, reason: "INVALID" };
+  }
+  const body = await readRawBody(request, maxBytes);
+  if (!body.ok) return body;
   try {
-    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) };
+    return {
+      ok: true,
+      value: JSON.parse(new TextDecoder().decode(body.bytes)),
+    };
   } catch {
     return { ok: false, reason: "INVALID" };
   }

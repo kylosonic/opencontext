@@ -135,8 +135,10 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
 - Evidence-linked Markdown and JSON with transcript, visual, OCR, timeline, and
   human-review metadata.
 - Idempotent analysis usage records with configurable resale prices,
-  authenticated aggregation, scheduled reconciliation, and monthly JSON/CSV
-  draft invoice exports for a future metered-billing integration.
+  authenticated aggregation, scheduled reconciliation, monthly JSON/CSV draft
+  invoice exports, and optional test-mode-first Stripe subscription Checkout,
+  Billing Portal, signed webhook synchronization, and idempotent usage invoice
+  items.
 - Generated-video end-to-end test from upload through worker output.
 - Hybrid video sampling has an optional fail-open Python de-duplication pass.
   Reproducible synthetic and real-screen benchmarks retained every measured
@@ -189,12 +191,15 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   exercise transcription.
 - No independent penetration test has been performed.
 
-- Usage accounting is implemented, but payment-provider integration, prices,
-  tax policy, refunds, and customer-to-subscription mapping are intentionally not
-  activated without product/owner decisions.
+- Stripe subscription billing is implemented but remains disabled unless its
+  test-mode key, webhook secret, price, and public app URL are configured. The
+  usage ledger is submitted to Stripe only when usage billing, positive resale
+  prices, and a billable subscription are all present. Tax policy, refunds,
+  dunning, and final invoice decisions still require an explicit operator policy.
 
 Current verification and remaining work:
 [docs/status.md](docs/status.md) ·
+[Stripe billing setup](docs/billing.md) ·
 [ROADMAP.md](ROADMAP.md)
 
 ## How it works

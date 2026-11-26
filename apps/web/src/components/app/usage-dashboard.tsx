@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { BillingOverview } from "@kylosonic/opencontext-schemas";
 import {
   ApiError,
+  fetchBillingOverview,
   fetchUsageSummary,
+  openBillingPortal,
+  startBillingCheckout,
 } from "@/components/app/api-client";
 import { formatDate } from "@/components/results/format";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +30,19 @@ function formatDurationSeconds(totalSec: number): string {
 
 export interface UsageDashboardProps {
   initialSummary: UsageDashboardSummary;
+  initialBilling: BillingOverview;
   workspaces: { id: string; name: string; role: string }[];
   initialInvoiceMonth: string;
 }
 
 export function UsageDashboard({
   initialSummary,
+  initialBilling,
   workspaces,
   initialInvoiceMonth,
 }: UsageDashboardProps) {
   const [summary, setSummary] = useState(initialSummary);
+  const [billing, setBilling] = useState(initialBilling);
   const [workspaceId, setWorkspaceId] = useState(
     initialSummary.workspaceId ?? "",
   );
@@ -43,16 +50,22 @@ export function UsageDashboard({
   const [invoiceMonth, setInvoiceMonth] = useState(initialInvoiceMonth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   async function reload(nextWorkspaceId: string, nextDays: number) {
     setLoading(true);
     setError(null);
     try {
-      const next = await fetchUsageSummary({
-        workspaceId: nextWorkspaceId || undefined,
-        days: nextDays,
-      });
+      const [next, nextBilling] = await Promise.all([
+        fetchUsageSummary({
+          workspaceId: nextWorkspaceId || undefined,
+          days: nextDays,
+        }),
+        fetchBillingOverview(nextWorkspaceId || undefined),
+      ]);
       setSummary(next);
+      setBilling(nextBilling);
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -68,6 +81,26 @@ export function UsageDashboard({
     const params = new URLSearchParams({ month: invoiceMonth, format });
     if (workspaceId) params.set("workspaceId", workspaceId);
     return `/api/usage/invoice?${params.toString()}`;
+  }
+
+  async function openBilling(action: "checkout" | "portal") {
+    if (billingBusy) return;
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const url =
+        action === "checkout"
+          ? await startBillingCheckout(workspaceId)
+          : await openBillingPortal(workspaceId);
+      window.location.assign(url);
+    } catch (caught) {
+      setBillingError(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not open Stripe billing.",
+      );
+      setBillingBusy(false);
+    }
   }
 
   return (
@@ -133,13 +166,109 @@ export function UsageDashboard({
       </Card>
 
       <Card>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-semibold text-ink">
+                Subscription billing
+              </h2>
+              {billing.mode && (
+                <Badge
+                  tone={billing.mode === "test" ? "warning" : "accent"}
+                  mono
+                >
+                  {billing.mode.toUpperCase()}
+                </Badge>
+              )}
+            </div>
+            <p className="mt-2 max-w-xl text-sm text-ink-muted">
+              Manage the recurring OpenContext plan through Stripe-hosted
+              Checkout and Billing Portal. Usage billing is enabled for the
+              ledger in this deployment and can be viewed in the monthly invoice
+              export.
+            </p>
+          </div>
+          {billing.canManage && billing.configured && (
+            <Button
+              type="button"
+              size="sm"
+              disabled={billingBusy}
+              onClick={() =>
+                void openBilling(billing.subscription ? "portal" : "checkout")
+              }
+            >
+              {billingBusy
+                ? "Opening Stripe…"
+                : billing.subscription
+                  ? "Manage billing"
+                  : "Start subscription"}
+            </Button>
+          )}
+        </div>
+
+        <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="rounded-md border border-line bg-panel-muted/50 p-3">
+            <dt className="text-xs text-ink-faint">Status</dt>
+            <dd className="mt-1 font-medium text-ink">
+              {billing.subscription?.status ?? "Not subscribed"}
+            </dd>
+          </div>
+          <div className="rounded-md border border-line bg-panel-muted/50 p-3">
+            <dt className="text-xs text-ink-faint">Current period ends</dt>
+            <dd className="mt-1 font-medium text-ink">
+              {billing.subscription?.currentPeriodEnd
+                ? formatDate(billing.subscription.currentPeriodEnd)
+                : "—"}
+            </dd>
+          </div>
+          <div className="rounded-md border border-line bg-panel-muted/50 p-3">
+            <dt className="text-xs text-ink-faint">Renewal</dt>
+            <dd className="mt-1 font-medium text-ink">
+              {billing.subscription?.cancelAtPeriodEnd
+                ? "Cancels at period end"
+                : billing.subscription
+                  ? "Automatic"
+                  : "—"}
+            </dd>
+          </div>
+        </dl>
+
+        {!billing.configured && (
+          <p className="mt-4 rounded-md border border-line bg-panel-muted/50 p-3 text-sm text-ink-muted">
+            Stripe billing is disabled on this deployment. Configure the
+            test-mode server key, webhook secret, price ID, and app base URL to
+            enable it.
+          </p>
+        )}
+        {billing.configured && !billing.canManage && (
+          <p className="mt-4 text-xs text-ink-faint">
+            Your team role can view billing status but cannot start or manage
+            the subscription.
+          </p>
+        )}
+        {billing.configured && !billing.usageBillingEnabled && (
+          <p className="mt-4 text-xs text-ink-faint">
+            Usage charges are not submitted to Stripe on this deployment. Only
+            the recurring subscription price is active.
+          </p>
+        )}
+        {billingError && (
+          <p role="alert" className="mt-3 text-sm text-err">
+            {billingError}
+          </p>
+        )}
+      </Card>
+
+      <Card>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink">Monthly invoice export</h2>
+            <h2 className="text-sm font-semibold text-ink">
+              Monthly invoice export
+            </h2>
             <p className="mt-1 max-w-xl text-xs text-ink-faint">
-              Download a provider-neutral draft from the usage ledger for the
-              selected scope. This export records amounts but does not charge a
-              payment method.
+              Download the usage ledger for the selected scope. When usage
+              billing is enabled, positive usage is also submitted to Stripe as
+              an invoice item and appears on the next invoice.
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-2">
@@ -178,14 +307,18 @@ export function UsageDashboard({
           <p className="mt-2 font-mono text-2xl font-semibold text-ink">
             {summary.totalRecords}
           </p>
-          <p className="mt-1 text-xs text-ink-faint">Last {summary.days} days</p>
+          <p className="mt-1 text-xs text-ink-faint">
+            Last {summary.days} days
+          </p>
         </Card>
         <Card>
           <p className="label-mono">Timed media processed</p>
           <p className="mt-2 font-mono text-2xl font-semibold text-ink">
             {formatDurationSeconds(summary.totalMediaSeconds)}
           </p>
-          <p className="mt-1 text-xs text-ink-faint">Video and audio duration</p>
+          <p className="mt-1 text-xs text-ink-faint">
+            Video and audio duration
+          </p>
         </Card>
         <Card>
           <p className="label-mono">Still &amp; document jobs</p>
@@ -245,7 +378,9 @@ export function UsageDashboard({
       </div>
 
       <Card>
-        <h2 className="text-base font-semibold text-ink">Recent usage ledger</h2>
+        <h2 className="text-base font-semibold text-ink">
+          Recent usage ledger
+        </h2>
         {summary.recent.length === 0 ? (
           <p className="mt-2 text-sm text-ink-muted">
             No completed or partial analyses have been recorded in this window.

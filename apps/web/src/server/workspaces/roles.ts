@@ -11,6 +11,7 @@ export const WORKSPACE_PERMISSIONS = [
   "members:invite",
   "members:manage",
   "roles:manage",
+  "billing:manage",
   "usage:view",
 ] as const;
 

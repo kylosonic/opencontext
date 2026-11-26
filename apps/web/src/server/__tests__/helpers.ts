@@ -6,6 +6,9 @@ import { initialStageStates } from "@/server/jobs";
 
 /** Wipe every table (SQLite FK enforcement is off; order is belt-and-braces). */
 export async function resetDatabase(): Promise<void> {
+  await prisma.stripeUsageItem.deleteMany();
+  await prisma.stripeWebhookEvent.deleteMany();
+  await prisma.billingAccount.deleteMany();
   await prisma.rateLimitBucket.deleteMany();
   await prisma.usageRecord.deleteMany();
   await prisma.jobShare.deleteMany();

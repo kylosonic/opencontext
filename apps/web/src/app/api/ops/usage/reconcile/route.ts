@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { verifyOpsToken, errorResponse, withErrorHandling } from "@/server/api-helpers";
+import {
+  verifyOpsToken,
+  errorResponse,
+  withErrorHandling,
+} from "@/server/api-helpers";
+import { reconcileStripeUsage } from "@/server/billing/stripe-usage";
 import { reconcileAnalysisUsage } from "@/server/billing/usage";
 import {
   applyRateLimitHeaders,
@@ -35,6 +40,7 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
     const written = await reconcileAnalysisUsage();
-    return applyRateLimitHeaders(NextResponse.json({ written }), limit);
+    const stripe = await reconcileStripeUsage();
+    return applyRateLimitHeaders(NextResponse.json({ written, stripe }), limit);
   });
 }
