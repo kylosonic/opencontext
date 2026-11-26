@@ -139,9 +139,12 @@ opencontext analyze .artifacts/opencontext-fixture.mp4 --offline \
   draft invoice exports for a future metered-billing integration.
 - Generated-video end-to-end test from upload through worker output.
 - Hybrid video sampling has an optional fail-open Python de-duplication pass.
-  A reproducible synthetic benchmark retained every slide boundary while
-  reducing modeled vision/OCR calls from 16 to 5; see
-  [the measurements and limits](docs/performance/frame-dedup-2026-11-26.md).
+  Reproducible synthetic and real-screen benchmarks retained every measured
+  visual state while reducing modeled vision/OCR calls by 68.75% and 64.58%
+  respectively; see
+  [the measurements and limits](docs/performance/frame-dedup-2026-11-26.md)
+  and the
+  [real Screen2Words run](docs/performance/frame-dedup-screen2words-2026-11-26.md).
 - Audio-backed worker end-to-end test that transcribes the committed Harvard
   recording with real Faster Whisper in CI and checks transcript WER/CER and
   evidence timestamp bounds.

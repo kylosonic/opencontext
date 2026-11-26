@@ -97,6 +97,12 @@ The [2026-11-24 held-out result](heldout-2026-11-24.md) records a measured local
 Faster Whisper `tiny.en` pass over 32 far-field AMI clips plus a structurally
 verified fixture pass over 16 real Screen2Words screenshots.
 
+The same 16 real screenshots also drive the
+[real-screen frame de-duplication benchmark](../performance/frame-dedup-screen2words-2026-11-26.md).
+The production selector retained all 16 visual states while reducing 48 raw
+candidates to 17 modeled frames. This is a deterministic evidence-retention
+measurement, not a visual-model quality score.
+
 ## OpenCode Go measured result
 
 - Date: 2026-11-09

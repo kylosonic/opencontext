@@ -1,0 +1,252 @@
+{
+  "runDate": "2026-11-26",
+  "scope": "16 real Screen2Words app-screenshot states",
+  "measurementKind": "deterministic frame-selection benchmark with real images",
+  "dataset": {
+    "id": "screen2words-test-v1",
+    "dataset": "bevaya/RICO-Screen2Words",
+    "provenance": "Screen2Words test screenshots and crowd-authored screen summaries served by the Hugging Face datasets server.",
+    "license": "CC-BY-4.0",
+    "citation": "Wang et al., Screen2Words: Automatic Mobile UI Summarization with Multimodal Learning (2021).",
+    "stateCount": 16,
+    "states": [
+      {
+        "id": "screen2words-118",
+        "sha256": "e40075831198cb255e91fc2ba9adcb24eb41f9800c291f6cb6f910f34925c7d1"
+      },
+      {
+        "id": "screen2words-5320",
+        "sha256": "81e04c412f955241461fc8772bcf5176c69b1288b93cafa176311fd4132b8fd9"
+      },
+      {
+        "id": "screen2words-8963",
+        "sha256": "183547daa09bc3d85d80fba66fbee31c81cadcab47364e5131775650ca0afc34"
+      },
+      {
+        "id": "screen2words-13816",
+        "sha256": "4419dadb94ca1d819c2dad9be04e40fc7259f4ebe3667457a750777b0f002d08"
+      },
+      {
+        "id": "screen2words-19718",
+        "sha256": "48a4ef99ccd78d26ed412015b2cea783d83cd6b926390fdeedbcaa893e4691e5"
+      },
+      {
+        "id": "screen2words-24379",
+        "sha256": "dab809a004865c5441a6f0c03e9c974bb3f7d25831f4b2ec7d2b366b4be30658"
+      },
+      {
+        "id": "screen2words-30185",
+        "sha256": "47463d09b40f0b5a4b4225f793ea2d73c5b2c3e475327b7deae82f5d6cde5f90"
+      },
+      {
+        "id": "screen2words-34321",
+        "sha256": "419eb33983741db8dadd876ac2c7e08cc6cdafc09599ff93b4774b57c65dc5a0"
+      },
+      {
+        "id": "screen2words-38338",
+        "sha256": "04646f5c66af5d7a5d9f7dfb701bb7cbec1c76fbf635f54123a1a8b7ee60aee1"
+      },
+      {
+        "id": "screen2words-42622",
+        "sha256": "e0c11479d0fccba357feff54b5a2ac6d39e3e456d6aba1afd4d98304a586d482"
+      },
+      {
+        "id": "screen2words-47268",
+        "sha256": "54388bbe731df2244f2da116424c64935b6a350fee78aa779781e221ea2f68be"
+      },
+      {
+        "id": "screen2words-50749",
+        "sha256": "75ed80f183af531b5c04c3ca8ceaa54d893897bc77181cc2dcfaec87e6c874b8"
+      },
+      {
+        "id": "screen2words-55597",
+        "sha256": "974ccddef8d354dfe4a483302ac5f58c194553857dd54f834c60b650e6932d4d"
+      },
+      {
+        "id": "screen2words-60246",
+        "sha256": "b7c10e8934e3a96335a89220781e6cb5bad8b624e6aaf483408cce0477d49bfc"
+      },
+      {
+        "id": "screen2words-63762",
+        "sha256": "67b940e4e2b43daa385f58e2648d7f7664689f00cd9b3bcd151aea7f12dd4a9b"
+      },
+      {
+        "id": "screen2words-67315",
+        "sha256": "6e97e1af33e2971ec84d928dea65733ab83a3fbf9540829e731051e8c0863b02"
+      }
+    ]
+  },
+  "environment": {
+    "ffmpeg": "ffmpeg version n9.0.2-17-g2a571b6068-20260930 Copyright (c) 2000-2026 the FFmpeg developers",
+    "python": "3.13.18",
+    "pillow": "13.0.0"
+  },
+  "input": {
+    "durationSec": 48,
+    "fps": 5,
+    "resolution": "360x640",
+    "secondsPerState": 3
+  },
+  "thresholds": {
+    "sceneChange": 0.25,
+    "differenceHashDistance": 2,
+    "pixelRms": 1.25
+  },
+  "fixed": {
+    "frameCount": 48,
+    "visionCalls": 48,
+    "elapsedMs": 2321.9
+  },
+  "rawHybrid": {
+    "frameCount": 48,
+    "visionCalls": 48,
+    "stateCount": 16,
+    "elapsedMs": 1774.9
+  },
+  "hybridDedup": {
+    "frameCount": 17,
+    "visionCalls": 17,
+    "stateCount": 16,
+    "timestamps": [
+      0.0,
+      3.0,
+      6.0,
+      9.0,
+      12.0,
+      15.0,
+      18.0,
+      21.0,
+      24.0,
+      27.0,
+      30.0,
+      33.0,
+      36.0,
+      39.0,
+      42.0,
+      45.0,
+      47.0
+    ],
+    "fingerprintErrors": 0,
+    "dedupElapsedMs": 467.0,
+    "visionCallsSavedVsRawHybrid": 31,
+    "visionCallReductionPct": 64.58,
+    "removedTimestamps": [
+      1.0,
+      2.0,
+      4.0,
+      5.0,
+      7.0,
+      8.0,
+      10.0,
+      11.0,
+      13.0,
+      14.0,
+      16.0,
+      17.0,
+      19.0,
+      20.0,
+      22.0,
+      23.0,
+      25.0,
+      26.0,
+      28.0,
+      29.0,
+      31.0,
+      32.0,
+      34.0,
+      35.0,
+      37.0,
+      38.0,
+      40.0,
+      41.0,
+      43.0,
+      44.0,
+      46.0
+    ],
+    "removedStateIds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "maxRemovedNeighbourRms": 0.1534
+  },
+  "evidence": {
+    "expectedStateIds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "rawStateIds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "retainedStateIds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "lostStateIds": [],
+    "allRealScreenshotStatesRepresented": true,
+    "firstAndFinalRetained": true,
+    "ocrClaim": "not measured; retained-state coverage is the evidence gate"
+  },
+  "limits": [
+    "The source is a curated sequence of 16 real screenshots, not a timed screen recording.",
+    "State coverage checks visual-state removal, not OCR or hosted-model quality.",
+    "Counts assume one vision and one OCR request per retained frame.",
+    "Wall-clock values are one local run and are not provider latency measurements."
+  ]
+}

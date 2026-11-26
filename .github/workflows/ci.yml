@@ -69,6 +69,8 @@ jobs:
           node --check scripts/github-incident-alert.mjs
           node --check scripts/check-operations.mjs
           node --check scripts/configure-vercel-waf.mjs
+          python -m py_compile scripts/benchmark-frame-dedup.py
+          python -m py_compile scripts/benchmark-frame-dedup-corpus.py
           python -c "import tomllib; d = tomllib.load(open('fly.toml', 'rb')); assert d['build']['dockerfile'] == 'docker/worker-hosted.Dockerfile'"
           docker compose -f docker-compose.yml config --quiet
 
@@ -133,7 +135,7 @@ jobs:
         run: pytest -vv tests/test_image_normalization.py
 
       - name: Lint
-        run: ruff check src tests
+        run: ruff check src tests ../../scripts/benchmark-frame-dedup.py ../../scripts/benchmark-frame-dedup-corpus.py
 
       - name: Test
         run: pytest

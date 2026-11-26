@@ -26,7 +26,9 @@ about the current Vercel deployment or future releases.
 - Hybrid video sampling has a fail-open Python de-duplication pass. The
   synthetic four-slide measurement retained every slide boundary and the final
   frame while reducing modeled vision/OCR calls from 16 to 5 (68.75%). The raw
-  result, method, timings, and limits are under `docs/performance/`.
+  result, method, timings, and limits are under `docs/performance/`. A second
+  run over 16 real Screen2Words app states retained all 16 states while
+  reducing 48 raw candidates to 17 frames (64.58% fewer modeled calls).
 - UI consistency, accessibility, team RBAC UI gating, interactive public share
   controls, landing page, and in-app docs parity checks were audited and
   verified across `apps/web`.
@@ -224,10 +226,11 @@ the non-root worker container and the Compose upload-to-export flow.
 - The live media acceptance corpus contains downloaded photographs and trailer
   footage, not a long real application walkthrough or a statistically
   representative sample of user-uploaded codecs and screen recordings.
-- Frame de-duplication evidence currently comes from one reproducible synthetic
-  four-slide workload. Its conservative defaults need evidence-loss review on a
-  larger real-world visual corpus before they can be described as broadly
-  optimal.
+- Frame de-duplication evidence now covers a reproducible synthetic four-slide
+  workload and 16 real app-screenshot states, but not timed motion-heavy video.
+  Its conservative defaults still need evidence-loss review on a larger,
+  statistically representative visual corpus before they can be described as
+  broadly optimal.
 - `opencontext-video==0.1.2` is published on PyPI and
   `@kylosonic/opencontext-schemas@0.1.2` is published on npm. Both use Trusted
   Publishing through their protected release workflows.
