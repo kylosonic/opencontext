@@ -15,5 +15,6 @@ export * from "./observation.js";
 export * from "./result.js";
 export * from "./transcript.js";
 export * from "./upload.js";
+export * from "./usage.js";
 export * from "./api.js";
 export * from "./worker.js";

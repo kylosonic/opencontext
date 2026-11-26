@@ -8,7 +8,7 @@ import {
 } from "@/components/app/api-client";
 import { formatDate } from "@/components/results/format";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { UsageDashboardSummary } from "@/server/billing/usage";
 
@@ -27,17 +27,20 @@ function formatDurationSeconds(totalSec: number): string {
 export interface UsageDashboardProps {
   initialSummary: UsageDashboardSummary;
   workspaces: { id: string; name: string; role: string }[];
+  initialInvoiceMonth: string;
 }
 
 export function UsageDashboard({
   initialSummary,
   workspaces,
+  initialInvoiceMonth,
 }: UsageDashboardProps) {
   const [summary, setSummary] = useState(initialSummary);
   const [workspaceId, setWorkspaceId] = useState(
     initialSummary.workspaceId ?? "",
   );
   const [days, setDays] = useState(initialSummary.days);
+  const [invoiceMonth, setInvoiceMonth] = useState(initialInvoiceMonth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +62,12 @@ export function UsageDashboard({
     } finally {
       setLoading(false);
     }
+  }
+
+  function invoiceHref(format: "json" | "csv"): string {
+    const params = new URLSearchParams({ month: invoiceMonth, format });
+    if (workspaceId) params.set("workspaceId", workspaceId);
+    return `/api/usage/invoice?${params.toString()}`;
   }
 
   return (
@@ -121,6 +130,46 @@ export function UsageDashboard({
             {error}
           </p>
         )}
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Monthly invoice export</h2>
+            <p className="mt-1 max-w-xl text-xs text-ink-faint">
+              Download a provider-neutral draft from the usage ledger for the
+              selected scope. This export records amounts but does not charge a
+              payment method.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="grid gap-1 text-xs font-medium text-ink-muted">
+              Invoice month
+              <input
+                type="month"
+                min="2000-01"
+                max="2100-12"
+                value={invoiceMonth}
+                onChange={(event) => setInvoiceMonth(event.target.value)}
+                className="h-8 rounded-md border border-line bg-canvas px-2 text-sm font-normal text-ink"
+              />
+            </label>
+            <a
+              href={invoiceHref("json")}
+              download
+              className={buttonClasses("secondary", "sm")}
+            >
+              JSON invoice
+            </a>
+            <a
+              href={invoiceHref("csv")}
+              download
+              className={buttonClasses("secondary", "sm")}
+            >
+              CSV invoice
+            </a>
+          </div>
+        </div>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

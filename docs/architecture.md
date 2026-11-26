@@ -19,7 +19,7 @@ application, shared TypeScript packages, and Python media worker.
 | `apps/web/src/server/jobs` | Job CRUD, filtered listing, rename/re-run, serialization, retry/delete lifecycle, retention policies, public share tokens, and shared source asset preview/download streaming (`sourceStream.ts`). |
 | `apps/web/src/server/queue` | Database-leased job queue claim, completion, failure classification, lease renewal, and retention sweeps. |
 | `apps/web/src/server/workspaces` | Team workspaces, built-in & custom RBAC (`roles.ts`), governance, hashed email invitations (`invites.ts`), SCIM 2.0 tokens & helpers (`scim.ts`), and shared job access checks. |
-| `apps/web/src/server/billing` | Usage ledger recording (`UsageRecord`), reconciliation helpers, and self-service usage aggregation (`usageSummaryForUser`). |
+| `apps/web/src/server/billing` | Usage ledger recording (`UsageRecord`), reconciliation and aggregation helpers, plus deterministic monthly JSON/CSV draft invoice exports. |
 | `apps/web/src/server/security` | Rate limiting (`rate-limit.ts`), CSRF origin guards, and request IP/header extraction. |
 | `apps/web/src/server/storage` | Pluggable local-disk and S3 object storage backends. |
 | `workers/processor/src/oc_worker` | Python worker, standalone `opencontext` CLI, MCP server, and evaluation harness. |
