@@ -194,6 +194,7 @@ jobs:
             "" \
             "- **Python CLI / Worker (\`opencontext-video\`):** \`pip install opencontext-video==${version}\` ([PyPI](https://pypi.org/project/opencontext-video/${version}/))" \
             "- **TypeScript Schemas (\`@kylosonic/opencontext-schemas\`):** \`npm install @kylosonic/opencontext-schemas@${version}\` ([npm](https://www.npmjs.com/package/@kylosonic/opencontext-schemas/v/${version}))" \
+            "- **GitHub Action:** \`uses: kylosonic/opencontext@${TAG}\`" \
             "- **Web Hosted Image:** \`ghcr.io/${OWNER}/opencontext-web:${version}\`" \
             "- **Worker Hosted Image:** \`ghcr.io/${OWNER}/opencontext-worker:${version}\`" \
             "- **Worker CLI Image:** \`ghcr.io/${OWNER}/opencontext-worker-cli:${version}\`" \
@@ -203,3 +204,99 @@ jobs:
             --generate-notes \
             --title "$TAG" \
             --notes-file /tmp/release-notes.md
+
+  release-verify:
+    name: Verify published release artifacts
+    needs: github-release
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Install and inspect published packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          python -m pip install --disable-pip-version-check "opencontext-video==${version}"
+          test "$(opencontext --version)" = "opencontext ${version}"
+          python - <<PY
+          import oc_worker
+
+          assert oc_worker.__version__ == "${version}", oc_worker.__version__
+          PY
+
+          npm_dir="$(mktemp -d)"
+          npm install --prefix "$npm_dir" --no-audit --no-fund \
+            "@kylosonic/opencontext-schemas@${version}"
+          cd "$npm_dir"
+          node --input-type=module - <<'NODE'
+          const schemas = await import("@kylosonic/opencontext-schemas");
+          if (!schemas.JobDetailSchema || !schemas.WorkerClaimRequestSchema) {
+            throw new Error("published schemas are missing expected exports");
+          }
+          console.log("published npm schemas import successfully");
+          NODE
+
+      - name: Verify GHCR images and GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          for image in opencontext-web opencontext-worker opencontext-worker-cli; do
+            docker buildx imagetools inspect "ghcr.io/${owner}/${image}:${version}" >/dev/null
+          done
+          gh release view "$GITHUB_REF_NAME" --json tagName,isDraft,isPrerelease,publishedAt >/tmp/release.json
+          python - <<'PY'
+          import json
+
+          release = json.load(open("/tmp/release.json", encoding="utf-8"))
+          assert release["isDraft"] is False
+          assert release["isPrerelease"] is False
+          assert release["publishedAt"]
+          PY
+
+      - name: Run the tagged composite action with default package version
+        id: action
+        uses: ./
+        with:
+          media: docs/assets/real-vision-checkout.png
+          repository: .
+          task: Verify the published release action and evidence pipeline.
+          output-dir: .artifacts/release-action
+          detail-level: MEDIUM
+          offline: "true"
+
+      - name: Validate action outputs and replay
+        env:
+          OPENCONTEXT_JSON: ${{ steps.action.outputs.json }}
+          OPENCONTEXT_BRIEF: ${{ steps.action.outputs.brief }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$OPENCONTEXT_JSON"
+          test -s "$OPENCONTEXT_BRIEF"
+          opencontext replay "$OPENCONTEXT_JSON" \
+            --repo . \
+            --task "Verify the published release action and evidence pipeline." \
+            --out .artifacts/release-action/replayed-brief.md \
+            --report .artifacts/release-action/replay-report.json
+          cmp "$OPENCONTEXT_BRIEF" .artifacts/release-action/replayed-brief.md

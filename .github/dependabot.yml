@@ -12,6 +12,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # TypeScript 7 remains outside typescript-eslint's supported peer range.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
     labels:
       - "dependencies"
       - "javascript"
@@ -28,6 +33,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Faster Whisper 1.2.1 still uses a PyAV API removed in PyAV 19.
+      - dependency-name: "av"
+        update-types:
+          - "version-update:semver-major"
     labels:
       - "dependencies"
       - "python"
@@ -58,6 +68,14 @@ updates:
       docker-base-images:
         patterns:
           - "*"
+    ignore:
+      # Runtime major upgrades require separate driver and compatibility suites.
+      - dependency-name: "node"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "nvidia/cuda"
+        update-types:
+          - "version-update:semver-major"
     labels:
       - "dependencies"
       - "docker"

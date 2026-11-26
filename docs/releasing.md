@@ -8,9 +8,10 @@ The repository has two publishable package artifacts and three container images:
   `ghcr.io/kylosonic/opencontext-worker`, and
   `ghcr.io/kylosonic/opencontext-worker-cli`.
 
-Versions are currently `0.1.2` in both package manifests. A Git tag must be
-`v0.1.2` (without extra text), and the release workflow verifies that the tag,
-npm version, and Python version match before building.
+Versions are currently `0.1.3` across all npm workspace manifests, the npm
+lockfile, the Python package, and the composite action's default package
+version. A Git tag must be `v0.1.3` (without extra text), and the release
+workflow verifies those values before building.
 
 ## Protected publishing
 
@@ -26,7 +27,7 @@ GitHub Release automatically if absent.
 - npm uses Trusted Publishing through GitHub OIDC; no npm publish token is
   stored.
 
-The `0.1.2` artifacts are published. Their trusted publishers are configured as
+The `0.1.3` artifacts are published. Their trusted publishers are configured as
 follows:
 
 1. In PyPI, the Trusted Publisher for `opencontext-video` uses
@@ -41,16 +42,23 @@ follows:
 The release jobs skip a package version that is already present in its
 registry, so rerunning a tag remains safe and idempotent.
 
+After the GitHub Release is created, the `release-verify` job installs the exact
+PyPI and npm versions, imports the published npm schemas, checks all three GHCR
+image manifests, confirms the public GitHub Release, and runs the tagged
+composite action with its default package version. A release workflow is not
+successful until those post-publication checks pass.
+
 The temporary npm publish and GitHub Actions tokens used during the first
 release have been revoked. A tokenless prerelease publish validated the npm
 trusted publisher and generated npm provenance. Both stable package versions
-install successfully, and `latest` points to `0.1.2`.
+install successfully, and `latest` points to `0.1.3`.
 
 ## Release checklist
 
 1. Update `CHANGELOG.md` and both package versions.
 2. Run the full local verification commands from `CONTRIBUTING.md`.
 3. Commit and merge the release changes.
-4. Create and push a matching tag, for example `git tag v0.1.2 && git push origin v0.1.2`.
+4. Create and push a matching tag, for example `git tag v0.1.3 && git push origin v0.1.3`.
 5. Approve the `pypi` and `npm` environments after the verification job passes.
-6. Confirm both package pages and install the published artifacts in a clean environment.
+6. Confirm `release-verify` passes. It performs clean registry installs, image,
+   GitHub Release, and composite-action checks automatically.
