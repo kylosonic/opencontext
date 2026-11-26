@@ -68,7 +68,7 @@ export default function StatusPage() {
           </p>
           <div className="mt-3 border-l-2 border-line-strong pl-4 text-ink-faint">
             The public site can lag the repository. Production worker status is
-            separate from the published v0.1.2 packages.
+            separate from the published v0.1.3 packages.
           </div>
         </section>
 

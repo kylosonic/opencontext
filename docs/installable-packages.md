@@ -1,12 +1,12 @@
 # Installable Packages
 
-The `0.1.2` versions of both packages are published. Install them directly from
+The `0.1.3` versions of both packages are published. Install them directly from
 their public registries.
 
 ## Python CLI
 
 ```bash
-python -m pip install "opencontext-video[local]==0.1.2"
+python -m pip install "opencontext-video[local]==0.1.3"
 opencontext analyze video.mp4 --out context.md --json context.json
 ```
 
@@ -16,7 +16,7 @@ transcription and vision output instead of claiming real inference.
 Install the optional agent integration:
 
 ```bash
-python -m pip install "opencontext-video[agent]==0.1.2"
+python -m pip install "opencontext-video[agent]==0.1.3"
 opencontext-mcp
 ```
 
@@ -29,8 +29,8 @@ The MCP server exposes `analyze_media`, `analyze_video`, `analyze_image`,
 `uvx` can run an exact release without a persistent Python environment:
 
 ```bash
-uvx --from "opencontext-video[local]==0.1.2" opencontext --version
-uvx --from "opencontext-video[local]==0.1.2" opencontext analyze media.mp4 \
+uvx --from "opencontext-video[local]==0.1.3" opencontext --version
+uvx --from "opencontext-video[local]==0.1.3" opencontext analyze media.mp4 \
   --out context.md --json context.json
 ```
 
@@ -54,7 +54,7 @@ remote-provider opt-in details.
 ## npm schemas
 
 ```bash
-npm install @kylosonic/opencontext-schemas@0.1.2
+npm install @kylosonic/opencontext-schemas@0.1.3
 ```
 
 The tarball includes compiled ESM JavaScript, declarations, source maps, the

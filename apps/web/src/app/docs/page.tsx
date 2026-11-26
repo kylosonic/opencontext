@@ -52,7 +52,7 @@ export default function DocsPage() {
       description="Turn videos, audio recordings, still images, image sets, and PDFs into timestamped, evidence-linked context that a text-only model can read."
       accessory={
         <Badge tone="success" mono>
-          v0.1.2
+          v0.1.3
         </Badge>
       }
     >

@@ -3,8 +3,12 @@
 All notable changes are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.1.3 - 2026-11-26
 
+- Added post-publication release verification for the exact PyPI and npm
+  versions, all three GHCR images, the GitHub Release, and the tag's composite
+  action. Release checks now also enforce every workspace manifest and the
+  action's default package version.
 - Added provider-neutral monthly JSON and CSV invoice exports over the usage
   ledger, including account/team permission checks, deterministic draft invoice
   numbers, USD micro-unit totals, response download headers, and spreadsheet
