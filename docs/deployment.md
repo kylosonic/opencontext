@@ -369,11 +369,24 @@ The GitHub Actions schedule remains the fallback when no always-on worker host
 is configured.
 
 If you do not have a long-running host yet, `.github/workflows/worker-schedule.yml`
-drains the queue from GitHub Actions on a schedule (and on `repository_dispatch`
-`job-queued` or manual `workflow_dispatch`). It is a real worker, not a
-simulation, but cron job start latency depends on GitHub Actions scheduling. Set
-these
-repository secrets and variables before enabling it:
+provides a zero-cost relay on GitHub-hosted runners for this public repository.
+Scheduled runs remain active for a 15-minute drain window, and the five-minute
+cron keeps the next run pending in the serialized concurrency group. The active
+worker polls every three seconds, so jobs normally start even though the cron
+expression only creates a new pending run every five minutes. `repository_dispatch`
+(`job-queued`) and manual `workflow_dispatch` runs also work and exit once the
+queue is idle.
+
+The relay intentionally refuses to run when the repository is private unless
+the repository variable `ALLOW_PRIVATE_ACTIONS_MINUTES=true` is set. Private
+repositories have an included Actions-minute allowance and can be billed for
+continuous execution. Confirm your account's current billing terms before
+setting that override. Public-repository standard-runner usage is free, subject
+to GitHub's Actions limits and acceptable-use rules. GitHub cron scheduling can
+still be delayed during platform incidents, so this relay is not equivalent to
+a dedicated host with restart evidence.
+
+Set these repository secrets and variables before enabling it:
 
 ```bash
 gh secret set WORKER_API_TOKEN --body "$WORKER_API_TOKEN"
@@ -381,8 +394,9 @@ gh secret set OPENAI_API_KEY --body "$OPENAI_API_KEY"
 gh variable set WORKER_API_URL --body "https://your-app.example"
 ```
 
-The workflow installs Faster Whisper and caches the model between runs. It uses
-`TEXT_PROVIDER=template`, so context generation needs no extra provider.
+The workflow caches both pip downloads and the Faster Whisper model between
+runs. It uses `TEXT_PROVIDER=template`, so context generation needs no extra
+provider.
 
 ## Compose
 

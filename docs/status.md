@@ -171,9 +171,14 @@ labels, Markdown, and JSON. The fixture video has no audio track, so that run
 exercised vision, OCR, aggregation, and exports while transcription reported
 "no audio".
 
-The worker currently drains the queue from
-`.github/workflows/worker-schedule.yml` every five minutes. It is a real worker,
-not a simulation, but job start latency is up to one cron interval.
+The worker uses the zero-cost GitHub Actions relay in
+`.github/workflows/worker-schedule.yml`. Scheduled runs remain alive for the
+15-minute drain window while the five-minute schedule keeps the next run
+pending, so an active worker normally claims new jobs within its three-second
+idle poll. It is a real worker, not a simulation, but it still depends on
+GitHub-hosted runners and cron scheduling rather than a dedicated host with
+restart evidence. The workflow also blocks continuous execution if the
+repository becomes private unless an explicit billing override is configured.
 
 The 2026-11-21 production smoke covered ten ordered source images with 10
 visual observations, a standalone JPEG with one observation, a 5.06-second
